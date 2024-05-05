@@ -1,7 +1,20 @@
 <script>
 	import { page } from '$app/stores';
+	import { auth } from '$lib/firebaseConfig';
+	import { signOut } from 'firebase/auth';
 	import logo from '$lib/images/svelte-logo.svg';
 	import github from '$lib/images/github.svg';
+	import { user } from '$lib/stores'; // Assuming there's a user store to manage authentication state
+  import { goto } from '$app/navigation';
+
+	async function logout() {
+		try {
+			await signOut(auth);
+			console.log('Logged out successfully');
+		} catch (error) {
+			console.error('Logout failed:', error);
+		}
+	}
 </script>
 
 <header>
@@ -38,6 +51,11 @@
 		<a href="https://github.com/sveltejs/kit">
 			<img src={github} alt="GitHub" />
 		</a>
+		{#if $user}
+			<button on:click={logout} class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Logout</button>
+		{:else}
+			<button on:click={() => goto('/login')} class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Login</button>
+		{/if}
 	</div>
 </header>
 
@@ -50,9 +68,10 @@
 	.corner {
 		width: 3em;
 		height: 3em;
+		position: relative;
 	}
 
-	.corner a {
+	.corner a, .corner button {
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -64,6 +83,16 @@
 		width: 2em;
 		height: 2em;
 		object-fit: contain;
+	}
+
+	.logout-button {
+		position: absolute;
+		top: 0;
+		right: 0;
+		padding: 0.5em;
+		background-color: #f3f4f6;
+		border: none;
+		cursor: pointer;
 	}
 
 	nav {
