@@ -64,8 +64,7 @@ function subscribeToUsageUpdates(userFirebaseId: string): RealtimeChannel {
       }
     })
     .subscribe();
-  console.log('userFirebaseId:', userFirebaseId);
-  console.log('usageCount:', usage);
+  console.log('Channel:', channel);
   return channel;
 }
 

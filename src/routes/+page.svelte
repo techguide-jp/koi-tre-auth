@@ -1,7 +1,7 @@
 <script context="module" lang="ts">
   import { auth } from '$lib/firebaseConfig';
   import { goto } from '$app/navigation';
-	import { user, usage } from '$lib/stores';
+	import { user, usage, usageChannel } from '$lib/stores';
 
   export async function load({ session }) {
     return new Promise((resolve) => {
@@ -20,11 +20,9 @@
 	import welcome from '$lib/images/svelte-welcome.webp';
 	import welcome_fallback from '$lib/images/svelte-welcome.png';
 	import { onDestroy, onMount } from 'svelte';
-	import { checkUsage, subscribeToUsageUpdates } from '$lib/supabaseClient'
-	import type { RealtimeChannel } from '@supabase/supabase-js'
+	import { checkUsage } from '$lib/supabaseClient'
 
 	$: isShowIframe = $usage > 0;
-	let usageChannel: RealtimeChannel;
 	
 	// userにセットされたuidを取得
 	let uid: string = '';
@@ -39,15 +37,14 @@
   let isShowToastMessage = false; // 通知を表示するかどうかのフラグ
 
 	onMount(() => {
-		checkUsage(uid).then(result => {
-			if (result) {
-				console.log('checkUsage', result);
-				usage.set(result);
-			}
-		});
-		usageChannel = subscribeToUsageUpdates(uid);
     const handleClickOrEnter = () => {
-			console.log('checkUsage');
+			checkUsage(uid).then(result => {
+				if (result) {
+					console.log('updateUsage checkUsage', result);
+					usage.set(result);
+				}
+			});
+			console.log('click checkUsage');
     };
 
     window.addEventListener('click', handleClickOrEnter);
@@ -65,7 +62,13 @@
   });
 
 	onDestroy(() => {
-  	if (usageChannel) usageChannel.unsubscribe(); // コンポーネント破棄時に購読を解除
+		// コンポーネント破棄時に購読を解除
+		usageChannel.subscribe(value => {
+			if (value) {
+				console.log('onDestroy usageChannel', value);
+				value.unsubscribe();
+			}
+		});
 	});
 	
   function copyToClipboard() {

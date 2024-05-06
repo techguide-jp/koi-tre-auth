@@ -1,7 +1,8 @@
 import { writable } from 'svelte/store';
 import { auth } from './firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
-import { supabase, subscribeToUsageUpdates } from '$lib/supabaseClient';
+import { supabase, subscribeToUsageUpdates, checkUsage } from '$lib/supabaseClient';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface User {
     uid?: string;
@@ -13,7 +14,9 @@ interface User {
 // Create a user store to manage authentication state
 export const user = writable<User | null>(null);
 export const usage = writable(0); // 使用回数を格納するストア
+export const usageChannel = writable<RealtimeChannel | null>(null);
 
+// ログイン状態の変更を監視
 onAuthStateChanged(auth, (firebaseUser) => {
   if (firebaseUser) {
     // User is signed in, update the Svelte store
@@ -24,6 +27,16 @@ onAuthStateChanged(auth, (firebaseUser) => {
       photoURL: firebaseUser.photoURL
     });
     saveUserToSupabase(firebaseUser);
+    // 利用回数を取得
+    checkUsage(firebaseUser.uid).then(result => {
+        if (result) {
+            console.log('updateUsage checkUsage', result);
+            usage.set(result);
+        }
+    });
+    usageChannel.set(subscribeToUsageUpdates(firebaseUser.uid));
+
+
   } else {
     // User is signed out, set user to null
     user.set(null);
