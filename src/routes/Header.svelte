@@ -3,13 +3,13 @@
 	import { auth } from '$lib/firebaseConfig';
 	import { signOut } from 'firebase/auth';
 	import logo from '$lib/images/svelte-logo.svg';
-	import github from '$lib/images/github.svg';
 	import { user } from '$lib/stores'; // Assuming there's a user store to manage authentication state
   import { goto } from '$app/navigation';
 
 	async function logout() {
 		try {
 			await signOut(auth);
+			user.set(null);
 			console.log('Logged out successfully');
 		} catch (error) {
 			console.error('Logout failed:', error);
@@ -47,14 +47,11 @@
 		</svg>
 	</nav>
 
-	<div class="corner">
-		<a href="https://github.com/sveltejs/kit">
-			<img src={github} alt="GitHub" />
-		</a>
+	<div class="corner" style="display: flex; align-items: center; justify-content: space-between; padding-right: 10px;">
 		{#if $user}
-			<button on:click={logout} class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Logout</button>
+			<button on:click={logout} class="text-white font-bold py-2 px-4 rounded" style="flex: 1; padding-left: 10px;">Logout</button>
 		{:else}
-			<button on:click={() => goto('/login')} class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Login</button>
+			<button on:click={() => goto('/login')} class="text-white font-bold py-2 px-4 rounded" style="flex: 1; padding-left: 10px;">Login</button>
 		{/if}
 	</div>
 </header>

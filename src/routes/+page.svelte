@@ -1,6 +1,7 @@
 <script context="module" lang="ts">
   import { auth } from '$lib/firebaseConfig';
   import { goto } from '$app/navigation';
+	import { user, usage } from '$lib/stores';
 
   export async function load({ session }) {
     return new Promise((resolve) => {
@@ -15,9 +16,76 @@
   }
 </script>
 
-<script>
+<script lang="ts">
 	import welcome from '$lib/images/svelte-welcome.webp';
 	import welcome_fallback from '$lib/images/svelte-welcome.png';
+	import { onDestroy, onMount } from 'svelte';
+	import { checkUsage, subscribeToUsageUpdates } from '$lib/supabaseClient'
+	import type { RealtimeChannel } from '@supabase/supabase-js'
+
+	$: isShowIframe = $usage > 0;
+	let usageChannel: RealtimeChannel;
+	
+	// userにセットされたuidを取得
+	let uid: string = '';
+	let name: string = '';
+	user.subscribe(value => {
+		if (value != null) {
+			uid = value.uid || '';
+			name = value.displayName || 'ななし';
+		}
+	});
+  let toastMessage = ''; // 通知メッセージ
+  let isShowToastMessage = false; // 通知を表示するかどうかのフラグ
+
+	onMount(() => {
+		checkUsage(uid).then(result => {
+			if (result) {
+				console.log('checkUsage', result);
+				usage.set(result);
+			}
+		});
+		usageChannel = subscribeToUsageUpdates(uid);
+    const handleClickOrEnter = () => {
+			console.log('checkUsage');
+    };
+
+    window.addEventListener('click', handleClickOrEnter);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        handleClickOrEnter();
+      }
+    });
+
+    // Remove event listeners when the component is unmounted
+    return () => {
+      window.removeEventListener('click', handleClickOrEnter);
+      window.removeEventListener('keydown', handleClickOrEnter);
+    };
+  });
+
+	onDestroy(() => {
+  	if (usageChannel) usageChannel.unsubscribe(); // コンポーネント破棄時に購読を解除
+	});
+	
+  function copyToClipboard() {
+    navigator.clipboard.writeText(uid)
+      .then(() => {
+        toastMessage = 'UIDがクリップボードにコピーされました！';
+        isShowToastMessage = true; // メッセージを表示
+        setTimeout(() => {
+          isShowToastMessage = false; // 3秒後にメッセージを非表示
+        }, 3000);
+      })
+      .catch(err => {
+        console.error('クリップボードへのコピーに失敗しました: ', err);
+        toastMessage = 'クリップボードへのコピーに失敗しました。';
+        isShowToastMessage = true;
+        setTimeout(() => {
+          isShowToastMessage = false;
+        }, 3000);
+      });
+  }
 </script>
 
 <svelte:head>
@@ -33,16 +101,59 @@
 				<img src={welcome_fallback} alt="Welcome" />
 			</picture>
 		</span>
-
-		to your new<br />SvelteKit app
 	</h1>
 
-	<h2>
-		try editing <strong>src/routes/+page.svelte</strong>
-	</h2>
+	{#if $user && isShowIframe}
+		<p class="mb-4">こんにちは、{name}さん！</p>
+		<div style="display: flex; align-items: center;">
+			<p style="margin-right: 10px;">あなたのID:</p>
+			<p class="border border-gray-300 p-2">{uid}</p>
+			<button on:click={copyToClipboard} class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" style="margin-left: 10px;">
+				コピー
+			</button>
+			{#if isShowToastMessage}
+				<div class="toast">{toastMessage}</div>
+			{/if}
+		</div>
+
+		<div class="border border-gray-300 p-4 my-4 rounded">
+			<p>今月の利用枠: あと{$usage}回</p>
+		</div>
+		
+		<iframe
+			id="koi-tre-iframe"
+	    title="Koi-Tre AI"
+		  src="https://udify.app/chatbot/Vu74gKYoYbIhoZRJ"
+		  style="width: 100%; height: 100%; min-height: 700px"
+		  frameborder="0"
+		  allow="microphone">
+		</iframe>
+	{:else if !$user}
+		<p><a href="/login">ログイン</a>してください</p>
+	{:else if !isShowIframe}
+		<p>今月分の利用枠は無くなりました。</p>
+	{/if}
 </section>
 
 <style>
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    animation: fadeinout 3s;
+  }
+
+  @keyframes fadeinout {
+    0%, 100% { opacity: 0; }
+    10%, 90% { opacity: 1; }
+  }
+	
+	/* 以下は元のコードのスタイル */
 	section {
 		display: flex;
 		flex-direction: column;
