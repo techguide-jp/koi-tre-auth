@@ -138,7 +138,7 @@
 		<p class="mb-10">今月分の利用枠は無くなりました。</p>
 	<div class="llm-text">
 		<p>【最後の内容】</p>
-		<div class="border border-gray-300 p-4 my-4 rounded-lg bg-white">
+		<div class="mkdwn border border-gray-300 p-4 my-4 rounded-lg bg-white">
 			<SvelteMarkdown source={$lastLlmText} />
 		</div>
 	</div>
@@ -146,6 +146,10 @@
 </section>
 
 <style>
+  /* TODO: マークダウンのスタイル */
+  .mkdwn {
+	}
+
   .toast {
     position: fixed;
     bottom: 20px;
