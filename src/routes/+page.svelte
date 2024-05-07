@@ -1,7 +1,8 @@
 <script context="module" lang="ts">
   import { auth } from '$lib/firebaseConfig';
   import { goto } from '$app/navigation';
-	import { user, usage, usageChannel } from '$lib/stores';
+	import { user, usage, usageChannel, lastLlmText } from '$lib/stores';
+	import SvelteMarkdown from 'svelte-markdown'
 
   export async function load({ session }) {
     return new Promise((resolve) => {
@@ -134,7 +135,13 @@
 	{:else if !$user}
 		<p><a href="/login">ログイン</a>してください</p>
 	{:else if !isShowIframe}
-		<p>今月分の利用枠は無くなりました。</p>
+		<p class="mb-10">今月分の利用枠は無くなりました。</p>
+	<div class="llm-text">
+		<p>【最後の内容】</p>
+		<div class="border border-gray-300 p-4 my-4 rounded-lg bg-white">
+			<SvelteMarkdown source={$lastLlmText} />
+		</div>
+	</div>
 	{/if}
 </section>
 

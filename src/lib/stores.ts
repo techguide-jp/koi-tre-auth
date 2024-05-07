@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import { auth } from './firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
-import { supabase, subscribeToUsageUpdates, checkUsage } from '$lib/supabaseClient';
+import { supabase, subscribeToUsageUpdates, checkUsage, getLastLlmText } from '$lib/supabaseClient';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface User {
@@ -15,6 +15,7 @@ interface User {
 export const user = writable<User | null>(null);
 export const usage = writable(0); // 使用回数を格納するストア
 export const usageChannel = writable<RealtimeChannel | null>(null);
+export const lastLlmText = writable(''); // 最後に受診したLLM回答を格納するストア
 
 // ログイン状態の変更を監視
 onAuthStateChanged(auth, (firebaseUser) => {
@@ -35,6 +36,9 @@ onAuthStateChanged(auth, (firebaseUser) => {
         }
     });
     usageChannel.set(subscribeToUsageUpdates(firebaseUser.uid));
+    getLastLlmText(firebaseUser.uid).then(result => {
+        lastLlmText.set(result);
+    });
 
 
   } else {

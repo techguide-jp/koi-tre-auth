@@ -43,6 +43,7 @@
 	"type": "module",
 	"dependencies": {
 		"@supabase/supabase-js": "^2.43.1",
-		"firebase": "^10.11.1"
+		"firebase": "^10.11.1",
+		"svelte-markdown": "^0.4.1"
 	}
 }
