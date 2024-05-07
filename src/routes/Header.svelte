@@ -1,10 +1,15 @@
-<script>
+<script lang="ts">
 	import { page } from '$app/stores';
 	import { auth } from '$lib/firebaseConfig';
 	import { signOut } from 'firebase/auth';
-	import logo from '$lib/images/svelte-logo.svg';
+	import logo from '$lib/images/logo.svg';
 	import { user } from '$lib/stores'; // Assuming there's a user store to manage authentication state
   import { goto } from '$app/navigation';
+	import Menu from '@smui/menu';
+  import List, { Item, Separator, Text } from '@smui/list';
+  import Button, { Label } from '@smui/button';
+
+  let menu: Menu;
 
 	async function logout() {
 		try {
@@ -47,11 +52,24 @@
 		</svg>
 	</nav>
 
-	<div class="corner" style="display: flex; align-items: center; justify-content: space-between; padding-right: 10px;">
+	<!-- right menu -->
+	<div>
 		{#if $user}
-			<button on:click={logout} class="text-white font-bold py-2 px-4 rounded" style="flex: 1; padding-left: 10px;">Logout</button>
+      <div style="min-width: 100px;">
+        <Button on:click={() => menu.setOpen(true)}>
+          <Label>Open Menu</Label>
+        </Button>
+        <Menu bind:this={menu}>
+          <List>
+            <Separator />
+            <Item on:SMUI:action={() => logout()}>
+              <Text>Logout</Text>
+            </Item>
+          </List>
+        </Menu>
+      </div>
 		{:else}
-			<button on:click={() => goto('/login')} class="text-white font-bold py-2 px-4 rounded" style="flex: 1; padding-left: 10px;">Login</button>
+			<button on:click={() => goto('/login')} class="text-primary font-bold py-2 px-4 rounded" style="flex: 1; padding-left: 10px;">Login</button>
 		{/if}
 	</div>
 </header>

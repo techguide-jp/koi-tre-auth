@@ -74,15 +74,15 @@
   function copyToClipboard() {
     navigator.clipboard.writeText(uid)
       .then(() => {
-        toastMessage = 'UIDがクリップボードにコピーされました！';
+        toastMessage = 'IDがコピーされました！';
         isShowToastMessage = true; // メッセージを表示
         setTimeout(() => {
           isShowToastMessage = false; // 3秒後にメッセージを非表示
         }, 3000);
       })
       .catch(err => {
-        console.error('クリップボードへのコピーに失敗しました: ', err);
-        toastMessage = 'クリップボードへのコピーに失敗しました。';
+        console.error('コピーに失敗しました: ', err);
+        toastMessage = 'コピーに失敗しました。';
         isShowToastMessage = true;
         setTimeout(() => {
           isShowToastMessage = false;
