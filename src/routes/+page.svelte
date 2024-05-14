@@ -4,7 +4,7 @@
   import { user, usage, usageChannel, lastLlmText } from '$lib/stores'
   import SvelteMarkdown from 'svelte-markdown'
 
-  export async function load({ session }) {
+  export async function load() {
     return new Promise((resolve) => {
       auth.onAuthStateChanged((user) => {
         if (!user) {

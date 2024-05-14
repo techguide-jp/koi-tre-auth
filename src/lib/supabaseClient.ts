@@ -46,7 +46,6 @@ function subscribeToUsageUpdates(userFirebaseId: string): RealtimeChannel {
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
-  const startOfMonthString = startOfMonth.toISOString()
 
   // Supabase Realtime Channel 購読
   const channel = supabase

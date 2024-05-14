@@ -27,7 +27,7 @@
 
   onMount(() => {
     signInWithPopup(auth, provider)
-      .then((result) => {
+      .then(() => {
         goto('/') // ログイン成功後、メインページにリダイレクト
       })
       .catch((error) => {

@@ -87,8 +87,7 @@
     position: relative;
   }
 
-  .corner a,
-  .corner button {
+  .corner a {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -100,16 +99,6 @@
     width: 2em;
     height: 2em;
     object-fit: contain;
-  }
-
-  .logout-button {
-    position: absolute;
-    top: 0;
-    right: 0;
-    padding: 0.5em;
-    background-color: #f3f4f6;
-    border: none;
-    cursor: pointer;
   }
 
   nav {
