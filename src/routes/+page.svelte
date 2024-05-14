@@ -152,9 +152,10 @@
 </section>
 
 <style>
-  /* TODO: マークダウンのスタイル */
+  /* TODO: マークダウンのスタイル
   .mkdwn {
   }
+  */
 
   .toast {
     position: fixed;
