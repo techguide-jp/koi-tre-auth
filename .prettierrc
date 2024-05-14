@@ -5,9 +5,9 @@
   "semi": false,
   "singleQuote": true,
   "svelteAllowShorthand": false,
-  "svelteBracketNewLine": true,
   "svelteSortOrder": "options-scripts-markup-styles",
   "svelteStrictMode": true,
   "trailingComma": "none",
-  "useTabs": true
+  "useTabs": false,
+  "tabWidth": 2
 }
