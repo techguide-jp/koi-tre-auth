@@ -31,7 +31,6 @@
 					}),
 				});
 				message = "";
-				alert("Form submitted");
 			} finally {
 				submitting = false;
 				submitted = true;
