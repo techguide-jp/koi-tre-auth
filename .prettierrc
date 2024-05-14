@@ -9,5 +9,6 @@
   "svelteSortOrder": "options-scripts-markup-styles",
   "svelteStrictMode": true,
   "trailingComma": "none",
-  "useTabs": true
+  "useTabs": false,
+  "tabWidth": 2
 }
