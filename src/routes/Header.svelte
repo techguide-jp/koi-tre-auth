@@ -38,7 +38,7 @@
         <a href="/">Home</a>
       </li>
       <li aria-current="{$page.url.pathname === '/about' ? 'page' : undefined}">
-        <a href="/about">About</a>
+        <a href="https://www.koi-tre.com/">About</a>
       </li>
       <li aria-current="{$page.url.pathname === '/contact' ? 'page' : undefined}">
         <a href="/contact">Contact</a>
