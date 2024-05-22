@@ -36,6 +36,8 @@
   })
   let toastMessage = '' // 通知メッセージ
   let isShowToastMessage = false // 通知を表示するかどうかのフラグ
+  // 各ページのタイトル
+  $: pageTitle = import.meta.env.VITE_APP_TITLE
 
   onMount(() => {
     const handleClickOrEnter = () => {
@@ -94,7 +96,7 @@
 </script>
 
 <svelte:head>
-  <title>Home</title>
+  <title>{pageTitle}</title>
   <meta name="description" content="Svelte demo app" />
 </svelte:head>
 
