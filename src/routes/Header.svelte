@@ -24,7 +24,7 @@
 
 <header>
   <div class="corner">
-    <a href="https://kit.svelte.dev">
+    <a href="{import.meta.env.VITE_APP_DOMAIN}">
       <img src="{logo}" alt="SvelteKit" />
     </a>
   </div>
