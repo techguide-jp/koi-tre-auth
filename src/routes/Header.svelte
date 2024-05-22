@@ -10,6 +10,9 @@
   import Button, { Label } from '@smui/button'
 
   let menu: Menu
+  // domain link
+  const domain = import.meta.env.VITE_APP_DOMAIN
+  console.log(domain)
 
   async function logout() {
     try {
@@ -24,7 +27,7 @@
 
 <header>
   <div class="corner">
-    <a href="{import.meta.env.VITE_APP_DOMAIN}">
+    <a href="{domain}">
       <img src="{logo}" alt="SvelteKit" />
     </a>
   </div>
