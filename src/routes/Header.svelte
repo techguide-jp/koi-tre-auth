@@ -28,7 +28,7 @@
 <header>
   <div class="corner">
     <a href="{domain}">
-      <img src="{logo}" alt="SvelteKit" />
+      <img src="{logo}" alt="Koi-Tre" />
     </a>
   </div>
 
