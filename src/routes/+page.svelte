@@ -36,8 +36,6 @@
   })
   let toastMessage = '' // 通知メッセージ
   let isShowToastMessage = false // 通知を表示するかどうかのフラグ
-  // 各ページのタイトル
-  $: pageTitle = import.meta.env.VITE_APP_TITLE
 
   onMount(() => {
     const handleClickOrEnter = () => {
@@ -96,8 +94,8 @@
 </script>
 
 <svelte:head>
-  <title>{pageTitle}</title>
-  <meta name="description" content="Svelte demo app" />
+  <title>{import.meta.env.VITE_APP_TITLE} - HOME</title>
+  <meta name="description" content="Koi-Treは、恋愛コミュニケーションスキルを向上させるための画期的なトレーニングプラットフォームです。実践的なシミュレーションを通じて、リアルな状況で使えるコミュニケーション技術を学びましょう！" />
 </svelte:head>
 
 <section>
