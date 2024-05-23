@@ -150,6 +150,12 @@
     </div>
   {/if}
 </section>
+<section class="survey-link text-center">
+  <p>ご利用いただきありがとうございます。<br>サービス向上のため、アンケートにご協力いただけますと嬉しいです！</p>
+  <a href="https://x.gd/49Btv" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded inline-block mt-4">
+    アンケートに答える
+  </a>
+</section>
 
 <style>
   /* TODO: マークダウンのスタイル
