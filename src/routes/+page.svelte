@@ -22,6 +22,7 @@
   import welcome_fallback from '$lib/images/svelte-welcome.png'
   import { onDestroy, onMount } from 'svelte'
   import { checkUsage } from '$lib/supabaseClient'
+  import { writable } from 'svelte/store'
 
   $: isShowIframe = $usage > 0
 
@@ -36,6 +37,7 @@
   })
   let toastMessage = '' // 通知メッセージ
   let isShowToastMessage = false // 通知を表示するかどうかのフラグ
+  let recoveryTime = writable('') // 回復時間
 
   onMount(() => {
     const handleClickOrEnter = () => {
@@ -54,11 +56,14 @@
         handleClickOrEnter()
       }
     })
+    calculateRecoveryTime();
+    const interval = setInterval(calculateRecoveryTime, 10);
 
     // Remove event listeners when the component is unmounted
     return () => {
       window.removeEventListener('click', handleClickOrEnter)
       window.removeEventListener('keydown', handleClickOrEnter)
+      clearInterval(interval)
     }
   })
 
@@ -90,6 +95,20 @@
           isShowToastMessage = false
         }, 3000)
       })
+  }
+
+  function calculateRecoveryTime() {
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const diff = nextMonth.getTime() - now.getTime();
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    const milliseconds = (diff % 100).toString().padStart(2, '0');
+
+    recoveryTime.set(`${days}日 ${hours}時間 ${minutes}分 ${seconds}.${milliseconds}秒`);
   }
 </script>
 
@@ -134,7 +153,7 @@
       id="koi-tre-iframe"
       title="Koi-Tre AI"
       src="https://udify.app/chatbot/Vu74gKYoYbIhoZRJ"
-      style="width: 100%; height: 100%; min-height: 700px"
+      style="width: 100%; height: 100%; min-height: 600px"
       frameborder="0"
       allow="microphone"
     >
@@ -142,7 +161,7 @@
   {:else if !$user}
     <p class="mt-10"><a href="/login">ログイン</a>してください</p>
   {:else if !isShowIframe}
-    <p class="mb-10">今月分の利用枠は無くなりました。</p>
+    <p class="mb-10 text-center">今月分の利用枠は無くなりました。<br><br>利用回数回復まで残り時間<br>{$recoveryTime}</p>
     <div class="llm-text">
       <p>【最後の内容】</p>
       <div class="mkdwn border border-gray-300 p-4 my-4 rounded-lg bg-white">
