@@ -57,7 +57,7 @@
       }
     })
     calculateRecoveryTime();
-    const interval = setInterval(calculateRecoveryTime, 10);
+    const interval = setInterval(calculateRecoveryTime, 1);
 
     // Remove event listeners when the component is unmounted
     return () => {
