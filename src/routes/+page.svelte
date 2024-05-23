@@ -99,6 +99,7 @@
 </svelte:head>
 
 <section>
+  {#if !$user}
   <h1>
     <span class="welcome">
       <picture>
@@ -107,16 +108,16 @@
       </picture>
     </span>
   </h1>
+  {/if}
 
   {#if $user && isShowIframe}
     <p class="mb-4">こんにちは、{name}さん！</p>
-    <div style="display: flex; align-items: center;">
-      <p style="margin-right: 10px;">あなたのID:</p>
-      <p class="border border-gray-300 p-2">{uid}</p>
+    <div class="flex flex-col items-start">
+      <p class="mb-2">あなたのID:</p>
+      <p class="border border-gray-300 p-2 mb-2">{uid}</p>
       <button
         on:click="{copyToClipboard}"
-        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        style="margin-left: 10px;"
+        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 mx-auto block"
       >
         コピー
       </button>
@@ -139,7 +140,7 @@
     >
     </iframe>
   {:else if !$user}
-    <p><a href="/login">ログイン</a>してください</p>
+    <p class="mt-10"><a href="/login">ログイン</a>してください</p>
   {:else if !isShowIframe}
     <p class="mb-10">今月分の利用枠は無くなりました。</p>
     <div class="llm-text">
