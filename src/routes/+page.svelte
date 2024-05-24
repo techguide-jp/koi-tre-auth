@@ -159,7 +159,11 @@
     >
     </iframe>
   {:else if !$user}
-    <p class="mt-10"><a href="/login">ログイン</a>してください</p>
+    <div class="mt-10 text-center">
+      <a href="/login">ログイン・会員登録</a>
+      <br>
+      <p class="mt-4">※ 利用枠は1ヶ月につき10回までです。</p>
+    </div>
   {:else if !isShowIframe}
     <p class="mb-10 text-center">今月分の利用枠は無くなりました。<br><br>利用回数回復まで残り時間<br>{$recoveryTime}</p>
     <div class="llm-text">
@@ -185,29 +189,6 @@
   .mkdwn {
   }
   */
-
-  .toast {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #333;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 5px;
-    animation: fadeinout 3s;
-  }
-
-  @keyframes fadeinout {
-    0%,
-    100% {
-      opacity: 0;
-    }
-    10%,
-    90% {
-      opacity: 1;
-    }
-  }
 
   /* 以下は元のコードのスタイル */
   section {

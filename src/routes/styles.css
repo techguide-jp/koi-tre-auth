@@ -108,3 +108,26 @@ button:focus:not(:focus-visible) {
   width: 1px;
   white-space: nowrap;
 }
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  animation: fadeinout 3s;
+}
+
+@keyframes fadeinout {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+}

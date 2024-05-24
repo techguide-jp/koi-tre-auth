@@ -17,13 +17,21 @@
       goto('/')
     } catch (error) {
       console.error('Login failed:', error)
-      alert('ログインに失敗しました。もう一度お試しください。')
     }
   }
 </script>
 
 <script lang="ts">
   import { onMount } from 'svelte'
+
+  let toastMessage = '' // 通知メッセージ
+  $: isShowToastMessage = !!toastMessage // メッセージを表示
+
+  function resetToastMessage() {
+    setTimeout(() => {
+      toastMessage = ''
+    }, 3000)
+  }
 
   onMount(() => {
     signInWithPopup(auth, provider)
@@ -32,13 +40,16 @@
       })
       .catch((error) => {
         console.error('Login failed:', error)
-        alert('ログインに失敗しました。もう一度お試しください。')
+        toastMessage = 'ログインに失敗しました。もう一度お試しください。'
       })
   })
 </script>
 
 <div class="login-container">
   <button class="login-button" on:click="{login}">Login with Google</button>
+  {#if toastMessage}
+    <div class="toast">{toastMessage}</div>
+  {/if}
 </div>
 
 <style>
