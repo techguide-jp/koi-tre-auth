@@ -57,8 +57,8 @@
         handleClickOrEnter()
       }
     })
-    calculateRecoveryTime();
-    const interval = setInterval(calculateRecoveryTime, 1);
+    calculateRecoveryTime()
+    const interval = setInterval(calculateRecoveryTime, 1)
 
     handleClickOrEnter().then(() => {
       isMounted = true
@@ -102,46 +102,64 @@
   }
 
   function calculateRecoveryTime() {
-    const now = new Date();
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const diff = nextMonth.getTime() - now.getTime();
+    const now = new Date()
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    const diff = nextMonth.getTime() - now.getTime()
 
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    const milliseconds = (diff % 100).toString().padStart(2, '0');
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+    const milliseconds = (diff % 100).toString().padStart(2, '0')
 
-    recoveryTime.set(`${days}日 ${hours}時間 ${minutes}分 ${seconds}.${milliseconds}秒`);
+    recoveryTime.set(`${days}日 ${hours}時間 ${minutes}分 ${seconds}.${milliseconds}秒`)
   }
 </script>
 
 <svelte:head>
   <title>{import.meta.env.VITE_APP_TITLE} - 恋愛コミュニケーションスキル向上プラットフォーム</title>
-  <meta name="description" content="Koi-Treは、恋愛コミュニケーションスキルを向上させるための画期的なトレーニングプラットフォームです。実践的なシミュレーションを通じて、リアルな状況で使えるコミュニケーション技術を学びましょう！" />
-  <meta name="keywords" content="恋愛, コミュニケーション, スキル, トレーニング, シミュレーション, 恋愛スキル, コミュニケーション技術, 恋愛コミュニケーション, Koi-Tre" />
+  <meta
+    name="description"
+    content="Koi-Treは、恋愛コミュニケーションスキルを向上させるための画期的なトレーニングプラットフォームです。実践的なシミュレーションを通じて、リアルな状況で使えるコミュニケーション技術を学びましょう！"
+  />
+  <meta
+    name="keywords"
+    content="恋愛, コミュニケーション, スキル, トレーニング, シミュレーション, 恋愛スキル, コミュニケーション技術, 恋愛コミュニケーション, Koi-Tre"
+  />
   <meta name="author" content="TechGuide LLC." />
-  <meta property="og:title" content="{import.meta.env.VITE_APP_TITLE} - 恋愛コミュニケーションスキル向上プラットフォーム" />
-  <meta property="og:description" content="Koi-Treは、恋愛コミュニケーションスキルを向上させるための画期的なトレーニングプラットフォームです。実践的なシミュレーションを通じて、リアルな状況で使えるコミュニケーション技術を学びましょう！" />
+  <meta
+    property="og:title"
+    content="{import.meta.env.VITE_APP_TITLE} - 恋愛コミュニケーションスキル向上プラットフォーム"
+  />
+  <meta
+    property="og:description"
+    content="Koi-Treは、恋愛コミュニケーションスキルを向上させるための画期的なトレーニングプラットフォームです。実践的なシミュレーションを通じて、リアルな状況で使えるコミュニケーション技術を学びましょう！"
+  />
   <!--<meta property="og:image" content="/path/to/your/image.jpg" />-->
   <meta property="og:url" content="https://www.koi-tre.com" />
   <!--<meta name="twitter:card" content="summary_large_image" />-->
-  <meta name="twitter:title" content="{import.meta.env.VITE_APP_TITLE} - 恋愛コミュニケーションスキル向上プラットフォーム" />
-  <meta name="twitter:description" content="Koi-Treは、恋愛コミュニケーションスキルを向上させるための画期的なトレーニングプラットフォームです。実践的なシミュレーションを通じて、リアルな状況で使えるコミュニケーション技術を学びましょう！" />
+  <meta
+    name="twitter:title"
+    content="{import.meta.env.VITE_APP_TITLE} - 恋愛コミュニケーションスキル向上プラットフォーム"
+  />
+  <meta
+    name="twitter:description"
+    content="Koi-Treは、恋愛コミュニケーションスキルを向上させるための画期的なトレーニングプラットフォームです。実践的なシミュレーションを通じて、リアルな状況で使えるコミュニケーション技術を学びましょう！"
+  />
   <!--<meta name="twitter:image" content="/path/to/your/image.jpg" />-->
 </svelte:head>
 
 {#if isMounted}
   <section>
     {#if !$user}
-    <h1>
-      <span class="welcome">
-        <picture>
-          <source srcset="{welcome}" type="image/webp" />
-          <img src="{welcome_fallback}" alt="Koi-Treへようこそ" />
-        </picture>
-      </span>
-    </h1>
+      <h1>
+        <span class="welcome">
+          <picture>
+            <source srcset="{welcome}" type="image/webp" />
+            <img src="{welcome_fallback}" alt="Koi-Treへようこそ" />
+          </picture>
+        </span>
+      </h1>
     {/if}
 
     {#if $user && isShowIframe}
@@ -164,17 +182,16 @@
           on:click="{copyToClipboard}"
           class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 mx-auto block"
         >
-           IDをコピー
+          IDをコピー
         </button>
         {#if isShowToastMessage}
           <div class="toast">{toastMessage}</div>
         {/if}
       </div>
-
     {:else if !$user}
       <div class="mt-10 text-center">
         <GoogleLoginButton />
-        <br>
+        <br />
         <p class="mt-4 text-lg text-gray-700 font-semibold">
           ※ 利用回数を計測するため、登録が必要となっております。
         </p>
@@ -183,7 +200,9 @@
         </p>
       </div>
     {:else if !isShowIframe}
-      <p class="mb-10 text-center">今月分の利用枠は無くなりました。<br><br>利用回数回復まで残り時間<br>{$recoveryTime}</p>
+      <p class="mb-10 text-center">
+        今月分の利用枠は無くなりました。<br /><br />利用回数回復まで残り時間<br />{$recoveryTime}
+      </p>
       <div class="llm-text">
         <p>【最後の内容】</p>
         <div class="mkdwn border border-gray-300 p-4 my-4 rounded-lg bg-white">
@@ -194,13 +213,19 @@
   </section>
 
   {#if $user}
-  <hr class="my-6">
-  <section class="survey-link text-center mt-6">
-    <p>ご利用いただきありがとうございます。<br>サービス向上のため、アンケートにご協力いただけますと嬉しいです！</p>
-    <a href="https://x.gd/49Btv" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded inline-block mt-4">
-      アンケートに答える
-    </a>
-  </section>
+    <hr class="my-6" />
+    <section class="survey-link text-center mt-6">
+      <p>
+        ご利用いただきありがとうございます。<br
+        />サービス向上のため、アンケートにご協力いただけますと嬉しいです！
+      </p>
+      <a
+        href="https://x.gd/49Btv"
+        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded inline-block mt-4"
+      >
+        アンケートに答える
+      </a>
+    </section>
   {/if}
 {/if}
 

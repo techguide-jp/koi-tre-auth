@@ -41,13 +41,14 @@
       .catch((error) => {
         console.error('Login failed:', error)
         toastMessage = 'ログインに失敗しました。もう一度お試しください。'
+        resetToastMessage()
       })
   })
 </script>
 
 <div class="login-container">
   <button class="login-button" on:click="{login}">Login with Google</button>
-  {#if toastMessage}
+  {#if isShowToastMessage}
     <div class="toast">{toastMessage}</div>
   {/if}
 </div>
