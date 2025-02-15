@@ -160,13 +160,11 @@
       >
       </iframe>
       <div class="flex flex-col items-start">
-        <p class="mb-2">あなたのID:</p>
-        <p class="border border-gray-300 p-2 mb-2">{uid}</p>
         <button
           on:click="{copyToClipboard}"
           class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 mx-auto block"
         >
-          コピー
+           IDをコピー
         </button>
         {#if isShowToastMessage}
           <div class="toast">{toastMessage}</div>
