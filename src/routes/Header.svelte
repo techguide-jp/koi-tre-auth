@@ -34,7 +34,7 @@
 
 <header>
   <div class="corner">
-    <a href={homeUrl}>
+    <a href="{homeUrl}">
       <img src="{logo}" alt="Koi-Tre" />
     </a>
   </div>
