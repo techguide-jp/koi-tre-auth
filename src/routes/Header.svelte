@@ -15,6 +15,10 @@
   console.log(domain)
 
   async function logout() {
+    if (!auth) {
+      return
+    }
+
     try {
       await signOut(auth)
       user.set(null)

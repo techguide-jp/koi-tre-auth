@@ -1,6 +1,7 @@
+import { browser } from '$app/environment'
 import { initializeApp } from 'firebase/app'
 import { getAnalytics } from 'firebase/analytics'
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_API_KEY,
@@ -14,7 +15,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 const analytics = typeof window !== 'undefined' ? getAnalytics(app) : undefined
-const auth = getAuth(app)
-const provider = new GoogleAuthProvider()
+const auth: Auth | null = browser ? getAuth(app) : null
+const provider = browser ? new GoogleAuthProvider() : null
 
 export { auth, provider, analytics }

@@ -1,109 +1,81 @@
-<script context="module" lang="ts">
-  import { auth } from '$lib/firebaseConfig'
-  import { goto } from '$app/navigation'
-  import { user, usage, usageChannel, lastLlmText } from '$lib/stores'
-  import SvelteMarkdown from 'svelte-markdown'
-
-  export async function load() {
-    return new Promise((resolve) => {
-      auth.onAuthStateChanged((user) => {
-        if (!user) {
-          goto('/login')
-        } else {
-          resolve({})
-        }
-      })
-    })
-  }
-</script>
-
 <script lang="ts">
   import GoogleLoginButton from '$lib/components/GoogleLoginButton.svelte'
   import welcome from '$lib/images/svelte-welcome.webp'
   import welcome_fallback from '$lib/images/svelte-welcome.png'
-  import { onDestroy, onMount } from 'svelte'
-  import { checkUsage } from '$lib/supabaseClient'
-  import { writable } from 'svelte/store'
+  import SvelteMarkdown from 'svelte-markdown'
+  import { onMount } from 'svelte'
+  import { getNextTokyoMonthStart } from '$lib/utils/tokyo-month'
+  import {
+    dashboardError,
+    dashboardLoaded,
+    fetchDifyAccessKey,
+    lastLlmText,
+    refreshDashboard,
+    startDashboardPolling,
+    usage,
+    usageLimit,
+    user
+  } from '$lib/stores'
 
   $: isShowIframe = $usage > 0
 
-  // userにセットされたuidを取得
-  let uid: string = ''
   let name: string = ''
-  user.subscribe((value) => {
-    if (value != null) {
-      uid = value.uid || ''
-      name = value.displayName || 'ななし'
-    }
-  })
-  let toastMessage = '' // 通知メッセージ
-  let isShowToastMessage = false // 通知を表示するかどうかのフラグ
-  let recoveryTime = writable('') // 回復時間
+  $: name = $user?.displayName ?? 'ななし'
+
+  let toastMessage = ''
+  let isShowToastMessage = false
+  let recoveryTime = ''
   let isMounted = false
 
   onMount(() => {
-    const handleClickOrEnter = async () => {
-      const result = await checkUsage(uid)
-      if (result) {
-        console.log('updateUsage checkUsage', result)
-        usage.set(result)
-      }
-      console.log('click checkUsage')
+    const stopPolling = startDashboardPolling()
+    const recoveryInterval = window.setInterval(calculateRecoveryTime, 1000)
+
+    const handleFocus = () => {
+      void refreshDashboard()
     }
 
-    window.addEventListener('click', handleClickOrEnter)
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        handleClickOrEnter()
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshDashboard()
       }
-    })
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     calculateRecoveryTime()
-    const interval = setInterval(calculateRecoveryTime, 1)
+    isMounted = true
 
-    handleClickOrEnter().then(() => {
-      isMounted = true
-      // Remove event listeners when the component is unmounted
-      return () => {
-        window.removeEventListener('click', handleClickOrEnter)
-        window.removeEventListener('keydown', handleClickOrEnter)
-        clearInterval(interval)
-      }
-    })
+    return () => {
+      stopPolling()
+      window.clearInterval(recoveryInterval)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   })
 
-  onDestroy(() => {
-    // コンポーネント破棄時に購読を解除
-    usageChannel.subscribe((value) => {
-      if (value) {
-        console.log('onDestroy usageChannel', value)
-        value.unsubscribe()
-      }
-    })
-  })
-
-  function copyToClipboard() {
-    navigator.clipboard
-      .writeText(uid)
-      .then(() => {
-        toastMessage = 'IDがコピーされました！'
-        isShowToastMessage = true // メッセージを表示
-        setTimeout(() => {
-          isShowToastMessage = false // 3秒後にメッセージを非表示
-        }, 3000)
-      })
-      .catch((err) => {
-        console.error('コピーに失敗しました: ', err)
-        toastMessage = 'コピーに失敗しました。'
-        isShowToastMessage = true
-        setTimeout(() => {
-          isShowToastMessage = false
-        }, 3000)
-      })
+  async function copyToClipboard() {
+    try {
+      const { accessKey } = await fetchDifyAccessKey()
+      await navigator.clipboard.writeText(accessKey)
+      toastMessage = 'アクセスキーがコピーされました！'
+      isShowToastMessage = true
+      setTimeout(() => {
+        isShowToastMessage = false
+      }, 3000)
+    } catch (err) {
+      console.error('コピーに失敗しました: ', err)
+      toastMessage = 'アクセスキーのコピーに失敗しました。再度お試しください。'
+      isShowToastMessage = true
+      setTimeout(() => {
+        isShowToastMessage = false
+      }, 3000)
+    }
   }
 
   function calculateRecoveryTime() {
     const now = new Date()
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    const nextMonth = getNextTokyoMonthStart(now)
     const diff = nextMonth.getTime() - now.getTime()
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -112,7 +84,7 @@
     const seconds = Math.floor((diff % (1000 * 60)) / 1000)
     const milliseconds = (diff % 100).toString().padStart(2, '0')
 
-    recoveryTime.set(`${days}日 ${hours}時間 ${minutes}分 ${seconds}.${milliseconds}秒`)
+    recoveryTime = `${days}日 ${hours}時間 ${minutes}分 ${seconds}.${milliseconds}秒`
   }
 </script>
 
@@ -160,35 +132,7 @@
           </picture>
         </span>
       </h1>
-    {/if}
 
-    {#if $user && isShowIframe}
-      <p class="mb-4">こんにちは、{name}さん！</p>
-      <div class="border border-gray-300 p-4 my-4 rounded">
-        <p>今月の利用枠: あと{$usage}回</p>
-      </div>
-
-      <iframe
-        id="koi-tre-iframe"
-        title="Koi-Tre AI"
-        src="https://udify.app/chatbot/Vu74gKYoYbIhoZRJ"
-        style="width: 100%; height: 100%; min-height: 600px"
-        frameborder="0"
-        allow="microphone"
-      >
-      </iframe>
-      <div class="flex flex-col items-start">
-        <button
-          on:click="{copyToClipboard}"
-          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 mx-auto block"
-        >
-          IDをコピー
-        </button>
-        {#if isShowToastMessage}
-          <div class="toast">{toastMessage}</div>
-        {/if}
-      </div>
-    {:else if !$user}
       <div class="mt-10 text-center">
         <GoogleLoginButton />
         <br />
@@ -199,9 +143,47 @@
           登録することで、月ごとの利用回数を管理し、より良いサービスを提供することができます。
         </p>
       </div>
-    {:else if !isShowIframe}
+    {:else if !$dashboardLoaded && !$dashboardError}
+      <p class="mb-4">利用状況を読み込んでいます...</p>
+    {:else if $dashboardError}
+      <div class="border border-red-300 bg-red-50 text-red-700 p-4 my-4 rounded">
+        <p>{$dashboardError}</p>
+        <button
+          on:click="{() => void refreshDashboard()}"
+          class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+        >
+          再取得する
+        </button>
+      </div>
+    {:else if isShowIframe}
+      <p class="mb-4">こんにちは、{name}さん！</p>
+      <div class="border border-gray-300 p-4 my-4 rounded">
+        <p>今月の利用枠: あと{$usage}回 / {$usageLimit}回</p>
+      </div>
+
+      <iframe
+        id="koi-tre-iframe"
+        title="Koi-Tre AI"
+        src="https://udify.app/chatbot/ZrXKolzGVqqV9lYI"
+        style="width: 100%; height: 100%; min-height: 600px"
+        frameborder="0"
+        allow="microphone"
+      >
+      </iframe>
+      <div class="flex flex-col items-start">
+        <button
+          on:click="{copyToClipboard}"
+          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 mx-auto block"
+        >
+          アクセスキーをコピー
+        </button>
+        {#if isShowToastMessage}
+          <div class="toast">{toastMessage}</div>
+        {/if}
+      </div>
+    {:else}
       <p class="mb-10 text-center">
-        今月分の利用枠は無くなりました。<br /><br />利用回数回復まで残り時間<br />{$recoveryTime}
+        今月分の利用枠は無くなりました。<br /><br />利用回数回復まで残り時間<br />{recoveryTime}
       </p>
       <div class="llm-text">
         <p>【最後の内容】</p>

@@ -1,6 +1,7 @@
 {
   "name": "koi-tre-auth",
   "version": "0.0.1",
+  "packageManager": "pnpm@10.30.2",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
@@ -9,8 +10,12 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "lint": "prettier --check . && eslint .",
     "format": "prettier --write .",
-    "prepare": "svelte-kit sync && npm run smui-theme",
-    "smui-theme": "smui-theme compile static/smui.css -i src/theme"
+    "prepare": "svelte-kit sync && pnpm run smui-theme",
+    "smui-theme": "smui-theme compile static/smui.css -i src/theme -i node_modules",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx --env-file=.env ./scripts/seed-from-supabase-dump.ts",
+    "db:setup": "pnpm db:migrate && pnpm db:seed"
   },
   "devDependencies": {
     "@fontsource/fira-mono": "^4.5.10",
@@ -19,13 +24,14 @@
     "@smui/card": "^7.0.0",
     "@smui/list": "^7.0.0",
     "@smui/menu": "^7.0.0",
-    "@sveltejs/adapter-auto": "^3.3.1",
-    "@sveltejs/kit": "^2.0.0",
-    "@sveltejs/vite-plugin-svelte": "^3.0.0",
+    "@sveltejs/adapter-auto": "3.3.1",
+    "@sveltejs/kit": "2.17.2",
+    "@sveltejs/vite-plugin-svelte": "3.1.2",
     "@types/eslint": "^8.56.0",
     "@typescript-eslint/eslint-plugin": "^7.9.0",
     "@typescript-eslint/parser": "^7.9.0",
     "autoprefixer": "^10.4.19",
+    "drizzle-kit": "^0.31.4",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-svelte": "^2.35.1",
@@ -33,17 +39,22 @@
     "prettier": "^3.1.1",
     "prettier-plugin-svelte": "^3.1.2",
     "smui-theme": "^7.0.0",
-    "svelte": "^4.2.7",
+    "svelte": "4.2.20",
     "svelte-check": "^3.6.0",
     "tailwindcss": "^3.4.3",
     "tslib": "^2.4.1",
+    "tsx": "^4.19.4",
     "typescript": "^5.5.4",
     "vite": "^5.0.3"
   },
   "type": "module",
   "dependencies": {
-    "@supabase/supabase-js": "^2.43.1",
+    "@material/theme": "^14.0.0",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.44.5",
     "firebase": "^10.11.1",
+    "firebase-admin": "^13.4.0",
+    "postgres": "^3.4.7",
     "svelte-markdown": "^0.4.1"
   },
   "overrides": {

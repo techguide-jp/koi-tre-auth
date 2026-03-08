@@ -1,72 +1,161 @@
+import { browser } from '$app/environment'
+import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth'
 import { writable } from 'svelte/store'
+import { DASHBOARD_POLL_INTERVAL_MS, MONTHLY_USAGE_LIMIT } from '$lib/constants/usage'
+import type { DashboardResponse, DifyAccessKeyResponse } from '$lib/types/api'
 import { auth } from './firebaseConfig'
-import { onAuthStateChanged } from 'firebase/auth'
-import { supabase, subscribeToUsageUpdates, checkUsage, getLastLlmText } from '$lib/supabaseClient'
-import type { RealtimeChannel } from '@supabase/supabase-js'
 
 interface User {
-  uid?: string
-  email?: string | null
-  displayName?: string | null
-  photoURL?: string | null
+  uid: string
+  email: string | null
+  displayName: string | null
+  photoURL: string | null
 }
 
-// Create a user store to manage authentication state
 export const user = writable<User | null>(null)
-export const usage = writable(0) // 使用回数を格納するストア
-export const usageChannel = writable<RealtimeChannel | null>(null)
-export const lastLlmText = writable('') // 最後に受診したLLM回答を格納するストア
+export const usage = writable(MONTHLY_USAGE_LIMIT)
+export const usageLimit = writable(MONTHLY_USAGE_LIMIT)
+export const lastLlmText = writable('')
+export const lastOperationAt = writable<string | null>(null)
+export const dashboardLoaded = writable(false)
+export const dashboardError = writable<string | null>(null)
 
-// ログイン状態の変更を監視
-onAuthStateChanged(auth, (firebaseUser) => {
-  if (firebaseUser) {
-    // User is signed in, update the Svelte store
-    user.set({
-      uid: firebaseUser.uid,
+let pollingTimer: number | null = null
+
+function clearDashboardState() {
+  usage.set(MONTHLY_USAGE_LIMIT)
+  usageLimit.set(MONTHLY_USAGE_LIMIT)
+  lastLlmText.set('')
+  lastOperationAt.set(null)
+  dashboardLoaded.set(false)
+  dashboardError.set(null)
+}
+
+async function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = {}) {
+  const firebaseUser = auth?.currentUser
+  if (!firebaseUser) {
+    throw new Error('User is not authenticated')
+  }
+
+  const token = await firebaseUser.getIdToken()
+  const headers = new Headers(init.headers)
+  headers.set('Authorization', `Bearer ${token}`)
+
+  if (init.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  const response = await fetch(input, {
+    ...init,
+    headers
+  })
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || `Request failed with status ${response.status}`)
+  }
+
+  return response
+}
+
+function applyDashboardState(dashboard: DashboardResponse) {
+  usage.set(dashboard.remainingUsage)
+  usageLimit.set(dashboard.limit)
+  lastLlmText.set(dashboard.lastLlmText ?? '')
+  lastOperationAt.set(dashboard.lastOperationAt)
+  dashboardLoaded.set(true)
+  dashboardError.set(null)
+}
+
+function toAppUser(firebaseUser: FirebaseUser): User {
+  return {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    displayName: firebaseUser.displayName,
+    photoURL: firebaseUser.photoURL
+  }
+}
+
+export async function syncCurrentUserToApi(
+  firebaseUser: FirebaseUser | null = auth?.currentUser ?? null
+) {
+  if (!firebaseUser) {
+    return
+  }
+
+  await authenticatedFetch('/api/me/sync', {
+    method: 'POST',
+    body: JSON.stringify({
       email: firebaseUser.email,
       displayName: firebaseUser.displayName,
-      photoURL: firebaseUser.photoURL
+      photoUrl: firebaseUser.photoURL
     })
-    saveUserToSupabase(firebaseUser)
-    // 利用回数を取得
-    checkUsage(firebaseUser.uid).then((result) => {
-      if (result) {
-        console.log('updateUsage checkUsage', result)
-        usage.set(result)
-      }
-    })
-    usageChannel.set(subscribeToUsageUpdates(firebaseUser.uid))
-    getLastLlmText(firebaseUser.uid).then((result) => {
-      lastLlmText.set(result)
-    })
-  } else {
-    // User is signed out, set user to null
-    user.set(null)
+  })
+}
+
+export async function refreshDashboard() {
+  if (!auth?.currentUser) {
+    clearDashboardState()
+    return
   }
-})
 
-// supabaseにユーザ情報を保存する関数
-export async function saveUserToSupabase(user: User) {
-  const currentUserId = auth.currentUser?.uid
-  console.log('currentUserId:', currentUserId)
-  console.log('user.uid:', user.uid)
-  if (currentUserId === user.uid) {
-    const { data, error } = await supabase
-      .from('users')
-      .upsert({
-        firebase_uid: user.uid,
-        email: user.email,
-        display_name: user.displayName,
-        photo_url: user.photoURL
-      })
-      .select()
+  try {
+    const response = await authenticatedFetch('/api/me/dashboard')
+    const dashboard = (await response.json()) as DashboardResponse
+    applyDashboardState(dashboard)
+  } catch (error) {
+    console.error('Failed to refresh dashboard', error)
+    dashboardLoaded.set(false)
+    dashboardError.set('利用状況の同期に失敗しました。しばらくしてから再度お試しください。')
+  }
+}
 
-    if (error) {
-      console.error('Error updating user in Supabase:', error.message)
-    } else {
-      console.log('User data updated in Supabase:', data)
+export async function fetchDifyAccessKey() {
+  const response = await authenticatedFetch('/api/me/dify-access-key')
+  return (await response.json()) as DifyAccessKeyResponse
+}
+
+export function startDashboardPolling(intervalMs = DASHBOARD_POLL_INTERVAL_MS) {
+  if (!browser) {
+    return () => {}
+  }
+
+  stopDashboardPolling()
+  pollingTimer = window.setInterval(() => {
+    void refreshDashboard()
+  }, intervalMs)
+
+  return stopDashboardPolling
+}
+
+export function stopDashboardPolling() {
+  if (pollingTimer) {
+    window.clearInterval(pollingTimer)
+    pollingTimer = null
+  }
+}
+
+async function initializeSession(firebaseUser: FirebaseUser) {
+  try {
+    await syncCurrentUserToApi(firebaseUser)
+    await refreshDashboard()
+  } catch (error) {
+    console.error('Failed to initialize session', error)
+    dashboardLoaded.set(false)
+    dashboardError.set('利用状況の初期同期に失敗しました。再読み込みしてもう一度お試しください。')
+  }
+}
+
+if (browser && auth) {
+  onAuthStateChanged(auth, (firebaseUser) => {
+    if (firebaseUser) {
+      user.set(toAppUser(firebaseUser))
+      void initializeSession(firebaseUser)
+      return
     }
-  } else {
-    console.error('Error: Unauthorized attempt to update user data')
-  }
+
+    user.set(null)
+    clearDashboardState()
+    stopDashboardPolling()
+  })
 }

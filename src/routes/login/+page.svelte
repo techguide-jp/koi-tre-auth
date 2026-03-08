@@ -1,10 +1,20 @@
-<script lang="ts" context="module">
+<script lang="ts">
   import { signInWithPopup } from 'firebase/auth'
   import { auth, provider } from '$lib/firebaseConfig'
   import { goto } from '$app/navigation'
   import { trackLogin } from '$lib/analytics'
+  import { onMount } from 'svelte'
+
+  let toastMessage = '' // 通知メッセージ
+  $: isShowToastMessage = !!toastMessage // メッセージを表示
 
   async function login() {
+    if (!auth || !provider) {
+      toastMessage = 'この環境ではログインを初期化できませんでした。'
+      resetToastMessage()
+      return
+    }
+
     try {
       const result = await signInWithPopup(auth, provider)
       const user = result.user
@@ -19,13 +29,6 @@
       console.error('Login failed:', error)
     }
   }
-</script>
-
-<script lang="ts">
-  import { onMount } from 'svelte'
-
-  let toastMessage = '' // 通知メッセージ
-  $: isShowToastMessage = !!toastMessage // メッセージを表示
 
   function resetToastMessage() {
     setTimeout(() => {
@@ -34,6 +37,12 @@
   }
 
   onMount(() => {
+    if (!auth || !provider) {
+      toastMessage = 'この環境ではログインを初期化できませんでした。'
+      resetToastMessage()
+      return
+    }
+
     signInWithPopup(auth, provider)
       .then(() => {
         goto('/') // ログイン成功後、メインページにリダイレクト
