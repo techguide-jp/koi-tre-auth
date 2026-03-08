@@ -1,4 +1,4 @@
-import 'dotenv/config'
+import './load-env.mjs'
 
 function parseArgs(argv) {
   const options = {

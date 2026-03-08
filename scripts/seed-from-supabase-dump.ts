@@ -1,3 +1,4 @@
+import './load-env.mjs'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { count, sql } from 'drizzle-orm'

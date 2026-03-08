@@ -16,9 +16,15 @@
     "smui-theme": "smui-theme compile static/smui.css -i src/theme -i node_modules",
     "dify:config": "node ./scripts/show-dify-config.mjs",
     "db:generate": "drizzle-kit generate",
+    "db:generate:prod": "NODE_ENV=production pnpm db:generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx --env-file=.env ./scripts/seed-from-supabase-dump.ts",
-    "db:setup": "pnpm db:migrate && pnpm db:seed"
+    "db:migrate:prod": "NODE_ENV=production pnpm db:migrate",
+    "db:status": "node ./scripts/show-db-status.mjs",
+    "db:status:prod": "NODE_ENV=production pnpm db:status",
+    "db:seed": "tsx ./scripts/seed-from-supabase-dump.ts",
+    "db:seed:prod": "NODE_ENV=production pnpm db:seed",
+    "db:setup": "pnpm db:migrate && pnpm db:seed",
+    "db:setup:prod": "pnpm db:migrate:prod && pnpm db:seed:prod"
   },
   "type": "module",
   "dependencies": {

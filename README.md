@@ -49,6 +49,17 @@ pnpm db:setup
 
 `db:setup` は migration 適用後に `db_cluster-13-07-2025@01-16-45.neon-ready-no-connect.sql` から `public.users` と `public.operations` の seed を投入します。
 
+DB 系コマンドは通常 `.env` を読み込みます。production 向けには `NODE_ENV=production` を指定した別スクリプトを用意しており、`.env.production` を読み込んで実行します。
+
+```bash
+pnpm db:status
+pnpm db:generate:prod
+pnpm db:status:prod
+pnpm db:migrate:prod
+pnpm db:seed:prod
+pnpm db:setup:prod
+```
+
 ### 5. 開発サーバーの起動
 
 開発サーバーを起動して、ローカル環境で動作を確認します。
