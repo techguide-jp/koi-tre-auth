@@ -1,21 +1,23 @@
 # koi-tre-auth
 
-**koi-tre-auth** は、koi-tre の認証機能とアプリケーション部分を提供する SvelteKit プロジェクトです。
-Firebase や Supabase などのサービスと連携し、モダンなウェブアプリケーションを構築するためのベースとなるコードを含んでいます。
+**koi-tre-auth** は、koi-tre の認証機能とアプリケーション API を提供する SvelteKit プロジェクトです。
+Firebase 認証、Drizzle、PostgreSQL を使って Dify アプリ連携用の API と利用履歴管理を提供します。
 
 ## Features
 
 - **SvelteKit** をベースにした最新のフロントエンド開発環境
 - Firebase を用いた認証機能
-- Supabase を利用したデータベース連携
+- Drizzle + PostgreSQL を利用したデータベース連携
+- Dify アプリから利用する内部 API
 - Vercel をデプロイ先として利用（現状は手動デプロイ）
 - ESLint と Prettier によるコードフォーマットと静的解析
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) v20 以上
-- npm、yarn、または pnpm
-- Firebase / Supabase のアカウントとプロジェクト設定
+- pnpm
+- PostgreSQL
+- Firebase プロジェクト設定
 
 ## Getting Started
 
@@ -29,24 +31,60 @@ cd koi-tre-auth
 ### 2. 依存パッケージのインストール
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 3. 環境変数の設定
 
-`.env.sample` をコピーして `.env` ファイルを作成し、内容を記述してください。
+`.env.sample` をコピーして `.env` ファイルを作成し、Firebase / Firebase Admin / PostgreSQL / Dify API トークン / Dify アクセスキー署名シークレットを設定してください。
 
 > **注意:** 各サービスのキーやドメインは、実際の値に置き換えてください。
 
-### 4. 開発サーバーの起動
+### 4. ローカル DB のセットアップ
+
+```bash
+createdb koitre
+pnpm db:setup
+```
+
+`db:setup` は migration 適用後に `db_cluster-13-07-2025@01-16-45.neon-ready-no-connect.sql` から `public.users` と `public.operations` の seed を投入します。
+
+DB 系コマンドは通常 `.env` を読み込みます。production 向けには `NODE_ENV=production` を指定した別スクリプトを用意しており、`.env.production` を読み込んで実行します。
+
+```bash
+pnpm db:reset
+pnpm db:status
+pnpm db:generate:prod
+pnpm db:reset:prod
+pnpm db:status:prod
+pnpm db:migrate:prod
+pnpm db:seed:prod
+pnpm db:setup:prod
+```
+
+### 5. 開発サーバーの起動
 
 開発サーバーを起動して、ローカル環境で動作を確認します。
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 ブラウザで [http://localhost:5173](http://localhost:5173) を開いて、アプリケーションを確認してください。
+
+## Dify 設定確認
+
+Dify ワークフローに設定する項目は、次のコマンドで確認できます。
+
+```bash
+pnpm dify:config
+```
+
+Bearer トークンを実値で表示したい場合は、次を実行してください。
+
+```bash
+pnpm dify:config -- --show-secrets
+```
 
 ## Code Quality
 
@@ -54,7 +92,7 @@ npm run dev
 以下のコマンドでチェックを実行できます。
 
 ```bash
-npm run lint
+pnpm lint
 ```
 
 ## Building for Production
@@ -62,13 +100,13 @@ npm run lint
 本番用ビルドを作成するには、以下のコマンドを実行します。
 
 ```bash
-npm run build
+pnpm build
 ```
 
 ビルド後、以下のコマンドでローカルプレビューが可能です。
 
 ```bash
-npm run preview
+pnpm preview
 ```
 
 ## Deployment
