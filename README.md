@@ -52,8 +52,10 @@ pnpm db:setup
 DB 系コマンドは通常 `.env` を読み込みます。production 向けには `NODE_ENV=production` を指定した別スクリプトを用意しており、`.env.production` を読み込んで実行します。
 
 ```bash
+pnpm db:reset
 pnpm db:status
 pnpm db:generate:prod
+pnpm db:reset:prod
 pnpm db:status:prod
 pnpm db:migrate:prod
 pnpm db:seed:prod
