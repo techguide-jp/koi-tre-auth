@@ -10,9 +10,12 @@
   import Button, { Label } from '@smui/button'
 
   let menu: Menu
-  // domain link
-  const domain = import.meta.env.VITE_APP_DOMAIN
-  console.log(domain)
+  const configuredDomain = import.meta.env.VITE_APP_DOMAIN?.trim()
+  const homeUrl = configuredDomain
+    ? /^(https?:)?\/\//.test(configuredDomain)
+      ? configuredDomain
+      : `https://${configuredDomain}`
+    : '/'
 
   async function logout() {
     if (!auth) {
@@ -31,7 +34,7 @@
 
 <header>
   <div class="corner">
-    <a href="{domain}">
+    <a href={homeUrl}>
       <img src="{logo}" alt="Koi-Tre" />
     </a>
   </div>
