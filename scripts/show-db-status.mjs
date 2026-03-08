@@ -62,27 +62,26 @@ async function readAppliedMigrations(databaseUrl) {
   }
 }
 
-function buildStatusOutput({
-  nodeEnv,
-  envFile,
-  databaseUrl,
-  localMigrations,
-  appliedMigrations
-}) {
+function buildStatusOutput({ nodeEnv, envFile, databaseUrl, localMigrations, appliedMigrations }) {
   const appliedCreatedAt = new Set(
     appliedMigrations
       .map((migration) => Number(migration.created_at))
       .filter((value) => Number.isFinite(value))
   )
-  const appliedCount = localMigrations.filter((migration) => appliedCreatedAt.has(migration.when)).length
-  const pendingMigrations = localMigrations.filter((migration) => !appliedCreatedAt.has(migration.when))
+  const appliedCount = localMigrations.filter((migration) =>
+    appliedCreatedAt.has(migration.when)
+  ).length
+  const pendingMigrations = localMigrations.filter(
+    (migration) => !appliedCreatedAt.has(migration.when)
+  )
   const latestAppliedCreatedAt = Math.max(
     0,
     ...appliedMigrations
       .map((migration) => Number(migration.created_at))
       .filter((value) => Number.isFinite(value))
   )
-  const latestApplied = localMigrations.find((migration) => migration.when === latestAppliedCreatedAt) ?? null
+  const latestApplied =
+    localMigrations.find((migration) => migration.when === latestAppliedCreatedAt) ?? null
   const lines = [
     'DB migration status',
     '',

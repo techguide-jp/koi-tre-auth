@@ -39,11 +39,7 @@ function signaturesMatch(expected: string, received: string) {
 
 export function createDifyAccessKey(uid: string, now = new Date()) {
   const expiresAt = new Date(now.getTime() + DIFY_ACCESS_KEY_TTL_MS)
-  const payload = [
-    DIFY_ACCESS_KEY_VERSION,
-    toBase64Url(uid),
-    String(expiresAt.getTime())
-  ].join('.')
+  const payload = [DIFY_ACCESS_KEY_VERSION, toBase64Url(uid), String(expiresAt.getTime())].join('.')
   const signature = signDifyAccessKeyPayload(payload)
 
   return {

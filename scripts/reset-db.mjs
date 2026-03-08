@@ -46,7 +46,9 @@ async function dropPublicObjects(sql) {
   }
 
   for (const table of tables) {
-    await sql.unsafe(`drop table if exists ${quoteQualifiedName('public', table.tablename)} cascade`)
+    await sql.unsafe(
+      `drop table if exists ${quoteQualifiedName('public', table.tablename)} cascade`
+    )
   }
 
   for (const sequence of sequences) {
