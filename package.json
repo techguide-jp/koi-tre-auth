@@ -6,18 +6,32 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:integration": "vitest run",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "lint": "prettier --check . && eslint .",
     "format": "prettier --write .",
     "prepare": "svelte-kit sync && pnpm run smui-theme",
     "smui-theme": "smui-theme compile static/smui.css -i src/theme -i node_modules",
+    "dify:config": "node ./scripts/show-dify-config.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx --env-file=.env ./scripts/seed-from-supabase-dump.ts",
     "db:setup": "pnpm db:migrate && pnpm db:seed"
   },
+  "type": "module",
+  "dependencies": {
+    "@material/theme": "^14.0.0",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.44.5",
+    "firebase": "^10.11.1",
+    "firebase-admin": "^13.4.0",
+    "postgres": "^3.4.7",
+    "svelte-markdown": "^0.4.1"
+  },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.3.14",
     "@fontsource/fira-mono": "^4.5.10",
     "@neoconfetti/svelte": "^1.0.0",
     "@smui/button": "^7.0.0",
@@ -45,17 +59,8 @@
     "tslib": "^2.4.1",
     "tsx": "^4.19.4",
     "typescript": "^5.5.4",
-    "vite": "^5.0.3"
-  },
-  "type": "module",
-  "dependencies": {
-    "@material/theme": "^14.0.0",
-    "dotenv": "^16.4.7",
-    "drizzle-orm": "^0.44.5",
-    "firebase": "^10.11.1",
-    "firebase-admin": "^13.4.0",
-    "postgres": "^3.4.7",
-    "svelte-markdown": "^0.4.1"
+    "vite": "^5.0.3",
+    "vitest": "^2.1.9"
   },
   "overrides": {
     "cookie": "^0.7.0",

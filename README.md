@@ -59,6 +59,20 @@ pnpm dev
 
 ブラウザで [http://localhost:5173](http://localhost:5173) を開いて、アプリケーションを確認してください。
 
+## Dify 設定確認
+
+Dify ワークフローに設定する項目は、次のコマンドで確認できます。
+
+```bash
+pnpm dify:config
+```
+
+Bearer トークンを実値で表示したい場合は、次を実行してください。
+
+```bash
+pnpm dify:config -- --show-secrets
+```
+
 ## Code Quality
 
 コードのフォーマットや静的解析には ESLint と Prettier を使用しています。
