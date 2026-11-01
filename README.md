@@ -101,6 +101,8 @@ pnpm dify:config -- --show-secrets
 
 GA4 のイベントレポートで期間を指定し、各イベントの「総ユーザー数」を比較してください。「イベント数」は同じ人の繰り返し利用も数えます。「探索 → ファネルデータ探索」で `page_view → authenticated_visit → question_submitted` を条件にすると、質問に至るまでの利用状況を比較できます。期間前にログインした再訪者を落とさないよう、`login` と `authenticated_visit` は分けています。
 
+設定済みの [Koi-Tre 利用状況（訪問・ログイン・質問）](https://analytics.google.com/analytics/web/#/analysis/a312696206p439720447/edit/4kk5Vx4fT4KEAZ845_Cqeg) では、初期期間を「今月」とし、対象イベントの総ユーザー数とイベント数を一覧できます。計測開始前や GA4 の反映待ちで行がない場合は、実際の利用ゼロとは見なしません。
+
 User-ID には Firebase UID の SHA-256 値を使い、メール・氏名・質問文・回答・アクセスキーは送信しません。URL の検索パラメーターとフラグメントも除きます。ログアウト時には User-ID を解除します。GA4 は氏名・メールを表示する顧客一覧ではありません。
 
 ### 必要な設定
