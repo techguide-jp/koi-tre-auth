@@ -1,6 +1,12 @@
 <script>
+  import { afterNavigate } from '$app/navigation'
+  import { trackPageView } from '$lib/analytics'
   import Header from './Header.svelte'
   import './styles.css'
+
+  afterNavigate(({ from, to }) => {
+    if (to) trackPageView(to.url, from?.url.href ?? document.referrer)
+  })
 </script>
 
 <div class="app">

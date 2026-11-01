@@ -15,6 +15,9 @@
     "prepare": "svelte-kit sync && pnpm run smui-theme",
     "smui-theme": "smui-theme compile static/smui.css -i src/theme -i node_modules",
     "dify:config": "node ./scripts/show-dify-config.mjs",
+    "ga:list": "node ./scripts/ga-admin.mjs list",
+    "ga:sync": "node ./scripts/ga-admin.mjs sync",
+    "ga:sync:dry": "node ./scripts/ga-admin.mjs sync --dry-run",
     "db:generate": "drizzle-kit generate",
     "db:generate:prod": "NODE_ENV=production pnpm db:generate",
     "db:migrate": "drizzle-kit migrate",
@@ -41,6 +44,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.3.14",
     "@fontsource/fira-mono": "^4.5.10",
+    "@google-analytics/admin": "^10.2.0",
     "@neoconfetti/svelte": "^1.0.0",
     "@smui/button": "^7.0.0",
     "@smui/card": "^7.0.0",

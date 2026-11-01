@@ -1,32 +1,37 @@
 <script lang="ts">
-  import { signInWithPopup } from 'firebase/auth'
+  import { getAdditionalUserInfo, signInWithPopup } from 'firebase/auth'
   import { auth, provider } from '$lib/firebaseConfig'
   import { goto } from '$app/navigation'
-  import { trackLogin } from '$lib/analytics'
+  import { setAnalyticsUser, trackLogin, trackSignup } from '$lib/analytics'
   import { onMount } from 'svelte'
 
   let toastMessage = '' // 通知メッセージ
+  let isLoggingIn = false
   $: isShowToastMessage = !!toastMessage // メッセージを表示
 
   async function login() {
+    if (isLoggingIn) return
     if (!auth || !provider) {
       toastMessage = 'この環境ではログインを初期化できませんでした。'
       resetToastMessage()
       return
     }
 
+    isLoggingIn = true
+    toastMessage = ''
     try {
       const result = await signInWithPopup(auth, provider)
-      const user = result.user
-      console.log('Logged in user:', user) // ログインしたユーザーの情報を表示
-
-      // ログイン方法をトラッキング
+      await setAnalyticsUser(result.user.uid)
       trackLogin(provider.providerId)
+      if (getAdditionalUserInfo(result)?.isNewUser) trackSignup(provider.providerId)
 
-      // ログイン後のリダイレクト（ホームページなどに遷移する場合）
-      goto('/')
+      await goto('/')
     } catch (error) {
       console.error('Login failed:', error)
+      toastMessage = 'ログインに失敗しました。もう一度お試しください。'
+      resetToastMessage()
+    } finally {
+      isLoggingIn = false
     }
   }
 
@@ -37,26 +42,19 @@
   }
 
   onMount(() => {
-    if (!auth || !provider) {
-      toastMessage = 'この環境ではログインを初期化できませんでした。'
-      resetToastMessage()
-      return
-    }
-
-    signInWithPopup(auth, provider)
-      .then(() => {
-        goto('/') // ログイン成功後、メインページにリダイレクト
-      })
-      .catch((error) => {
-        console.error('Login failed:', error)
-        toastMessage = 'ログインに失敗しました。もう一度お試しください。'
-        resetToastMessage()
-      })
+    void login()
   })
 </script>
 
 <div class="login-container">
-  <button class="login-button" on:click="{login}">Login with Google</button>
+  <button
+    class="login-button"
+    on:click="{login}"
+    disabled="{isLoggingIn}"
+    aria-busy="{isLoggingIn}"
+  >
+    {isLoggingIn ? 'ログイン中...' : 'Login with Google'}
+  </button>
   {#if isShowToastMessage}
     <div class="toast">{toastMessage}</div>
   {/if}

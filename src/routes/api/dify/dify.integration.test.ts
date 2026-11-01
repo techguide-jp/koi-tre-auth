@@ -5,6 +5,7 @@ import { PGlite } from '@electric-sql/pglite'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MONTHLY_USAGE_LIMIT } from '$lib/constants/usage'
 import { createDifyAccessKey } from '$lib/server/dify-access-key'
+import { trackQuestionSubmitted } from '$lib/server/analytics'
 import * as schema from '$lib/server/db/schema'
 
 type TestDb = ReturnType<typeof drizzle<typeof schema>>
@@ -21,6 +22,10 @@ type OperationsEvent = Parameters<typeof operationsPost>[0]
 
 vi.mock('$lib/server/db/client', () => ({
   getDb: () => testDb
+}))
+
+vi.mock('$lib/server/analytics', () => ({
+  trackQuestionSubmitted: vi.fn().mockResolvedValue('sent')
 }))
 
 function buildDifyEvent<T>(input: {
@@ -139,6 +144,7 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
+  vi.mocked(trackQuestionSubmitted).mockClear()
   process.env.DIFY_API_BEARER_TOKEN = 'test-dify-token'
   process.env.DIFY_UID_SIGNING_SECRET = 'test-dify-signing-secret'
   vi.useFakeTimers()
@@ -187,6 +193,7 @@ describe('Dify API integration', () => {
 
     const [operationCount] = await testDb.select({ count: count() }).from(schema.operations)
     expect(Number(operationCount?.count ?? 0)).toBe(1)
+    expect(trackQuestionSubmitted).toHaveBeenCalledWith(firebaseUid, null)
 
     const operations = await testDb.query.operations.findMany()
     expect(operations).toEqual(
@@ -242,5 +249,31 @@ describe('Dify API integration', () => {
 
     const [operationCount] = await testDb.select({ count: count() }).from(schema.operations)
     expect(Number(operationCount?.count ?? 0)).toBe(MONTHLY_USAGE_LIMIT)
+    expect(trackQuestionSubmitted).not.toHaveBeenCalled()
+  })
+
+  it('計測情報付きキーを受け付け、GA4 送信失敗時も質問の保存を成功にする', async () => {
+    const uid = 'firebase-user-analytics'
+    await seedUser(uid)
+    const context = { clientId: '123456789.1793510000', sessionId: '1793510000' }
+    const { accessKey } = createDifyAccessKey(uid, new Date(), context)
+    vi.mocked(trackQuestionSubmitted).mockResolvedValueOnce('failed')
+
+    const response = await operationsPost(
+      buildOperationsEvent({
+        method: 'POST',
+        path: '/api/dify/operations',
+        body: {
+          accessKey,
+          conversationId: 'test-conversation',
+          llmText: 'test-answer',
+          query: 'test-query'
+        }
+      })
+    )
+    expect(await response.json()).toEqual({ ok: true })
+    expect(trackQuestionSubmitted).toHaveBeenCalledWith(uid, context)
+    const [operationCount] = await testDb.select({ count: count() }).from(schema.operations)
+    expect(Number(operationCount.count)).toBe(1)
   })
 })

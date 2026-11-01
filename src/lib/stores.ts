@@ -4,6 +4,7 @@ import { writable } from 'svelte/store'
 import { DASHBOARD_POLL_INTERVAL_MS, MONTHLY_USAGE_LIMIT } from '$lib/constants/usage'
 import type { DashboardResponse, DifyAccessKeyResponse } from '$lib/types/api'
 import { auth } from './firebaseConfig'
+import { getAnalyticsContext, setAnalyticsUser, trackEvent } from './analytics'
 
 interface User {
   uid: string
@@ -111,7 +112,13 @@ export async function refreshDashboard() {
 }
 
 export async function fetchDifyAccessKey() {
-  const response = await authenticatedFetch('/api/me/dify-access-key')
+  const context = await getAnalyticsContext()
+  const headers = new Headers()
+  if (context) {
+    headers.set('x-ga-client-id', context.clientId)
+    if (context.sessionId) headers.set('x-ga-session-id', context.sessionId)
+  }
+  const response = await authenticatedFetch('/api/me/dify-access-key', { headers })
   return (await response.json()) as DifyAccessKeyResponse
 }
 
@@ -150,11 +157,13 @@ if (browser && auth) {
   onAuthStateChanged(auth, (firebaseUser) => {
     if (firebaseUser) {
       user.set(toAppUser(firebaseUser))
+      void setAnalyticsUser(firebaseUser.uid).then(() => trackEvent('authenticated_visit'))
       void initializeSession(firebaseUser)
       return
     }
 
     user.set(null)
+    void setAnalyticsUser(null)
     clearDashboardState()
     stopDashboardPolling()
   })

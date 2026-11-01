@@ -1,6 +1,6 @@
 import { browser } from '$app/environment'
 import { initializeApp } from 'firebase/app'
-import { getAnalytics } from 'firebase/analytics'
+import { initializeAnalytics, type Analytics } from 'firebase/analytics'
 import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth'
 
 const firebaseConfig = {
@@ -14,7 +14,16 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
-const analytics = typeof window !== 'undefined' ? getAnalytics(app) : undefined
+let analytics: Analytics | undefined
+
+// 開発・プレビューの操作を本番の利用者として数えない。
+if (browser && import.meta.env.PROD && /^(app\.|www\.)?koi-tre\.com$/.test(location.hostname)) {
+  try {
+    analytics = initializeAnalytics(app, { config: { send_page_view: false } })
+  } catch {
+    console.warn('利用状況の計測を初期化できませんでした。')
+  }
+}
 const auth: Auth | null = browser ? getAuth(app) : null
 const provider = browser ? new GoogleAuthProvider() : null
 

@@ -36,7 +36,7 @@ pnpm install
 
 ### 3. 環境変数の設定
 
-`.env.sample` をコピーして `.env` ファイルを作成し、Firebase / Firebase Admin / PostgreSQL / Dify API トークン / Dify アクセスキー署名シークレットを設定してください。
+`.env.example` をコピーして `.env` ファイルを作成し、Firebase / Firebase Admin / PostgreSQL / Dify API トークン / Dify アクセスキー署名シークレットを設定してください。
 
 > **注意:** 各サービスのキーやドメインは、実際の値に置き換えてください。
 
@@ -85,6 +85,57 @@ Bearer トークンを実値で表示したい場合は、次を実行してく�
 ```bash
 pnpm dify:config -- --show-secrets
 ```
+
+## GA4 で利用状況を確認する
+
+既存の Firebase Analytics を使い、本番ドメイン（`app.koi-tre.com` / `www.koi-tre.com` / `koi-tre.com`）でのみ送信します。開発・Vercel Preview は集計対象外です。
+
+| 確認したいこと                           | イベント名            | 指標         |
+| ---------------------------------------- | --------------------- | ------------ |
+| アクセスした人数                         | `page_view`           | 総ユーザー数 |
+| ログイン状態で利用した人数（再訪を含む） | `authenticated_visit` | 総ユーザー数 |
+| ログイン操作を完了した人数               | `login`               | 総ユーザー数 |
+| 新規登録した人数                         | `sign_up`             | 総ユーザー数 |
+| 1 回以上質問した人数                     | `question_submitted`  | 総ユーザー数 |
+| 質問回数                                 | `question_submitted`  | イベント数   |
+
+GA4 のイベントレポートで期間を指定し、各イベントの「総ユーザー数」を比較してください。「イベント数」は同じ人の繰り返し利用も数えます。「探索 → ファネルデータ探索」で `page_view → authenticated_visit → question_submitted` を条件にすると、質問に至るまでの利用状況を比較できます。期間前にログインした再訪者を落とさないよう、`login` と `authenticated_visit` は分けています。
+
+User-ID には Firebase UID の SHA-256 値を使い、メール・氏名・質問文・回答・アクセスキーは送信しません。URL の検索パラメーターとフラグメントも除きます。ログアウト時には User-ID を解除します。GA4 は氏名・メールを表示する顧客一覧ではありません。
+
+### 必要な設定
+
+1. Firebase に紐づく既存の Web ストリームを使います。本番で確認したプロパティ ID は `439720447`、ストリーム ID は `8117211599`、計測 ID は `G-WSZMFRPKKP` です。`VITE_MEASUREMENT_ID` をこのストリームと揃えてください。
+2. GA4 の「管理 → データストリーム → 対象 Web ストリーム → Measurement Protocol API シークレット」でサーバー送信用シークレットを作成します。値は Vercel の **Production** に `GA4_API_SECRET` として保存します。ブラウザ用の `VITE_` 変数、Git、チャットには書かないでください。
+3. 自動ページビューの二重計測を避けるため、対象ストリームの拡張計測で「ブラウザの履歴イベントに基づくページの変更」をオフにします。初回を含むページビューは `src/routes/+layout.svelte` の `afterNavigate` から送信します。
+4. `question_submitted` をキーイベントにします。イベントごとに 1 回数え、人数を見る際は「総ユーザー数」を選びます。
+5. 環境変数を設定した後で、本番へデプロイします。既に配信済みのアクセスキーは引き続き利用できますが、質問計測には計測情報を含む新しいキーのコピーが必要です。
+
+### GA4 管理 CLI
+
+Google 公式の `@google-analytics/admin` を使う `scripts/ga-admin.mjs` を用意しています。通常は `.env`、`NODE_ENV=production` を付けた場合は `.env.production` を読みます。
+
+設定するのは `GA4_PROPERTY_ID`（数値）、`VITE_MEASUREMENT_ID`、GA4 編集権限のある認証です。`GOOGLE_APPLICATION_CREDENTIALS` を指定した場合はその認証を使い、それ以外は Firebase Admin の既存サービスアカウントを使います。権限のある Application Default Credentials を使う場合は `GA4_USE_ADC=true` にします。必要に応じて `GA4_QUOTA_PROJECT_ID` を設定してください。認証に使う Google Cloud プロジェクトでは Google Analytics Admin API を有効にする必要があります。Firebase 認証の管理権限と GA4 編集権限は別です。
+
+```bash
+pnpm ga:list
+pnpm ga:sync:dry
+pnpm ga:sync
+NODE_ENV=production pnpm ga:list
+```
+
+`ga:list` はプロパティ・ストリーム・キーイベント・履歴ページビュー設定と、シークレットの設定有無を確認します。プロパティ ID が未設定の場合は閲覧可能なプロパティを列挙します。`ga:sync:dry` は変更予定だけ表示し、`ga:sync` は不足している `question_submitted` キーイベントを追加し、履歴変更による自動ページビューをオフにします。シークレット値は表示しません。GA4 側のシークレット作成と Vercel への登録は別途必要です。
+
+### 検証と計測の範囲
+
+- ページの初回表示と SPA 遷移で `page_view` が各 1 件だけ送られることを Network の `g/collect` で確認します。
+- 自動ログインとボタンによるログインの両方で `login`、ログイン状態の復元で `authenticated_visit`、ログアウト後のイベントで User-ID が解除されることを確認します。
+- 質問は Dify の別ドメイン iframe 内で行われるため、DB 保存成功後に `src/lib/server/analytics.ts` から Measurement Protocol で送信します。保存失敗・利用上限・未登録ユーザーは数えません。計測失敗が質問保存を失敗に変えることもありません。
+- サーバー送信はブラウザ由来の client ID がある場合のみ行います。広告ブロック等で取得できない場合は送信せず、架空の ID は作りません。質問イベントは人数・回数用で、滞在時間はブラウザ計測を使います。
+- `GA4_API_SECRET` 未設定の間は質問イベントを送信できません。HTTP 2xx は受付の確認であり、GA4 の検証エンドポイントとリアルタイム／DebugView も確認してください。設定済み GA4 のイベント名を登録するだけでは送信検証の代わりにはなりません。
+- 過去の未計測ログイン・質問は GA4 に復元しません。GA4 の未計測と実際のゼロ件を区別してください。Cookie 削除・複数端末・ブロック・通信失敗により、Neon の保存件数と GA4 は一致しない場合があります。通常レポートへの反映には時間がかかるため、まずリアルタイムで確認します。
+
+詳細は [計測設計・実装計画](docs/ga4-usage-measurement.md) を参照してください。
 
 ## Code Quality
 
