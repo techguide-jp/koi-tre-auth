@@ -216,6 +216,34 @@ describe('練習・保存・利用枠', () => {
 })
 
 describe('Difyからの振り返り', () => {
+  it('未発言の好みや仮名を採用せず、本人の原文から言い換えを作る', () => {
+    const output = {
+      reply: 'ありがとうございます。',
+      feedback: { ...feedback, rewrite: 'ミステリーが好きです。○○さんはどんな映画がお好きですか？' }
+    }
+    expect(parsePracticeOutput(output, ['映画が好きです'], true).feedback?.rewrite).toBe(
+      '映画が好きです。普段はどんなふうに過ごすのがお好きですか？'
+    )
+    expect(
+      parsePracticeOutput(output, ['映画が好きです。○○さんに聞いてみたいです。'], true).feedback
+        ?.rewrite
+    ).toContain('映画が好きです。○○さんに聞いてみたいです。')
+  })
+  it('既に質問している発言には質問を追加せず、本人の説明も残す', () => {
+    const text = '最近は小説を読んでいます。どんな本を読みますか？'
+    const output = parsePracticeOutput(
+      {
+        reply: 'ありがとうございます。',
+        feedback: { ...feedback, quote: 'どんな本を読みますか？' }
+      },
+      [text],
+      true
+    )
+    expect(output.feedback?.quote).toBe(text)
+    expect(output.feedback?.rewrite).toBe(
+      '最近は小説を読んでいます。よかったら、どんな本を読みますか？'
+    )
+  })
   it('最終回では実際の発言の引用と具体的な言い換えを必須にする', () => {
     expect(
       parsePracticeOutput(
@@ -223,7 +251,7 @@ describe('Difyからの振り返り', () => {
         ['映画が好きです'],
         true
       ).feedback
-    ).toEqual(feedback)
+    ).toMatchObject({ strength: feedback.strength, quote: '映画が好きです' })
     expect(() =>
       parsePracticeOutput(
         { reply: 'ありがとうございます。', feedback: { ...feedback, quote: '言っていないこと' } },

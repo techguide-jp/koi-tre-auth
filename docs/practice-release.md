@@ -19,16 +19,16 @@
 
 ## Dify
 
-`dify/koi-tre-practice.yml` を別のWorkflowアプリにインポートする。更新済みOpenAI認証で利用可能なgpt-4.1-miniを利用する。入力はscene、transcript、turn、total_turns。出力resultはJSON文字列で、replyと、最終回だけstrength / improvement / quote / rewriteを持つfeedbackを返す。
+`dify/koi-tre-practice.yml` を別のWorkflowアプリにインポートする。更新済みOpenAI認証で利用可能なgpt-4.1を利用する。入力はscene、transcript、turn、total_turns。出力resultはJSON文字列で、replyと、最終回だけstrength / improvement / quote / rewriteを持つfeedbackを返す。
 
-引用quoteが実際の利用者の発言に含まれるか、アプリ側でも検証する。Workflowにはユーザー確認・保存・回数消費のHTTPコールバックを設けない。Difyのuserは練習UUIDで、Googleプロフィールは渡さない。APIキーはサーバー専用のDIFY_PRACTICE_API_KEYに保存する。
+引用quoteが実際の利用者の発言に含まれるか、アプリ側でも検証する。実生成でAIが未発言の好みを補う出力があったため、表示する改善点と言い換えは本人の原文と場面別の定型句から組み立てる。既に質問している場合は質問を追加せず、答えやすくするひと言を添える。よかった点と会話相手の返答はDifyの生成を利用する。Workflowにはユーザー確認・保存・回数消費のHTTPコールバックを設けない。Difyのuserは練習UUIDで、Googleプロフィールは渡さない。APIキーはサーバー専用のDIFY_PRACTICE_API_KEYに保存する。
 
 ## 公開と切り戻し
 
 1. migrationの追加テーブルと制約を確認し、検証DBへ適用。再度db:generateで差分なしを確認する。
-2. Dify専用Workflowをサンプル会話で検証し、公開する。APIキーをVercel Production / 専用Previewへ秘密値として登録する。PreviewのDBは本番と分離する。
+2. Dify専用Workflowをサンプル会話で検証し、公開する。APIキーをVercel Productionへ秘密値として登録する。実生成を含む全体検証はローカルの独立DBで行い、Vercel Previewから本番DBへテストデータを書き込まない。
 3. 既存データを維持して本番へ追加migrationを適用する。DIFY_API_BASE_URLは通常https://api.dify.ai/v1。PRACTICE_ENABLEDは準備完了までfalse。
-4. 新しい画面を有効にした環境で表示・認証・生成・保存・再開を確認し、PRACTICE_ENABLED=trueで本番を切り替える。
+4. 新しい画面を有効にしたローカル環境で認証・生成・保存・再開を確認する。Vercelはproductionターゲットに --skip-domain でデプロイして、ドメイン切り替え前に表示・認証必須を確認する。確認後にpromoteする。
 5. 新画面ではアクセスキーの新規発行が410になる。旧コールバックは発行済みキーの12時間の有効期間を考慮して残す。practice:で始まる会話IDは旧保存APIで拒否する。
 6. 切り戻しはPRACTICE_ENABLED=falseとして再デプロイする。旧画面・キー発行が復帰し、既存の新練習データは保持される。新練習のGETは維持し、送信は503で停止する。旧発言枠と新練習枠は別集計。
 
@@ -40,8 +40,13 @@ pnpm check、pnpm lint、pnpm test、pnpm buildを実行する。実際の外部
 
 ## 2026-11-01の検証記録
 
-- 型チェック・lint・31テスト・Vercel向けビルドを通過。
+- 型チェック・lint・33テスト・Vercel向けビルドを通過。
 - 一時的なPostgreSQL 17に追加migrationを適用し、再生成で差分なしを確認。
 - Firebase Auth Emulatorと一時DB、テスト用AI応答を使い、スマートフォン幅で場面選択、ログイン取消・再試行、下書きの再読み込み、送信中の再読み込み、3回返答と振り返りを確認。
 - 画面からの3回返答は、DB上で練習1回・発言3回・operation3件となり、トップの残り枠は9回だった。本番Auth・DB・GA4にテスト利用は追加していない。
-- Difyに別アプリ「Koi-Tre Practice v1」（39e61eb7-7497-46f1-a7d0-5ee841e11373）を作成した。既存OpenAI設定の認証エラーが残っており、実際の返答生成と本番切り替えは未完了。
+- Difyに別アプリ「Koi-Tre Practice v1」（39e61eb7-7497-46f1-a7d0-5ee841e11373）を作成した。OpenAI認証はユーザーによる再更新後に成功。miniモデルでは未発言の好みを補う出力があり、gpt-4.1と事実を限定する指示に変更した。専用APIを公開し、WebアプリとMCPは無効にした。承認後に作成した専用キーをVercel ProductionのDIFY_PRACTICE_API_KEYへ秘密値として保存した。本番切り替えは未完了。
+
+- 本番Neonプロジェクト内への検証DB新設は自動承認レビューで拒否され、実行されていない。検証はローカルの独立DBで行い、Vercelでのドメイン切替前の確認は本番データへの書き込みを伴わない手順に変更した。
+
+- 最終のパーサーで実Difyの3場面・各3返答を検証し、全て成功した。本人の原文を引用し、未発言の好みを加えない言い換えになっていることを確認した。
+- 本番への追加migration適用前後で既存usersは10件、operationsは24件のまま。新しいpracticesとpractice_turnsはそれぞれ0件で、旧データを変更していない。

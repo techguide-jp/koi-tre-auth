@@ -13,7 +13,12 @@ export interface GeneratePracticeInput {
   text: string
 }
 
-export function parsePracticeOutput(value: unknown, userTexts: string[], final: boolean) {
+export function parsePracticeOutput(
+  value: unknown,
+  userTexts: string[],
+  final: boolean,
+  sceneId: SceneId = 'cafe'
+) {
   const output = typeof value === 'string' ? JSON.parse(value) : value
   if (!output || typeof output !== 'object') throw new Error('Invalid practice output')
   const { reply, feedback } = output as Record<string, unknown>
@@ -31,15 +36,38 @@ export function parsePracticeOutput(value: unknown, userTexts: string[], final: 
       throw new Error('Invalid feedback')
   }
   const result = fields as unknown as PracticeFeedback
-  if (!userTexts.some((text) => text.includes(result.quote)))
-    throw new Error('Feedback quote does not match conversation')
+  const original = [...userTexts].reverse().find((text) => text.includes(result.quote))
+  if (!original) throw new Error('Feedback quote does not match conversation')
+  // LLMが未発言の好みを補うことがあったため、言い換えは本人の原文と定型句だけで組み立てる。
+  const questionAt = original.search(/[?？]/u)
+  let rewrite: string
+  let improvement: string
+  if (questionAt >= 0) {
+    const boundary =
+      Math.max(
+        original.lastIndexOf('。', questionAt),
+        original.lastIndexOf('！', questionAt),
+        original.lastIndexOf('\n', questionAt)
+      ) + 1
+    const question = original.slice(boundary)
+    if (question.includes('よかったら')) {
+      rewrite = `なるほど。${original}`
+      improvement = '質問の前に、相手の話を受け止めるひと言を添えてみましょう。'
+    } else {
+      rewrite = `${original.slice(0, boundary)}よかったら、${question}`
+      improvement = '質問の前に「よかったら」を添えて、相手が答えやすい聞き方も試してみましょう。'
+    }
+  } else {
+    rewrite = `${original}${/[。！!]$/u.test(original) ? '' : '。'}${findScene(sceneId)!.followUp}`
+    improvement = '自分のことを伝えたあと、相手が答えやすい質問を一つ添えてみましょう。'
+  }
   return {
     reply: reply.trim(),
     feedback: {
       strength: result.strength,
-      improvement: result.improvement,
-      quote: result.quote,
-      rewrite: result.rewrite
+      improvement,
+      quote: original,
+      rewrite
     }
   }
 }
@@ -78,6 +106,7 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
   return parsePracticeOutput(
     body.data.outputs?.result,
     [...input.turns.map((turn) => turn.userText), input.text],
-    input.turns.length + 1 === PRACTICE_TURNS
+    input.turns.length + 1 === PRACTICE_TURNS,
+    input.sceneId
   )
 }

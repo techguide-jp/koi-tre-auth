@@ -104,9 +104,7 @@
       <div class="sample-feedback">
         <p class="eyebrow">ひと言添えると、会話が広がる</p>
         <p>自分の話のあとに、相手が答えやすい質問を添えてみましょう。</p>
-        <blockquote>
-          「映画を観ることが多いです。最近はコメディにはまっています。どんな映画がお好きですか？」
-        </blockquote>
+        <blockquote>「映画を観ることが多いです。どんな映画がお好きですか？」</blockquote>
       </div>
       <p class="small muted">見本です。練習後は、あなたの発言に合わせて振り返ります。</p>
     </div>
