@@ -162,6 +162,8 @@ pnpm preview
 
 ## Deployment
 
+公式の `@sveltejs/adapter-vercel` 5.10.3 を使い、ランタイムを `nodejs24.x` に固定しています。旧 `adapter-auto` が自動導入する Vercel アダプターは Node.js 24 に対応しないため使用しません。
+
 本プロジェクトでは、Vercel をデプロイ先として利用していますが、現状自動デプロイの設定は行っていません。
 Vercel の管理画面から手動でデプロイするか、今後 GitHub Actions などを用いて自動デプロイを実装してください。
 
