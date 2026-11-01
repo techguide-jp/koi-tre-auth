@@ -1,6 +1,40 @@
 export const PRACTICE_LIMIT = 10
 export const PRACTICE_TURNS = 3
 export const MAX_MESSAGE_LENGTH = 1000
+export const MAX_SITUATION_LENGTH = 500
+export const MAX_PARTNER_NAME_LENGTH = 20
+export const MAX_OPENING_LINE_LENGTH = 200
+
+export interface CustomSceneInput {
+  situation: string
+  partnerName: string
+  openingLine: string
+}
+
+export function normalizeCustomScene(value: unknown): CustomSceneInput | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const fields = value as Record<string, unknown>
+  if (typeof fields.situation !== 'string') return null
+  if (fields.partnerName !== undefined && typeof fields.partnerName !== 'string') return null
+  if (fields.openingLine !== undefined && typeof fields.openingLine !== 'string') return null
+  const situation = fields.situation.trim()
+  const partnerName = ((fields.partnerName as string | undefined)?.trim() || 'はる').replace(
+    /さん$/u,
+    ''
+  )
+  const openingLine = (fields.openingLine as string | undefined)?.trim() || ''
+  if (
+    !situation ||
+    [situation, partnerName, openingLine].some((text) => text.includes('\0')) ||
+    situation.length > MAX_SITUATION_LENGTH ||
+    !partnerName ||
+    partnerName.length > MAX_PARTNER_NAME_LENGTH ||
+    /[\r\n\t]/u.test(partnerName) ||
+    openingLine.length > MAX_OPENING_LINE_LENGTH
+  )
+    return null
+  return { situation, partnerName, openingLine }
+}
 
 export const scenes = [
   {
@@ -41,9 +75,45 @@ export const scenes = [
   }
 ] as const
 
-export type SceneId = (typeof scenes)[number]['id']
+export type BuiltInSceneId = (typeof scenes)[number]['id']
+export type SceneId = BuiltInSceneId | 'custom'
+export interface PracticeScene {
+  id: SceneId
+  title: string
+  subtitle: string
+  partnerName: string
+  partnerDescription: string
+  goal: string
+  opener: string
+  hint: string
+  followUp: string
+  situation?: string
+}
 export function findScene(id: unknown) {
   return scenes.find((scene) => scene.id === id)
+}
+
+export const CUSTOM_FOLLOW_UP = 'よかったら、もう少し聞かせてもらえますか？'
+export function resolveScene(
+  id: SceneId,
+  customScene: CustomSceneInput | null = null
+): PracticeScene | undefined {
+  if (id !== 'custom') return findScene(id)
+  if (!customScene) return undefined
+  return {
+    id: 'custom',
+    title: '自分で決めた場面',
+    subtitle: customScene.situation,
+    situation: customScene.situation,
+    partnerName: customScene.partnerName,
+    partnerDescription: 'あなたが指定した場面で会話する相手です。',
+    goal: '設定した場面で、いつもの自分の言葉を使って会話する',
+    opener:
+      customScene.openingLine ||
+      `（${customScene.partnerName}さんが、あなたの言葉を待っています。設定した場面に合わせて、最初のひと言から話してみましょう。）`,
+    hint: '設定した状況と、相手に伝えたいことを思い浮かべて返してみましょう。',
+    followUp: CUSTOM_FOLLOW_UP
+  }
 }
 
 export interface PracticeFeedback {
@@ -64,6 +134,7 @@ export interface PracticeTurn {
 export interface PracticeSession {
   id: string
   sceneId: SceneId
+  customScene: CustomSceneInput | null
   chargedAt: string | null
   completedAt: string | null
   turns: PracticeTurn[]

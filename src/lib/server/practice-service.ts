@@ -30,6 +30,7 @@ export async function submitPracticeMessage(input: MessageInput, context: Analyt
     const output = await generatePracticeReply({
       id: input.id,
       sceneId: reservation.sceneId,
+      customScene: reservation.customScene,
       turns: reservation.turns,
       text: input.text
     })

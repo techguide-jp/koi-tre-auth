@@ -9,7 +9,7 @@ import {
   unique,
   varchar
 } from 'drizzle-orm/pg-core'
-import type { PracticeFeedback, SceneId } from '$lib/practice'
+import type { CustomSceneInput, PracticeFeedback, SceneId } from '$lib/practice'
 
 export const users = pgTable(
   'users',
@@ -56,6 +56,7 @@ export const practices = pgTable(
       .notNull()
       .references(() => users.firebaseUid, { onDelete: 'restrict', onUpdate: 'cascade' }),
     sceneId: varchar('scene_id', { length: 32 }).$type<SceneId>().notNull(),
+    customScene: jsonb('custom_scene').$type<CustomSceneInput>(),
     chargedAt: timestamp('charged_at', { withTimezone: true, mode: 'date' }),
     completedAt: timestamp('completed_at', { withTimezone: true, mode: 'date' }),
     pendingRequestId: varchar('pending_request_id', { length: 36 }),

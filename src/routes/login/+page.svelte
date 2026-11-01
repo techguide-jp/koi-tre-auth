@@ -1,15 +1,29 @@
 <script lang="ts">
   import { getAdditionalUserInfo, signInWithPopup } from 'firebase/auth'
+  import { onMount } from 'svelte'
   import { auth, provider } from '$lib/firebaseConfig'
   import { goto } from '$app/navigation'
   import { page } from '$app/stores'
-  import { findScene } from '$lib/practice'
+  import {
+    findScene,
+    normalizeCustomScene,
+    resolveScene,
+    type CustomSceneInput
+  } from '$lib/practice'
+  import { readCustomSceneDraft } from '$lib/custom-scene-client'
   import { startPractice } from '$lib/practice-client'
   import { syncCurrentUserToApi, user } from '$lib/stores'
   import { setAnalyticsUser, trackLogin, trackSignup } from '$lib/analytics'
   let message = ''
   let pending = false
-  $: scene = findScene($page.url.searchParams.get('scene'))
+  let customScene: CustomSceneInput | null = null
+  onMount(() => {
+    customScene = normalizeCustomScene(readCustomSceneDraft())
+  })
+  $: isCustom = $page.url.searchParams.get('scene') === 'custom'
+  $: scene = isCustom
+    ? resolveScene('custom', customScene)
+    : findScene($page.url.searchParams.get('scene'))
   $: practiceId = $page.url.searchParams.get('practice')
   async function login() {
     if (pending) return
@@ -31,7 +45,7 @@
       await syncCurrentUserToApi(firebaseUser)
       if (practiceId && /^[0-9a-f-]{36}$/i.test(practiceId)) await goto(`/practice/${practiceId}`)
       else if (scene) {
-        const session = await startPractice(scene.id)
+        const session = await startPractice(scene.id, isCustom ? customScene : null)
         await goto(`/practice/${session.id}`)
       } else await goto('/')
     } catch (error) {
@@ -59,15 +73,22 @@
       <span class="small muted">選んだ場面</span><strong>{scene.title}</strong><span
         class="partner-name">お相手：{scene.partnerName}さん（AI）</span
       ><span class="small">3回返答して振り返り・月10回無料</span>
+      {#if isCustom && customScene}<p class="custom-summary">{customScene.situation}</p>
+        {#if customScene.openingLine}<p class="small">
+            最初のひと言：{customScene.openingLine}
+          </p>{/if}{/if}
     </div>{/if}<button
     class="button primary"
     on:click="{login}"
-    disabled="{pending}"
+    disabled="{pending || (isCustom && !scene && !practiceId)}"
     aria-busy="{pending}"
     >{pending ? '準備しています…' : $user ? '練習へ進む' : 'Googleで登録・ログイン'}</button
   >{#if message}<p class="error" role="alert">{message}</p>{/if}
+  {#if isCustom && !scene}<p class="notice">
+      カスタム場面の設定を読み込めませんでした。場面選択に戻って設定してください。
+    </p>{/if}
   <p class="small muted">練習で名前・性別・年齢を入力する必要はありません。</p>
-  <a href="/" class="text-link">場面選択に戻る</a>
+  <a href="{isCustom ? '/#custom-scene' : '/'}" class="text-link">場面選択に戻る</a>
 </section>
 
 <style>
@@ -102,6 +123,15 @@
   .text-link {
     display: inline-block;
     margin-top: 1rem;
+  }
+  .custom-summary {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    text-align: left;
+    font-size: 0.8rem;
+    padding-top: 0.7rem;
+    margin: 0.3rem 0 0;
+    border-top: 1px solid var(--border);
   }
   @media (max-width: 500px) {
     .login-card {

@@ -2,7 +2,9 @@
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
   import { authReady, authenticatedFetch, user } from '$lib/stores'
-  import { scenes, type PracticeOverview, type SceneId } from '$lib/practice'
+  import { scenes, type CustomSceneInput, type PracticeOverview, type SceneId } from '$lib/practice'
+  import { saveCustomSceneDraft } from '$lib/custom-scene-client'
+  import CustomSceneForm from '$lib/components/CustomSceneForm.svelte'
   import { startPractice } from '$lib/practice-client'
   import SceneDrawing from '$lib/components/SceneDrawing.svelte'
   import LegacyHome from '$lib/components/LegacyHome.svelte'
@@ -48,16 +50,21 @@
       loading = false
     }
   }
-  async function begin(sceneId: SceneId) {
+  async function begin(sceneId: SceneId, customScene?: CustomSceneInput) {
     if (pendingScene || !$authReady) return
     if (!$user) {
+      if (customScene && !saveCustomSceneDraft(customScene)) {
+        message =
+          '場面を引き継ぐための一時保存ができませんでした。ブラウザの保存を許可して、もう一度お試しください。'
+        return
+      }
       await goto(`/login?scene=${sceneId}`)
       return
     }
     pendingScene = sceneId
     message = ''
     try {
-      const session = await startPractice(sceneId)
+      const session = await startPractice(sceneId, customScene)
       await goto(`/practice/${session.id}`)
     } catch (error) {
       message = error instanceof Error ? error.message : '練習を開始できませんでした。'
@@ -229,6 +236,11 @@
         </article>
       {/each}
     </div>
+    <CustomSceneForm
+      disabled="{!$authReady || !!pendingScene || overview?.remaining === 0}"
+      pending="{pendingScene === 'custom'}"
+      on:start="{(event) => begin('custom', event.detail)}"
+    />
     {#if message}<p class="error" role="alert">{message}</p>{/if}
     {#if overview?.remaining === 0}<p class="notice">
         今月の練習枠を使い切りました。途中の練習は追加消費なしで再開できます。

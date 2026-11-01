@@ -3,6 +3,7 @@ import { and, count, desc, eq, gte, gt, isNull, lt, or } from 'drizzle-orm'
 import {
   PRACTICE_LIMIT,
   PRACTICE_TURNS,
+  type CustomSceneInput,
   type PracticeFeedback,
   type PracticeOverview,
   type PracticeSession,
@@ -40,6 +41,7 @@ export async function getPractice(uid: string, id: string): Promise<PracticeSess
     return {
       id: session.id,
       sceneId: session.sceneId,
+      customScene: session.customScene,
       chargedAt: session.chargedAt?.toISOString() ?? null,
       completedAt: session.completedAt?.toISOString() ?? null,
       turns: turns.map(({ requestId, position, userText, assistantText, feedback }) => ({
@@ -99,12 +101,25 @@ export async function getPracticeOverview(
   })
 }
 
-export async function createPractice(uid: string, id: string, sceneId: SceneId) {
+export async function createPractice(
+  uid: string,
+  id: string,
+  sceneId: SceneId,
+  customScene: CustomSceneInput | null = null
+) {
   return getDb().transaction(async (tx) => {
     await tx.select().from(users).where(eq(users.firebaseUid, uid)).for('update')
     const existing = await tx.query.practices.findFirst({ where: eq(practices.id, id) })
-    if (existing) return existing.uid === uid && existing.sceneId === sceneId
-    await tx.insert(practices).values({ id, uid, sceneId })
+    // 同じ作成IDを別の状況へ流用すると、再送と場面変更を区別できなくなる。
+    if (existing)
+      return (
+        existing.uid === uid &&
+        existing.sceneId === sceneId &&
+        existing.customScene?.situation === customScene?.situation &&
+        existing.customScene?.partnerName === customScene?.partnerName &&
+        existing.customScene?.openingLine === customScene?.openingLine
+      )
+    await tx.insert(practices).values({ id, uid, sceneId, customScene })
     return true
   })
 }
@@ -167,7 +182,13 @@ export async function reservePracticeTurn(input: MessageInput, now = new Date())
         updatedAt: now
       })
       .where(eq(practices.id, input.id))
-    return { status: 'ready' as const, token, sceneId: session.sceneId, turns }
+    return {
+      status: 'ready' as const,
+      token,
+      sceneId: session.sceneId,
+      customScene: session.customScene,
+      turns
+    }
   })
 }
 

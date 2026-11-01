@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { SceneId } from '$lib/practice'
-  export let scene: SceneId
+  import type { BuiltInSceneId } from '$lib/practice'
+  export let scene: BuiltInSceneId
 </script>
 
 <svg viewBox="0 0 160 110" fill="none" aria-hidden="true">

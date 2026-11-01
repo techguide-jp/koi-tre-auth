@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation'
   import { authReady, authenticatedFetch, user } from '$lib/stores'
   import {
-    findScene,
+    resolveScene,
     MAX_MESSAGE_LENGTH,
     PRACTICE_TURNS,
     type PracticeSession
@@ -25,7 +25,7 @@
   let loadedKey = ''
   let pollTimer: ReturnType<typeof setTimeout> | undefined
   let bottom: HTMLDivElement
-  $: scene = findScene(session?.sceneId)
+  $: scene = session ? resolveScene(session.sceneId, session.customScene) : undefined
   $: feedback = session?.turns.at(-1)?.feedback
   $: sessionKey = `${$user?.uid}:${$page.params.id}`
   $: storageKey = `koi-practice-draft:${sessionKey}`
@@ -157,7 +157,7 @@
     restarting = true
     message = ''
     try {
-      const result = await startPractice(scene.id)
+      const result = await startPractice(scene.id, session?.customScene)
       await goto(`/practice/${result.id}`)
     } catch (error) {
       message = error instanceof Error ? error.message : '開始できませんでした。'
@@ -197,6 +197,10 @@
     <div class="progress-track" aria-label="{`${session.turns.length}回返答済み`}">
       <span style="{`width:${(session.turns.length / PRACTICE_TURNS) * 100}%`}"></span>
     </div>
+    {#if scene.situation}<section class="custom-context" aria-label="設定した場面">
+        <p class="eyebrow">設定した場面</p>
+        <p>{scene.situation}</p>
+      </section>{/if}
     <aside class="partner-profile" aria-label="会話の相手">
       <span class="partner-avatar" aria-hidden="true">{scene.partnerName.slice(0, 1)}</span>
       <div>
@@ -330,6 +334,19 @@
   }
   .practice-heading p {
     font-size: 0.85rem;
+  }
+  .custom-context {
+    margin: 1.5rem 0;
+    padding: 1rem 1.2rem;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .custom-context > p:last-child {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 0.85rem;
+    margin: 0.5rem 0 0;
   }
   .partner-profile {
     display: flex;

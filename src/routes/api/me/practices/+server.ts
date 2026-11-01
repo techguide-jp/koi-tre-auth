@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
-import { findScene } from '$lib/practice'
+import { findScene, normalizeCustomScene } from '$lib/practice'
 import { requireFirebaseUser } from '$lib/server/request-auth'
 import {
   createPractice,
@@ -25,7 +25,9 @@ export const POST: RequestHandler = async ({ request }) => {
   requirePracticeAvailable()
   const body = await readPracticeBody(request)
   const scene = findScene(body.sceneId)
-  if (!scene || !validId(body.id)) throw error(400, '練習する場面を選んでください。')
+  const customScene = body.sceneId === 'custom' ? normalizeCustomScene(body.customScene) : null
+  if ((!scene && !customScene) || !validId(body.id))
+    throw error(400, '練習する場面と入力内容を確認してください。')
   if (!(await findUserByFirebaseUid(actor.uid))) {
     await upsertUser({
       firebaseUid: actor.uid,
@@ -40,7 +42,7 @@ export const POST: RequestHandler = async ({ request }) => {
   ) {
     throw error(429, '今月の10回の練習枠を使い切りました。途中の練習は再開できます。')
   }
-  if (!(await createPractice(actor.uid, body.id, scene.id)))
+  if (!(await createPractice(actor.uid, body.id, customScene ? 'custom' : scene!.id, customScene)))
     throw error(409, '別の練習として開始してください。')
   return privateJson(await getPractice(actor.uid, body.id))
 }

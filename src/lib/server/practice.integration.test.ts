@@ -216,6 +216,33 @@ describe('練習・保存・利用枠', () => {
 })
 
 describe('Difyからの振り返り', () => {
+  it('カスタム場面の別れ際に新しい質問を足さず、原文と定型句で言い換える', () => {
+    const text = 'では土曜の午後2時に駅の改札前で会いましょう。ゆうさん、また来週。'
+    const output = parsePracticeOutput(
+      {
+        reply: 'また来週。',
+        feedback: {
+          ...feedback,
+          quote: text,
+          custom_tip: 'closing',
+          rewrite: '来週はフレンチを食べましょう。'
+        }
+      },
+      [text],
+      true,
+      'custom'
+    )
+    expect(output.feedback?.rewrite).toBe(`今日はお話しできてうれしかったです。${text}`)
+    expect(output.feedback?.rewrite).not.toMatch(/[?？]|フレンチ/)
+    expect(
+      parsePracticeOutput(
+        { reply: 'また来週。', feedback: { ...feedback, quote: text } },
+        [text],
+        true,
+        'custom'
+      ).feedback?.rewrite
+    ).toBe(output.feedback?.rewrite)
+  })
   it('未発言の好みや仮名を採用せず、本人の原文から言い換えを作る', () => {
     const output = {
       reply: 'ありがとうございます。',
@@ -284,6 +311,70 @@ describe('練習APIの境界', () => {
       body: JSON.stringify(body ?? {})
     })
   }
+  it('カスタム設定を保存・再開し、同じ作成IDの設定変更を拒否する', async () => {
+    vi.stubEnv('PRACTICE_ENABLED', 'true')
+    vi.stubEnv('DIFY_PRACTICE_API_KEY', 'test-only-key')
+    try {
+      const create = await import('../../routes/api/me/practices/+server')
+      const id = randomUUID()
+      const customScene = {
+        situation: '2回目のデートの帰りに、来週も会う約束をしたい。',
+        partnerName: 'ゆう',
+        openingLine: '今日は楽しかったですね。'
+      }
+      const post = (settings: unknown, sceneId = 'custom') =>
+        create.POST(
+          event(request({ id, sceneId, customScene: settings }, 'valid-test-token')) as never
+        )
+      expect((await (await post(customScene)).json()).customScene).toEqual(customScene)
+      expect(
+        (
+          await post({
+            openingLine: customScene.openingLine,
+            situation: customScene.situation,
+            partnerName: customScene.partnerName
+          })
+        ).status
+      ).toBe(200)
+      await expect(post({ ...customScene, situation: '別の状況' })).rejects.toMatchObject({
+        status: 409
+      })
+      await expect(post(null, 'cafe')).rejects.toMatchObject({ status: 409 })
+      expect(await getPractice('other-user', id)).toBeNull()
+      for (let turn = 0; turn < 3; turn++) await submitPracticeMessage(message(id, turn), null)
+      expect(generatePracticeReply).toHaveBeenLastCalledWith(
+        expect.objectContaining({ customScene, sceneId: 'custom' })
+      )
+      expect(await getPractice(uid, id)).toMatchObject({
+        customScene,
+        completedAt: expect.any(String),
+        turns: [{ position: 1 }, { position: 2 }, { position: 3 }]
+      })
+      expect((await getPracticeOverview(uid)).remaining).toBe(9)
+      const repeat = randomUUID()
+      expect(await createPractice(uid, repeat, 'custom', customScene)).toBe(true)
+      expect((await getPractice(uid, repeat))?.customScene).toEqual(customScene)
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+  it('カスタム場面の必須情報・上限をAPIでも検証する', async () => {
+    vi.stubEnv('PRACTICE_ENABLED', 'true')
+    vi.stubEnv('DIFY_PRACTICE_API_KEY', 'test-only-key')
+    try {
+      const create = await import('../../routes/api/me/practices/+server')
+      for (const customScene of [null, { situation: '' }, { situation: 'あ'.repeat(501) }])
+        await expect(
+          create.POST(
+            event(
+              request({ id: randomUUID(), sceneId: 'custom', customScene }, 'valid-test-token')
+            ) as never
+          )
+        ).rejects.toMatchObject({ status: 400 })
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
   it('未認証で練習の作成・読取・発言送信をできない', async () => {
     const create = await import('../../routes/api/me/practices/+server')
     const read = await import('../../routes/api/me/practices/[id]/+server')

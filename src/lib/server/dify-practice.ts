@@ -1,5 +1,8 @@
 import {
   findScene,
+  resolveScene,
+  CUSTOM_FOLLOW_UP,
+  type CustomSceneInput,
   PRACTICE_TURNS,
   type PracticeFeedback,
   type PracticeTurn,
@@ -9,6 +12,7 @@ import {
 export interface GeneratePracticeInput {
   id: string
   sceneId: SceneId
+  customScene?: CustomSceneInput | null
   turns: Pick<PracticeTurn, 'userText' | 'assistantText'>[]
   text: string
 }
@@ -57,6 +61,24 @@ export function parsePracticeOutput(
       rewrite = `${original.slice(0, boundary)}よかったら、${question}`
       improvement = '質問の前に「よかったら」を添えて、相手が答えやすい聞き方も試してみましょう。'
     }
+  } else if (sceneId === 'custom') {
+    // 自由記述の場面では別れ際もあるため、毎回質問を足さず、AIが選ぶ定型句だけを添える。
+    const separator = /[。！!]$/u.test(original) ? '' : '。'
+    if (
+      fields.custom_tip === 'closing' ||
+      (!fields.custom_tip &&
+        /また(?:来週|来月|今度)|さようなら|おやすみ|失礼します/u.test(original))
+    ) {
+      rewrite = `今日はお話しできてうれしかったです。${original}`
+      improvement =
+        '会話を終えるときに、話せてうれしかった気持ちをひと言添える言い方も試してみましょう。'
+    } else if (fields.custom_tip === 'interest') {
+      rewrite = `${original}${separator}${CUSTOM_FOLLOW_UP}`
+      improvement = '相手の話をもう少し聞きたい気持ちを、答えやすいひと言で伝えてみましょう。'
+    } else {
+      rewrite = `なるほど。${original}`
+      improvement = '自分の話の前に、相手の言葉を受け止めるひと言を添えてみましょう。'
+    }
   } else {
     rewrite = `${original}${/[。！!]$/u.test(original) ? '' : '。'}${findScene(sceneId)!.followUp}`
     improvement = '自分のことを伝えたあと、相手が答えやすい質問を一つ添えてみましょう。'
@@ -73,7 +95,7 @@ export function parsePracticeOutput(
 }
 
 export async function generatePracticeReply(input: GeneratePracticeInput) {
-  const scene = findScene(input.sceneId)
+  const scene = resolveScene(input.sceneId, input.customScene)
   const key = process.env.DIFY_PRACTICE_API_KEY
   if (!key || !scene) throw new Error('Practice is not configured')
   const base = process.env.DIFY_API_BASE_URL ?? 'https://api.dify.ai/v1'
