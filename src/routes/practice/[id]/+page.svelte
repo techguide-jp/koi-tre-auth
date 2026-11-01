@@ -207,8 +207,13 @@
           <p>{turn.userText}</p>
         </div>
         <div class="line partner">
-          <span class="speaker">練習相手</span>
-          <p>{turn.assistantText}</p>
+          <!-- 最終回は次の返答を促さず、振り返りへの移動を明確にする。 -->
+          <span class="speaker">{turn.position === PRACTICE_TURNS ? 'Koi-Tre' : '練習相手'}</span>
+          <p>
+            {turn.position === PRACTICE_TURNS
+              ? '3回の練習が終わりました。今回の会話を振り返りましょう。'
+              : turn.assistantText}
+          </p>
         </div>{/each}
       <div bind:this="{bottom}"></div>
     </section>
