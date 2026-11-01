@@ -17,8 +17,10 @@
   let message = ''
   let pending = false
   let customScene: CustomSceneInput | null = null
+  let customDraftReady = false
   onMount(() => {
     customScene = normalizeCustomScene(readCustomSceneDraft())
+    customDraftReady = true
   })
   $: isCustom = $page.url.searchParams.get('scene') === 'custom'
   $: scene = isCustom
@@ -84,7 +86,8 @@
     aria-busy="{pending}"
     >{pending ? '準備しています…' : $user ? '練習へ進む' : 'Googleで登録・ログイン'}</button
   >{#if message}<p class="error" role="alert">{message}</p>{/if}
-  {#if isCustom && !scene}<p class="notice">
+  {#if isCustom && !customDraftReady}<p role="status">場面の設定を読み込んでいます…</p>
+  {:else if isCustom && !scene}<p class="notice">
       カスタム場面の設定を読み込めませんでした。場面選択に戻って設定してください。
     </p>{/if}
   <p class="small muted">練習で名前・性別・年齢を入力する必要はありません。</p>
