@@ -93,6 +93,33 @@ export function findScene(id: unknown) {
   return scenes.find((scene) => scene.id === id)
 }
 
+export type PartnerPreference = 'unspecified' | 'male' | 'female'
+const malePartnerNames: Record<BuiltInSceneId, string> = {
+  cafe: 'ゆう',
+  hobbies: 'そうた',
+  silence: 'れん'
+}
+
+export function partnerNameForScene(id: BuiltInSceneId, preference: PartnerPreference) {
+  return preference === 'male' ? malePartnerNames[id] : findScene(id)!.partnerName
+}
+
+export function sceneWithPartner(
+  id: BuiltInSceneId,
+  preference: PartnerPreference
+): CustomSceneInput | undefined {
+  if (preference === 'unspecified') return undefined
+  const scene = findScene(id)!
+  const partnerName = partnerNameForScene(id, preference)
+  // 相手の選択は既存の場面設定として保存し、再開時や再練習でも同じ相手を使う。
+  // 利用者本人の性別・性的指向の設定や推測には使わない。
+  return {
+    situation: `${scene.title}。練習相手は成人の${preference === 'male' ? '男性' : '女性'}です。${scene.partnerDescription}練習の目標：${scene.goal}。`,
+    partnerName,
+    openingLine: scene.opener.replaceAll(scene.partnerName, partnerName)
+  }
+}
+
 export const CUSTOM_FOLLOW_UP = 'よかったら、もう少し聞かせてもらえますか？'
 export function resolveScene(
   id: SceneId,

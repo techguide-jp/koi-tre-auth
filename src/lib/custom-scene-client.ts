@@ -1,9 +1,14 @@
 import type { CustomSceneInput } from './practice'
 
 const DRAFT_KEY = 'koi-custom-scene-draft:v1'
-export function readCustomSceneDraft(): CustomSceneInput {
+type DraftSource = 'custom' | 'preset'
+// 既存の自由入力の下書きを、場面カードの相手選択で上書きしない。
+const draftKey = (source: DraftSource) =>
+  source === 'preset' ? 'koi-preset-scene-draft:v1' : DRAFT_KEY
+
+export function readCustomSceneDraft(source: DraftSource = 'custom'): CustomSceneInput {
   try {
-    const draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? 'null')
+    const draft = JSON.parse(sessionStorage.getItem(draftKey(source)) ?? 'null')
     if (
       draft &&
       ['situation', 'partnerName', 'openingLine'].every((key) => typeof draft[key] === 'string')
@@ -14,9 +19,12 @@ export function readCustomSceneDraft(): CustomSceneInput {
   }
   return { situation: '', partnerName: '', openingLine: '' }
 }
-export function saveCustomSceneDraft(draft: CustomSceneInput): boolean {
+export function saveCustomSceneDraft(
+  draft: CustomSceneInput,
+  source: DraftSource = 'custom'
+): boolean {
   try {
-    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    sessionStorage.setItem(draftKey(source), JSON.stringify(draft))
     return true
   } catch {
     return false

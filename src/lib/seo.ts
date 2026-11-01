@@ -7,7 +7,7 @@ export const publicPages: Record<string, { title: string; description: string }>
   '/': {
     title: 'Koi-Tre（コイトレ）| 初対面・デートの会話をAIと無料練習',
     description:
-      '初対面やデートの会話を、会う前にAIと練習。3回の返答と自分の発言に合わせた振り返りが月10回無料。登録不要の会話ネタ帳と、初デートの会話例も読めます。'
+      '女性も男性も、初対面やデートの会話をAIと練習。男性・女性の練習相手を選べ、性別を指定しない練習も可能。3回の返答と振り返りが月10回無料。登録不要の会話ネタ帳も。'
   },
   '/about': {
     title: '使い方とデータの扱い | Koi-Tre',

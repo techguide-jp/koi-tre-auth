@@ -2,7 +2,16 @@
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
   import { authReady, authenticatedFetch, user } from '$lib/stores'
-  import { scenes, type CustomSceneInput, type PracticeOverview, type SceneId } from '$lib/practice'
+  import {
+    scenes,
+    sceneWithPartner,
+    partnerNameForScene,
+    type BuiltInSceneId,
+    type PartnerPreference,
+    type CustomSceneInput,
+    type PracticeOverview,
+    type SceneId
+  } from '$lib/practice'
   import { saveCustomSceneDraft } from '$lib/custom-scene-client'
   import CustomSceneForm from '$lib/components/CustomSceneForm.svelte'
   import { startPractice } from '$lib/practice-client'
@@ -14,6 +23,11 @@
   let loadedUid = ''
   let overview: PracticeOverview | null = null
   let pendingScene: SceneId | null = null
+  let partners: Record<BuiltInSceneId, PartnerPreference> = {
+    cafe: 'unspecified',
+    hobbies: 'unspecified',
+    silence: 'unspecified'
+  }
   let loading = false
   let message = ''
   onMount(() => {
@@ -51,18 +65,27 @@
       loading = false
     }
   }
-  async function begin(sceneId: SceneId, customScene?: CustomSceneInput) {
+  async function beginPreset(sceneId: BuiltInSceneId) {
+    const customScene = sceneWithPartner(sceneId, partners[sceneId])
+    await begin(customScene ? 'custom' : sceneId, customScene, sceneId)
+  }
+  async function begin(
+    sceneId: SceneId,
+    customScene?: CustomSceneInput,
+    pendingId: SceneId = sceneId
+  ) {
     if (pendingScene || !$authReady) return
     if (!$user) {
-      if (customScene && !saveCustomSceneDraft(customScene)) {
+      const preset = !!customScene && pendingId !== 'custom'
+      if (customScene && !saveCustomSceneDraft(customScene, preset ? 'preset' : 'custom')) {
         message =
           '場面を引き継ぐための一時保存ができませんでした。ブラウザの保存を許可して、もう一度お試しください。'
         return
       }
-      await goto(`/login?scene=${sceneId}`)
+      await goto(`/login?scene=${sceneId}${preset ? '&preset=1' : ''}`)
       return
     }
-    pendingScene = sceneId
+    pendingScene = pendingId
     message = ''
     try {
       const session = await startPractice(sceneId, customScene)
@@ -93,6 +116,7 @@
         >無料で会話を練習する<span aria-hidden="true">→</span></a
       >
       <p class="cta-caption">月10回無料 · 1回3往復 · スマホでそのまま</p>
+      <p class="inclusive-caption">女性も男性も。練習相手を選んで、自分のペースで。</p>
       <a class="example-link" href="#example"
         >まずは会話の例を見る<span aria-hidden="true">↓</span></a
       >
@@ -194,7 +218,7 @@
         <p class="section-label">さっそく、やってみよう</p>
         <h2 id="scenes-title">今日は、どの場面にする？</h2>
       </div>
-      <p>迷ったら、初対面のカフェから。<br />選んだあとにGoogleでログインできます。</p>
+      <p>迷ったら、初対面のカフェから。<br />練習相手を選び、Googleでログインできます。</p>
     </div>
     <div class="scene-grid">
       {#each scenes as scene, index}
@@ -212,15 +236,30 @@
             </p>
             <h3>{scene.title}</h3>
             <p class="scene-description">{scene.subtitle}</p>
+            <label class="partner-choice" for="{`partner-${scene.id}`}"
+              >練習相手
+              <select
+                id="{`partner-${scene.id}`}"
+                bind:value="{partners[scene.id]}"
+                disabled="{!!pendingScene}"
+              >
+                <option value="unspecified">性別を指定しない</option>
+                <option value="male">男性</option>
+                <option value="female">女性</option>
+              </select>
+            </label>
             <p class="scene-partner">
-              <span class="partner-dot" aria-hidden="true"></span>お相手：{scene.partnerName}さん
+              <span class="partner-dot" aria-hidden="true"></span>お相手：{partnerNameForScene(
+                scene.id,
+                partners[scene.id]
+              )}さん
               <span>（AI）</span>
             </p>
             <button
               class="button scene-button"
               disabled="{!$authReady || !!pendingScene || overview?.remaining === 0}"
               aria-busy="{pendingScene === scene.id}"
-              on:click="{() => begin(scene.id)}"
+              on:click="{() => beginPreset(scene.id)}"
               >{pendingScene === scene.id ? '準備しています…' : 'この場面を練習する'}<span
                 aria-hidden="true">→</span
               ></button
@@ -239,6 +278,7 @@
         今月の練習枠を使い切りました。途中の練習は追加消費なしで再開できます。
       </p>{/if}
     <p class="quota-note">
+      ご自身の性別は入力不要です。相手の性別を指定せずに練習することもできます。<br />
       最初の返答が届いたら1回分を使用。3回の返答と振り返りまで追加消費はありません。<br
         class="wide-only"
       />途中で閉じても、同じアカウントで再開できます。
@@ -253,6 +293,12 @@
       <a class="text-link" href="/about">詳しい使い方を見る →</a>
     </div>
     <div class="faq-list">
+      <details>
+        <summary>女性も使えますか？<span aria-hidden="true">＋</span></summary>
+        <p>
+          はい。性別を問わず利用できます。3つの場面では、練習相手を男性・女性から選べます。相手の性別を指定しないこともできます。ご自身の性別や性的指向を登録する必要はありません。
+        </p>
+      </details>
       <details>
         <summary>会話が苦手でも使えますか？<span aria-hidden="true">＋</span></summary>
         <p>
@@ -299,6 +345,30 @@
 </section>
 
 <style>
+  .inclusive-caption {
+    color: var(--muted);
+    font-size: 0.75rem;
+    line-height: 1.8;
+    margin: 0 0 1.3rem;
+  }
+  .partner-choice {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin: 1.1rem 0 0.75rem;
+  }
+  .partner-choice select {
+    display: block;
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.65rem;
+    background: #fffefa;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.85rem;
+  }
   .reading-section {
     padding: 3rem 0;
     border-top: 1px solid var(--border);

@@ -63,7 +63,7 @@
       disabled="{pending}"
     ></textarea>
     <p class="field-note">
-      場所、相手との関係、話したいことを書くと練習しやすくなります。<span
+      場所、相手との関係、話したいことを書くと練習しやすくなります。相手を「成人の男性」「成人の女性」と指定することもできます。ご自身の性別は入力不要です。<span
         >{situation.length} / {MAX_SITUATION_LENGTH}</span
       >
     </p>

@@ -19,7 +19,9 @@
   let customScene: CustomSceneInput | null = null
   let customDraftReady = false
   onMount(() => {
-    customScene = normalizeCustomScene(readCustomSceneDraft())
+    customScene = normalizeCustomScene(
+      readCustomSceneDraft($page.url.searchParams.get('preset') === '1' ? 'preset' : 'custom')
+    )
     customDraftReady = true
   })
   $: isCustom = $page.url.searchParams.get('scene') === 'custom'
@@ -91,7 +93,12 @@
       カスタム場面の設定を読み込めませんでした。場面選択に戻って設定してください。
     </p>{/if}
   <p class="small muted">練習で名前・性別・年齢を入力する必要はありません。</p>
-  <a href="{isCustom ? '/#custom-scene' : '/'}" class="text-link">場面選択に戻る</a>
+  <a
+    href="{isCustom && $page.url.searchParams.get('preset') !== '1'
+      ? '/#custom-scene'
+      : '/#scenes'}"
+    class="text-link">場面選択に戻る</a
+  >
 </section>
 
 <style>

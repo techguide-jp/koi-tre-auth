@@ -16,6 +16,7 @@ import {
 import { submitPracticeMessage } from './practice-service'
 import { generatePracticeReply, parsePracticeOutput } from './dify-practice'
 import { trackPracticeCompleted, trackQuestionSubmitted } from './analytics'
+import { sceneWithPartner } from '$lib/practice'
 
 let client: PGlite
 let db: ReturnType<typeof drizzle<typeof schema>>
@@ -93,6 +94,27 @@ async function charged(total: number, at = now) {
 }
 
 describe('練習・保存・利用枠', () => {
+  it.each(['male', 'female'] as const)(
+    '選んだ%sの相手を再開・完了・再練習まで保持する',
+    async (preference) => {
+      const customScene = sceneWithPartner('cafe', preference)!
+      const id = randomUUID()
+      expect(await createPractice(uid, id, 'custom', customScene)).toBe(true)
+      await submitPracticeMessage(message(id), null)
+      const reopened = await getPractice(uid, id)
+      expect(reopened).toMatchObject({ sceneId: 'custom', customScene, turns: [{ position: 1 }] })
+      expect((await getPracticeOverview(uid)).remaining).toBe(9)
+      for (let turn = 1; turn < 3; turn++) await submitPracticeMessage(message(id, turn), null)
+      expect(generatePracticeReply).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sceneId: 'custom', customScene })
+      )
+      expect((await getPractice(uid, id))?.completedAt).not.toBeNull()
+      const repeat = randomUUID()
+      expect(await createPractice(uid, repeat, 'custom', reopened!.customScene)).toBe(true)
+      expect((await getPractice(uid, repeat))?.customScene).toEqual(customScene)
+      expect((await getPracticeOverview(uid)).remaining).toBe(9)
+    }
+  )
   it('3回の返答を保存して1練習だけ消費し、再送でもイベントを重複送信しない', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(now)

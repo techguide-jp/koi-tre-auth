@@ -52,3 +52,5 @@ Ubersuggest（日本・日本語、取得日2026-11-02）の推計は「初デ�
 - [Search Console](https://search.google.com/search-console/sitemaps?resource_id=https%3A%2F%2Fapp.koi-tre.com%2F)
 
 PV増加と検索への掲載は未検証。公開前の19PVを基準に、まず28日間の自然な流入を見て判断する。
+
+同日の追加改善として、女性も利用できる案内と、練習相手を男性・女性・指定なしから選ぶ導線を追加した（[仕様と検証](partner-choice.md)）。28日後の前後比較にはこの変更も含まれるため、変化を検索施策だけの効果と断定しない。
