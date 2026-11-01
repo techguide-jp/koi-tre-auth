@@ -34,6 +34,7 @@
     ><span class="brand-name">Koi-Tre<span class="brand-kana">コイトレ</span></span></a
   >
   <nav aria-label="メインメニュー">
+    <a href="/topics">会話ネタ帳</a>
     <a href="/about">使い方</a><a class="contact-link" href="/contact">お問い合わせ</a
     >{#if $user}<button
         class="logout"

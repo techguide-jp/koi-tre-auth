@@ -39,14 +39,6 @@
   }
 </script>
 
-<svelte:head>
-  <title>{import.meta.env.VITE_APP_TITLE} - CONTACT</title>
-  <meta
-    name="description"
-    content="Koi-Treのお問い合わせページです。何かご質問やご要望がございましたら、お気軽にお知らせください。"
-  />
-</svelte:head>
-
 <div class="bg-gray-100">
   <div class="container mx-auto py-12">
     <div class="max-w-lg mx-auto px-4">

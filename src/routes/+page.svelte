@@ -8,6 +8,7 @@
   import { startPractice } from '$lib/practice-client'
   import SceneDrawing from '$lib/components/SceneDrawing.svelte'
   import LegacyHome from '$lib/components/LegacyHome.svelte'
+  import { guides } from '$lib/content/guides'
   export let data
   let mounted = false
   let loadedUid = ''
@@ -73,14 +74,6 @@
     }
   }
 </script>
-
-<svelte:head>
-  <title>Koi-Tre（コイトレ）| 初対面・デートの会話を、会う前に練習</title>
-  <meta
-    name="description"
-    content="会う日の前に、会話の予行練習。Koi-Treは初対面やデートの会話をAI相手に練習できるサービスです。3回返答したら、あなたの発言に合わせた振り返りへ。月10回無料。"
-  />
-</svelte:head>
 
 {#if !data.practiceEnabled}
   <LegacyHome />
@@ -288,7 +281,58 @@
   </section>
 {/if}
 
+<section class="reading-section" aria-labelledby="reading-title">
+  <p class="section-label">ログインせずに、ここから</p>
+  <h2 id="reading-title">何を話そう、と思ったら。</h2>
+  <p>会う前に使える話題と、短い会話の例を集めました。</p>
+  <a class="button secondary" href="/topics">登録不要の会話ネタ帳を開く →</a>
+  <div class="reading-grid">
+    {#each guides as guide}
+      <a href="{`/guides/${guide.slug}`}" class="reading-card">
+        <span>{guide.category}</span>
+        <h3>{guide.title}</h3>
+        <span>会話例を読む →</span>
+      </a>
+    {/each}
+  </div>
+  <a class="text-link" href="/guides">会話ガイドをすべて見る →</a>
+</section>
+
 <style>
+  .reading-section {
+    padding: 3rem 0;
+    border-top: 1px solid var(--border);
+  }
+  .reading-section > p {
+    line-height: 1.9;
+  }
+  .reading-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin: 1.8rem 0;
+  }
+  .reading-card {
+    display: block;
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    color: var(--ink);
+    border-radius: 4px;
+  }
+  .reading-card span {
+    font-size: 0.75rem;
+    color: var(--accent);
+  }
+  .reading-card h3 {
+    font-size: 1.05rem;
+    line-height: 1.8;
+    margin: 0.75rem 0 1rem;
+  }
+  @media (max-width: 700px) {
+    .reading-grid {
+      grid-template-columns: 1fr;
+    }
+  }
   .section-label {
     display: flex;
     align-items: center;

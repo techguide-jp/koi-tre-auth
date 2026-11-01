@@ -88,39 +88,6 @@
   }
 </script>
 
-<svelte:head>
-  <title>{import.meta.env.VITE_APP_TITLE} - 恋愛コミュニケーションスキル向上プラットフォーム</title>
-  <meta
-    name="description"
-    content="Koi-Treは、恋愛コミュニケーションスキルを向上させるための画期的なトレーニングプラットフォームです。実践的なシミュレーションを通じて、リアルな状況で使えるコミュニケーション技術を学びましょう！"
-  />
-  <meta
-    name="keywords"
-    content="恋愛, コミュニケーション, スキル, トレーニング, シミュレーション, 恋愛スキル, コミュニケーション技術, 恋愛コミュニケーション, Koi-Tre"
-  />
-  <meta name="author" content="TechGuide LLC." />
-  <meta
-    property="og:title"
-    content="{import.meta.env.VITE_APP_TITLE} - 恋愛コミュニケーションスキル向上プラットフォーム"
-  />
-  <meta
-    property="og:description"
-    content="Koi-Treは、恋愛コミュニケーションスキルを向上させるための画期的なトレーニングプラットフォームです。実践的なシミュレーションを通じて、リアルな状況で使えるコミュニケーション技術を学びましょう！"
-  />
-  <!--<meta property="og:image" content="/path/to/your/image.jpg" />-->
-  <meta property="og:url" content="https://www.koi-tre.com" />
-  <!--<meta name="twitter:card" content="summary_large_image" />-->
-  <meta
-    name="twitter:title"
-    content="{import.meta.env.VITE_APP_TITLE} - 恋愛コミュニケーションスキル向上プラットフォーム"
-  />
-  <meta
-    name="twitter:description"
-    content="Koi-Treは、恋愛コミュニケーションスキルを向上させるための画期的なトレーニングプラットフォームです。実践的なシミュレーションを通じて、リアルな状況で使えるコミュニケーション技術を学びましょう！"
-  />
-  <!--<meta name="twitter:image" content="/path/to/your/image.jpg" />-->
-</svelte:head>
-
 {#if isMounted}
   <section>
     {#if !$user}

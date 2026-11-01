@@ -1,4 +1,3 @@
-<svelte:head><title>使い方とデータの扱い | Koi-Tre</title></svelte:head>
 <article class="card info">
   <p class="eyebrow">Koi-Treについて</p>
   <h1>会話の小さな練習室</h1>

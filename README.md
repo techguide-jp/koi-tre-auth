@@ -148,6 +148,12 @@ NODE_ENV=production pnpm ga:list
 
 詳細は [計測設計・実装計画](docs/ga4-usage-measurement.md) を参照してください。
 
+## 公開ページと集客
+
+登録不要の会話ネタ帳は `/topics`、会話ガイド一覧は `/guides` です。記事は `src/lib/content/guides.ts`、話題カードは `src/lib/content/topics.ts` で管理します。公開メタデータとサイトマップの対象URLは `src/lib/seo.ts` を使います。ログイン・練習・雛形・エラーページは検索対象外です。
+
+本番ビルドのプレビューを起動した状態で `pnpm check:seo` を実行すると、公開ページのSSRメタデータ、サイトマップ、noindex、404を検証できます。別の環境は `pnpm check:seo https://app.koi-tre.com` のように指定します。HTTP取得のみで、GA4イベントや質問は送信しません。調査・施策・効果判定は [検索流入と公開入口の改善](docs/pv-growth.md) を参照してください。
+
 ## Code Quality
 
 コードのフォーマットや静的解析には ESLint と Prettier を使用しています。
