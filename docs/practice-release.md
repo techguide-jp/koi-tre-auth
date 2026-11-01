@@ -44,7 +44,7 @@ pnpm check、pnpm lint、pnpm test、pnpm buildを実行する。実際の外部
 - 一時的なPostgreSQL 17に追加migrationを適用し、再生成で差分なしを確認。
 - Firebase Auth Emulatorと一時DB、テスト用AI応答を使い、スマートフォン幅で場面選択、ログイン取消・再試行、下書きの再読み込み、送信中の再読み込み、3回返答と振り返りを確認。
 - 画面からの3回返答は、DB上で練習1回・発言3回・operation3件となり、トップの残り枠は9回だった。本番Auth・DB・GA4にテスト利用は追加していない。
-- Difyに別アプリ「Koi-Tre Practice v1」（39e61eb7-7497-46f1-a7d0-5ee841e11373）を作成した。OpenAI認証はユーザーによる再更新後に成功。miniモデルでは未発言の好みを補う出力があり、gpt-4.1と事実を限定する指示に変更した。専用APIを公開し、WebアプリとMCPは無効にした。承認後に作成した専用キーをVercel ProductionのDIFY_PRACTICE_API_KEYへ秘密値として保存した。本番切り替えは未完了。
+- Difyに別アプリ「Koi-Tre Practice v1」（39e61eb7-7497-46f1-a7d0-5ee841e11373）を作成した。OpenAI認証はユーザーによる再更新後に成功。miniモデルでは未発言の好みを補う出力があり、gpt-4.1と事実を限定する指示に変更した。専用APIを公開し、WebアプリとMCPは無効にした。承認後に作成した専用キーをVercel ProductionのDIFY_PRACTICE_API_KEYへ秘密値として保存した。本番切り替えは完了（最終結果は下記）。
 
 - 本番Neonプロジェクト内への検証DB新設は自動承認レビューで拒否され、実行されていない。検証はローカルの独立DBで行い、Vercelでのドメイン切替前の確認は本番データへの書き込みを伴わない手順に変更した。
 
@@ -56,3 +56,13 @@ pnpm check、pnpm lint、pnpm test、pnpm buildを実行する。実際の外部
 ## 404処理の互換性
 
 SvelteKit 2.17とadapter-vercel 5.10.3では、ルートごとの実行時間設定で関数を分割すると、空のcatchall manifestにroot layout/errorが含まれず、存在しないURLが500になる。ルート個別のmaxDurationを外し、アダプターの既定を65秒に統一した。`pnpm build` は `scripts/check-vercel-output.mjs` も実行し、404画面の部品が含まれることを検証する。実行時間設定を個別に戻す際は、単にビルドが成功するだけでなく、デプロイ先の404応答も確認する。
+
+## 本番反映結果
+
+- 最終の実装コードは `f8aa37c`。Vercelの本番デプロイは `dpl_CHs1SfWnNfPEhqSeWi2R5qU8j842`（koi-tre-auth-kozqjupdz-tashua314s-projects.vercel.app）。`app.koi-tre.com` が同じデプロイを指すことをAPIで確認した。
+- ドメイン切替前後で、トップ200、未認証の練習API401、存在しないURLとfavicon.icoの404を確認した。修正版のログには確認用404が4件あり、5xxは0件だった。
+- 公開サイトの場面選択からログイン画面へ場面を引き継ぎ、Googleログインが操作を待つことを確認した。ブラウザの場面選択ボタンも有効だった。
+- 本番DBに合成の質問・練習は作っていない。反映直後の確認時点ではusers10件・operations24件を保持し、practicesとpractice_turnsは0件。実生成と認証・保存の全体検証はローカルの独立DBとAuth Emulatorで行った。
+- 検証用のローカルサーバー、Auth Emulator、PostgreSQLを停止し、キー転送ファイルと一時DB接続情報を削除した。APIキーはGitやチャットに記載していない。
+
+旧画面への表示切り戻しと新APIの送信停止はテスト済み。旧Dify Chatflow自体は変更・再実行していない。旧ドラフトにはSupabaseを照会するノードが残っていたため、旧Difyへ運用を戻す場合は、その認証照会とモデル設定を改めて確認する。
