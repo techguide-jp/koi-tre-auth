@@ -184,7 +184,7 @@
   {:else if session && scene}
     <header class="practice-heading">
       <div>
-        <p class="eyebrow">CONVERSATION PRACTICE</p>
+        <p class="eyebrow">会話の練習</p>
         <h1>{scene.title}</h1>
         <p class="muted">{scene.goal}</p>
       </div>
@@ -197,9 +197,17 @@
     <div class="progress-track" aria-label="{`${session.turns.length}回返答済み`}">
       <span style="{`width:${(session.turns.length / PRACTICE_TURNS) * 100}%`}"></span>
     </div>
+    <aside class="partner-profile" aria-label="会話の相手">
+      <span class="partner-avatar" aria-hidden="true">{scene.partnerName.slice(0, 1)}</span>
+      <div>
+        <p><strong>{scene.partnerName}さん</strong><span class="ai-label">AIの練習相手</span></p>
+        <p>{scene.partnerDescription}</p>
+        <p class="partner-address">「{scene.partnerName}さん」と呼びかけて話せます。</p>
+      </div>
+    </aside>
     <section class="conversation" aria-label="練習の会話">
       <div class="line partner">
-        <span class="speaker">練習相手</span>
+        <span class="speaker">{scene.partnerName}さん</span>
         <p>{scene.opener}</p>
       </div>
       {#each session.turns as turn}<div class="line mine">
@@ -208,7 +216,9 @@
         </div>
         <div class="line partner">
           <!-- 最終回は次の返答を促さず、振り返りへの移動を明確にする。 -->
-          <span class="speaker">{turn.position === PRACTICE_TURNS ? 'Koi-Tre' : '練習相手'}</span>
+          <span class="speaker"
+            >{turn.position === PRACTICE_TURNS ? 'Koi-Tre' : `${scene.partnerName}さん`}</span
+          >
           <p>
             {turn.position === PRACTICE_TURNS
               ? '3回の練習が終わりました。今回の会話を振り返りましょう。'
@@ -258,7 +268,7 @@
         練習の送信は現在停止しています。保存済みの会話は引き続き確認できます。
       </p>
     {:else}<form class="composer card" on:submit|preventDefault="{send}">
-        <label for="reply">{session.turns.length + 1}回目の返答</label>
+        <label for="reply">{scene.partnerName}さんへ · {session.turns.length + 1}回目の返答</label>
         <p class="small muted">{scene.hint}</p>
         <textarea
           id="reply"
@@ -267,7 +277,7 @@
           rows="3"
           maxlength="{MAX_MESSAGE_LENGTH}"
           disabled="{pending}"
-          placeholder="あなたなら、どう返しますか？"
+          placeholder="{`${scene.partnerName}さんに、どう返しますか？`}"
           required
         ></textarea>
         <div class="composer-actions">
@@ -321,11 +331,50 @@
   .practice-heading p {
     font-size: 0.85rem;
   }
+  .partner-profile {
+    display: flex;
+    gap: 0.9rem;
+    align-items: flex-start;
+    padding: 1.15rem 1.3rem;
+    background: #edf0e7;
+    border-left: 2px solid #9baa8d;
+    margin-bottom: 1.8rem;
+  }
+  .partner-avatar {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.7rem;
+    height: 2.7rem;
+    border-radius: 50%;
+    background: #dce4d3;
+    font-family: var(--font-editorial);
+    font-size: 1.3rem;
+  }
+  .partner-profile p {
+    font-size: 0.74rem;
+    margin: 0;
+    line-height: 1.9;
+  }
+  .partner-profile strong {
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+  .ai-label {
+    font-size: 0.6rem;
+    margin-left: 0.7rem;
+    color: var(--muted);
+  }
+  .partner-profile .partner-address {
+    font-size: 0.7rem;
+    color: #58694e;
+    margin-top: 0.3rem;
+  }
   .progress {
     flex-shrink: 0;
     border: 1px solid var(--border);
     background: white;
-    border-radius: 2rem;
+    border-radius: 4px;
     padding: 0.5rem 1rem;
     font-size: 0.8rem;
   }
@@ -373,8 +422,8 @@
     font-size: 0.95rem;
   }
   .mine p {
-    background: #f6e8e8;
-    border-color: #f0dbde;
+    background: #f4e4d9;
+    border-color: #e9d7c8;
   }
   .composer {
     margin-top: 2rem;
@@ -424,7 +473,7 @@
   }
   .rewrite {
     background: #f7f4ef;
-    border-radius: 1rem;
+    border-radius: 8px;
     padding: 1.25rem;
     margin: 1.5rem 0;
   }
@@ -435,7 +484,7 @@
     overflow-wrap: anywhere;
   }
   .rewrite .rewrite-example {
-    color: #87394b;
+    color: var(--accent);
     font-weight: 600;
     margin-bottom: 0;
   }

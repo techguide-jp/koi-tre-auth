@@ -17,7 +17,7 @@
   </main>
 
   <footer>
-    <p>Koi-Tre · 会話の小さな練習室</p>
+    <p>Koi-Tre — 会う日の前に、会話の予行練習。</p>
     <p><a href="/about">使い方とデータの扱い</a> · <a href="/contact">お問い合わせ</a></p>
     <p>&copy; TechGuide LLC.</p>
   </footer>
@@ -34,7 +34,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 1rem 2rem;
+    padding: 0 2rem;
     width: 100%;
     max-width: 72rem;
     margin: 0 auto;
@@ -46,18 +46,26 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 12px;
+    padding: 2rem 1.25rem;
+    border-top: 1px solid var(--border);
+    gap: 0.4rem;
+    color: var(--muted);
+    font-size: 0.65rem;
   }
 
-  @media (max-width: 550px) {
+  footer p {
+    margin: 0;
+  }
+
+  @media (max-width: 700px) {
     main {
-      padding: 1rem;
+      padding: 0 1.25rem;
     }
   }
 
   @media (min-width: 480px) {
     footer {
-      padding: 12px 0;
+      padding: 2rem 0;
     }
   }
 </style>

@@ -52,13 +52,13 @@
 
 <svelte:head><title>Googleで始める | Koi-Tre</title></svelte:head>
 <section class="login-card card">
-  <p class="eyebrow">YOUR FIRST STEP</p>
-  <h1>練習の準備は、これだけ。</h1>
+  <p class="eyebrow">会話の続きを、ここから</p>
+  <h1>準備ができたら、始めよう。</h1>
   <p>Googleアカウントで登録すると、<br />途中の会話や振り返りを保存できます。</p>
   {#if scene}<div class="selection">
-      <span class="small muted">選んだ場面</span><strong>{scene.title}</strong><span class="small"
-        >3回返答して振り返り・月10回無料</span
-      >
+      <span class="small muted">選んだ場面</span><strong>{scene.title}</strong><span
+        class="partner-name">お相手：{scene.partnerName}さん（AI）</span
+      ><span class="small">3回返答して振り返り・月10回無料</span>
     </div>{/if}<button
     class="button primary"
     on:click="{login}"
@@ -79,7 +79,8 @@
     width: 100%;
   }
   h1 {
-    font-size: 1.8rem;
+    font-size: 1.7rem;
+    font-family: var(--font-editorial);
     margin: 1rem 0;
   }
   p {
@@ -89,9 +90,9 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    background: #f5f2ee;
+    background: #edf0e7;
     padding: 1rem;
-    border-radius: 1rem;
+    border-radius: 4px;
     margin: 1.5rem 0;
   }
   .button {
