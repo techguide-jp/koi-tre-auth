@@ -52,3 +52,7 @@ pnpm check、pnpm lint、pnpm test、pnpm buildを実行する。実際の外部
 - 本番への追加migration適用前後で既存usersは10件、operationsは24件のまま。新しいpracticesとpractice_turnsはそれぞれ0件で、旧データを変更していない。
 
 - ローカル画面から実Difyへ3回返答して完了し、振り返りを保存した。テスト応答での先行確認と合計で、ローカルDBは消費2練習・完了2練習・6発言・6operationsだった。最終回は新しい質問を表示せず、振り返りへ案内する。
+
+## 404処理の互換性
+
+SvelteKit 2.17とadapter-vercel 5.10.3では、ルートごとの実行時間設定で関数を分割すると、空のcatchall manifestにroot layout/errorが含まれず、存在しないURLが500になる。ルート個別のmaxDurationを外し、アダプターの既定を65秒に統一した。`pnpm build` は `scripts/check-vercel-output.mjs` も実行し、404画面の部品が含まれることを検証する。実行時間設定を個別に戻す際は、単にビルドが成功するだけでなく、デプロイ先の404応答も確認する。

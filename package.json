@@ -4,7 +4,7 @@
   "packageManager": "pnpm@10.30.2",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "vite build && node scripts/check-vercel-output.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:integration": "vitest run",

@@ -11,8 +11,6 @@ import {
   validId
 } from '$lib/server/practice-request'
 
-export const config = { maxDuration: 65 }
-
 export const POST: RequestHandler = async ({ request, params }) => {
   const actor = await requireFirebaseUser(request)
   requirePracticeAvailable()

@@ -9,7 +9,8 @@ const config = {
 
   kit: {
     // Vercel の Node.js 24 とビルド用アダプターの対応を固定する。
-    adapter: adapter({ runtime: 'nodejs24.x' })
+    // Kit 2.17では関数分割時の空catchallに404画面が含まれないため、実行時間を統一する。
+    adapter: adapter({ runtime: 'nodejs24.x', maxDuration: 65 })
   }
 }
 
