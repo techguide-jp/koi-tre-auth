@@ -32,4 +32,23 @@ Ubersuggest（日本・日本語、取得日2026-11-02）の推計は「初デ�
 
 ## 実施・検証結果
 
-実装・公開後に追記する。
+- コード `5795db9`、Search Console確認ファイル `17332c4` を `codex/pv-growth` に保存・push。
+- Production設定でステージした `dpl_BK2hfN59rwL6F7kBXdeZLKc88Zr2` を確認後、`https://app.koi-tre.com/` に昇格。SvelteKit、Node.js 24。Vercel側ビルドと404画面のビルド検証も成功。
+- 型チェックはエラー・警告0、lint成功、既存55テスト成功、ビルド成功。追加のHTTPチェック `pnpm check:seo` で公開8ページの固有title・description・canonical・OGP、サイトマップ、ログイン・練習・雛形・404のnoindexを検証。切り替え後の本番でも通過。
+- ローカル本番ビルドで390px幅のネタ帳・記事に横スクロールなし。カードの次表示、場面切り替え、沈黙の練習への引き継ぎを確認。記事からのリンクは趣味・休日のログイン画面へ遷移。本番1200pxでも横スクロールなし、趣味のカード切り替えと対応する練習リンクを確認。新しい本番タブのブラウザーエラーは0件。
+- 本番の未認証APIは401、存在しないURLは404。質問送信・本番の利用枠消費は行っていない。追加計測は `topic_card_next` と `practice_cta_clicked`。固定の場面ID・記事IDだけを送り、会話や自由入力は含めない。
+- 公開後10分のerror/fatalログ4件は404のみ（検証用の未知URL3件、Googleの別確認ファイルへのリクエスト1件）。確認範囲で5xx相当の例外なし。全期間・全リクエストの無障害を保証するものではない。
+- Route 53変更 `C08319573PJ05H3SGO8VY` はINSYNC。ルートAは `216.150.1.1` / `216.150.16.1`、www CNAMEはVercelの推奨値。両ドメインをappへ308転送。権威DNS、Cloudflare DNS、Google DNSの応答を確認。TLS検証付きの接続先指定で両方の308とパス保持、通常のwww接続でも308を確認。ローカルDNSにはルートの古い否定応答が残るため、一部環境はキャッシュ反映待ち。
+- DNS変更前はルートAなし、www CNAMEは `sites.framer.app`（TTL 300）。切り戻す場合は今回のルートAを削除し、wwwを元のCNAMEへ戻す。NS、app CNAME、旧 `@.koi-tre.com` A、認証用CNAMEは変更していない。元の全レコードは `/private/tmp/koitre-pv-growth/dns-before.json` に退避。
+- Search Consoleに `https://app.koi-tre.com/` を追加し、HTMLファイルで所有権確認成功。`/sitemap.xml` の送信結果は「成功しました」、検出8ページ（2026-11-02）。確認用の `static/google36aa78f53b678ecd.html` は削除しない。検出数はインデックス登録済み数ではなく、検索パフォーマンスは処理待ち。
+
+公開した入口：
+
+- [会話ネタ帳](https://app.koi-tre.com/topics)
+- [会話ガイド一覧](https://app.koi-tre.com/guides)
+- [初デートの会話](https://app.koi-tre.com/guides/first-date-conversation)
+- [マッチングアプリの初対面](https://app.koi-tre.com/guides/matching-app-first-meeting)
+- [デート中の沈黙](https://app.koi-tre.com/guides/date-silence)
+- [Search Console](https://search.google.com/search-console/sitemaps?resource_id=https%3A%2F%2Fapp.koi-tre.com%2F)
+
+PV増加と検索への掲載は未検証。公開前の19PVを基準に、まず28日間の自然な流入を見て判断する。
