@@ -1,0 +1,47 @@
+# 初回練習の仕様と公開手順
+
+## 利用者の流れ
+
+トップの会話例 → 3つの場面から選択 → 操作によるGoogleログイン → 3回返答 → 振り返り。名前・性別・年齢・アクセスキーの入力は不要。
+
+月10回の練習。最初の返答と履歴をDBへ正常保存した時点で1回を消費する。途中終了しても同じ練習の残り2回・振り返り・翌月の再開には追加消費しない。新しい練習の最初の保存成功日時を基準に、日本時間の月で集計する。旧operations履歴は保持し、新しい練習枠には換算しない。
+
+## 境界と再送
+
+- APIは全てFirebase IDトークンで本人確認し、UIDをリクエスト本文から受け取らない。GETにも所有権チェックとno-storeを適用する。
+- `POST /api/me/practices` はクライアント生成UUIDとsceneIdから練習を作る。同じUUIDの再送は同じ練習を返す。
+- `GET /api/me/practices` は月枠・生成中の予約数・途中/最新練習IDを返す。`GET /api/me/practices/[id]` は保存済み会話と処理中の入力を返す。
+- `POST /api/me/practices/[id]/messages` はrequestId、text（1〜1000文字）、expectedTurn（0〜2）と任意の計測コンテキストを受け取る。同じrequestIdは同じ本文に限り再利用できる。
+- ユーザー行のロック下で月枠と生成中予約を確認する。外部API待機中はDBトランザクションを保持しない。予約は75秒、Dify呼び出しは55秒でタイムアウトする。
+- 成功時は発言・operation・回数・完了状態を同一トランザクションで保存する。古い予約トークンの処理は保存できない。失敗時は本文を残し予約を解放する。サーバー処理が強制終了した場合は予約期限後に再試行できる。
+- ブラウザはタブ内sessionStorageへ下書きとrequestIdを保存する。生成中に再読み込みしても、保存された状態を取得して再開する。
+- GA4は保存成功ごとにquestion_submitted、3回目の保存成功時だけpractice_completedを送る。リプレイでは送信しない。送信は既存と同じベストエフォートで、計測失敗による生成再試行は行わない。
+
+## Dify
+
+`dify/koi-tre-practice.yml` を別のWorkflowアプリにインポートする。更新済みOpenAI認証で利用可能なgpt-4.1-miniを利用する。入力はscene、transcript、turn、total_turns。出力resultはJSON文字列で、replyと、最終回だけstrength / improvement / quote / rewriteを持つfeedbackを返す。
+
+引用quoteが実際の利用者の発言に含まれるか、アプリ側でも検証する。Workflowにはユーザー確認・保存・回数消費のHTTPコールバックを設けない。Difyのuserは練習UUIDで、Googleプロフィールは渡さない。APIキーはサーバー専用のDIFY_PRACTICE_API_KEYに保存する。
+
+## 公開と切り戻し
+
+1. migrationの追加テーブルと制約を確認し、検証DBへ適用。再度db:generateで差分なしを確認する。
+2. Dify専用Workflowをサンプル会話で検証し、公開する。APIキーをVercel Production / 専用Previewへ秘密値として登録する。PreviewのDBは本番と分離する。
+3. 既存データを維持して本番へ追加migrationを適用する。DIFY_API_BASE_URLは通常https://api.dify.ai/v1。PRACTICE_ENABLEDは準備完了までfalse。
+4. 新しい画面を有効にした環境で表示・認証・生成・保存・再開を確認し、PRACTICE_ENABLED=trueで本番を切り替える。
+5. 新画面ではアクセスキーの新規発行が410になる。旧コールバックは発行済みキーの12時間の有効期間を考慮して残す。practice:で始まる会話IDは旧保存APIで拒否する。
+6. 切り戻しはPRACTICE_ENABLED=falseとして再デプロイする。旧画面・キー発行が復帰し、既存の新練習データは保持される。新練習のGETは維持し、送信は503で停止する。旧発言枠と新練習枠は別集計。
+
+## ローカル検証
+
+本番の認証に偽ユーザーを作らず検証できるよう、Firebase Auth Emulatorを利用できる。VITE_PROJECT_ID / FIREBASE_PROJECT_IDはdemo-で始まる同じ値、VITE_FIREBASE_AUTH_EMULATOR_URLはhttp://127.0.0.1:9099、FIREBASE_AUTH_EMULATOR_HOSTは127.0.0.1:9099とする。サーバーは本番モードやdemo-以外でのエミュレーター設定を拒否し、ブラウザも開発モードのdemo-プロジェクトに限定して接続する。
+
+pnpm check、pnpm lint、pnpm test、pnpm buildを実行する。実際の外部Dify生成と、テスト用応答による画面・保存検証は結果を区別して記録する。
+
+## 2026-11-01の検証記録
+
+- 型チェック・lint・31テスト・Vercel向けビルドを通過。
+- 一時的なPostgreSQL 17に追加migrationを適用し、再生成で差分なしを確認。
+- Firebase Auth Emulatorと一時DB、テスト用AI応答を使い、スマートフォン幅で場面選択、ログイン取消・再試行、下書きの再読み込み、送信中の再読み込み、3回返答と振り返りを確認。
+- 画面からの3回返答は、DB上で練習1回・発言3回・operation3件となり、トップの残り枠は9回だった。本番Auth・DB・GA4にテスト利用は追加していない。
+- Difyに別アプリ「Koi-Tre Practice v1」（39e61eb7-7497-46f1-a7d0-5ee841e11373）を作成した。既存OpenAI設定の認証エラーが残っており、実際の返答生成と本番切り替えは未完了。

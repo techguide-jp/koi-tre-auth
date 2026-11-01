@@ -8,11 +8,14 @@
   let message = ''
   let submitting = false
   let submitted = false
+  let submitError = ''
 
   async function onSubmit() {
+    if (submitting) return
+    submitError = ''
     try {
       submitting = true
-      await fetch(FORMSPARK_ACTION_URL, {
+      const response = await fetch(FORMSPARK_ACTION_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -25,10 +28,13 @@
           message
         })
       })
+      if (!response.ok) throw new Error('送信に失敗しました')
+      submitted = true
       message = ''
+    } catch {
+      submitError = '送信できませんでした。入力内容は残っています。時間をおいて再度お試しください。'
     } finally {
       submitting = false
-      submitted = true
     }
   }
 </script>
@@ -49,6 +55,7 @@
         Koi-Treをご利用いただきありがとうございます。<br
         />何かご質問やご要望がございましたら、お気軽にお知らせください。
       </p>
+      {#if submitError}<p class="error" role="alert">{submitError}</p>{/if}
       {#if submitting}
         <div class="flex justify-center items-center">
           <div class="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>

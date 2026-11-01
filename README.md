@@ -7,6 +7,8 @@ Firebase 認証、Drizzle、PostgreSQL を使って Dify アプリ連携用の A
 
 - **SvelteKit** をベースにした最新のフロントエンド開発環境
 - Firebase を用いた認証機能
+- 3場面・3ターンの会話練習と、発言に合わせた振り返り
+- 月10回の練習枠、途中再開、二重送信防止
 - Drizzle + PostgreSQL を利用したデータベース連携
 - Dify アプリから利用する内部 API
 - Vercel をデプロイ先として利用（現状は手動デプロイ）
@@ -44,10 +46,10 @@ pnpm install
 
 ```bash
 createdb koitre
-pnpm db:setup
+pnpm db:migrate
 ```
 
-`db:setup` は migration 適用後に `db_cluster-13-07-2025@01-16-45.neon-ready-no-connect.sql` から `public.users` と `public.operations` の seed を投入します。
+新規環境はmigrationだけで利用できます。旧データを取り込む場合の `db:setup` は migration 適用後に `db_cluster-13-07-2025@01-16-45.neon-ready-no-connect.sql` から `public.users` と `public.operations` の seed を投入します。
 
 DB 系コマンドは通常 `.env` を読み込みます。production 向けには `NODE_ENV=production` を指定した別スクリプトを用意しており、`.env.production` を読み込んで実行します。
 
@@ -72,7 +74,13 @@ pnpm dev
 
 ブラウザで [http://localhost:5173](http://localhost:5173) を開いて、アプリケーションを確認してください。
 
-## Dify 設定確認
+## 新しい練習画面
+
+`dify/koi-tre-practice.yml` を別のDify Workflowアプリへインポートし、モデル認証を確認して公開します。サーバー用の `DIFY_PRACTICE_API_KEY` を設定し、migration・生成テストを終えた環境で `PRACTICE_ENABLED=true` にすると新画面へ切り替わります。
+
+最初の返答の保存成功で1練習を消費し、3回の返答と振り返りまでを1回と数えます。日本時間の月ごとに10回で、途中の練習の再開には追加消費しません。旧履歴は保持します。詳細なAPI・検証・公開・切り戻し手順は [初回練習の仕様と公開手順](docs/practice-release.md) を参照してください。
+
+## 旧Dify連携の設定確認
 
 Dify ワークフローに設定する項目は、次のコマンドで確認できます。
 
@@ -98,6 +106,7 @@ pnpm dify:config -- --show-secrets
 | 新規登録した人数                         | `sign_up`             | 総ユーザー数 |
 | 1 回以上質問した人数                     | `question_submitted`  | 総ユーザー数 |
 | 質問回数                                 | `question_submitted`  | イベント数   |
+| 3ターンの練習を完了した人数              | `practice_completed`  | 総ユーザー数 |
 
 GA4 のイベントレポートで期間を指定し、各イベントの「総ユーザー数」を比較してください。「イベント数」は同じ人の繰り返し利用も数えます。「探索 → ファネルデータ探索」で `page_view → authenticated_visit → question_submitted` を条件にすると、質問に至るまでの利用状況を比較できます。期間前にログインした再訪者を落とさないよう、`login` と `authenticated_visit` は分けています。
 
@@ -111,7 +120,7 @@ User-ID には Firebase UID の SHA-256 値を使い、メール・氏名・質�
 2. GA4 の「管理 → データストリーム → 対象 Web ストリーム → Measurement Protocol API シークレット」でサーバー送信用シークレットを作成します。値は Vercel の **Production** に `GA4_API_SECRET` として保存します。ブラウザ用の `VITE_` 変数、Git、チャットには書かないでください。
 3. 自動ページビューの二重計測を避けるため、対象ストリームの拡張計測で「ブラウザの履歴イベントに基づくページの変更」をオフにします。初回を含むページビューは `src/routes/+layout.svelte` の `afterNavigate` から送信します。
 4. `question_submitted` をキーイベントにします。イベントごとに 1 回数え、人数を見る際は「総ユーザー数」を選びます。
-5. 環境変数を設定した後で、本番へデプロイします。既に配信済みのアクセスキーは引き続き利用できますが、質問計測には計測情報を含む新しいキーのコピーが必要です。
+5. 環境変数を設定した後で、本番へデプロイします。新しい練習画面ではアクセスキーのコピーは不要です。旧画面を使う場合は、質問計測に計測情報を含む新しいキーが必要です。
 
 ### GA4 管理 CLI
 
@@ -131,8 +140,8 @@ NODE_ENV=production pnpm ga:list
 ### 検証と計測の範囲
 
 - ページの初回表示と SPA 遷移で `page_view` が各 1 件だけ送られることを Network の `g/collect` で確認します。
-- 自動ログインとボタンによるログインの両方で `login`、ログイン状態の復元で `authenticated_visit`、ログアウト後のイベントで User-ID が解除されることを確認します。
-- 質問は Dify の別ドメイン iframe 内で行われるため、DB 保存成功後に `src/lib/server/analytics.ts` から Measurement Protocol で送信します。保存失敗・利用上限・未登録ユーザーは数えません。計測失敗が質問保存を失敗に変えることもありません。
+- ボタンによるログインで `login`、ログイン状態の復元で `authenticated_visit`、ログアウト後のイベントで User-ID が解除されることを確認します。
+- 新しい練習と旧Dify連携のどちらも、DB保存成功後に `src/lib/server/analytics.ts` から Measurement Protocol で送信します。新しい練習の3回目の保存では `practice_completed` も送信します。保存失敗・利用上限・重複再送は数えません。計測失敗が質問保存を失敗に変えることもありません。
 - サーバー送信はブラウザ由来の client ID がある場合のみ行います。広告ブロック等で取得できない場合は送信せず、架空の ID は作りません。質問イベントは人数・回数用で、滞在時間はブラウザ計測を使います。
 - `GA4_API_SECRET` 未設定の間は質問イベントを送信できません。HTTP 2xx は受付の確認であり、GA4 の検証エンドポイントとリアルタイム／DebugView も確認してください。設定済み GA4 のイベント名を登録するだけでは送信検証の代わりにはなりません。
 - 過去の未計測ログイン・質問は GA4 に復元しません。GA4 の未計測と実際のゼロ件を区別してください。Cookie 削除・複数端末・ブロック・通信失敗により、Neon の保存件数と GA4 は一致しない場合があります。通常レポートへの反映には時間がかかるため、まずリアルタイムで確認します。

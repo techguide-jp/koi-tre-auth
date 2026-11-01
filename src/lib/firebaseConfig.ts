@@ -1,7 +1,7 @@
 import { browser } from '$app/environment'
 import { initializeApp } from 'firebase/app'
 import { initializeAnalytics, type Analytics } from 'firebase/analytics'
-import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth'
+import { connectAuthEmulator, getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_API_KEY,
@@ -25,6 +25,17 @@ if (browser && import.meta.env.PROD && /^(app\.|www\.)?koi-tre\.com$/.test(locat
   }
 }
 const auth: Auth | null = browser ? getAuth(app) : null
+// ローカル検証専用。デモプロジェクト以外や本番ビルドでは認証を迂回しない。
+if (
+  auth &&
+  import.meta.env.DEV &&
+  firebaseConfig.projectId?.startsWith('demo-') &&
+  import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL
+) {
+  connectAuthEmulator(auth, import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL, {
+    disableWarnings: true
+  })
+}
 const provider = browser ? new GoogleAuthProvider() : null
 
 export { auth, provider, analytics }

@@ -14,10 +14,18 @@ function getRequiredFirebaseEnv(
 }
 
 function getFirebaseAdminApp() {
+  const emulator = process.env.FIREBASE_AUTH_EMULATOR_HOST
+  if (
+    emulator &&
+    (process.env.NODE_ENV === 'production' || !process.env.FIREBASE_PROJECT_ID?.startsWith('demo-'))
+  )
+    throw new Error('Auth emulator is restricted to local demo projects')
   const existingApp = getApps()[0]
   if (existingApp) {
     return existingApp
   }
+
+  if (emulator) return initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID })
 
   return initializeApp({
     credential: cert({

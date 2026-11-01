@@ -33,6 +33,9 @@ export const POST: RequestHandler = async ({ request }) => {
     throw error(400, 'accessKey, conversationId, llmText, and query are required')
   }
 
+  if (conversationId.startsWith('practice:'))
+    throw error(400, 'Native practice is saved by the app')
+
   const decodedAccessKey = requireDifyAccessKey(accessKey)
   const result = await createOperationWithLimitCheck({
     uid: decodedAccessKey.uid,

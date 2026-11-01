@@ -14,6 +14,7 @@ interface User {
 }
 
 export const user = writable<User | null>(null)
+export const authReady = writable(false)
 export const usage = writable(MONTHLY_USAGE_LIMIT)
 export const usageLimit = writable(MONTHLY_USAGE_LIMIT)
 export const lastLlmText = writable('')
@@ -32,7 +33,7 @@ function clearDashboardState() {
   dashboardError.set(null)
 }
 
-async function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = {}) {
+export async function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   const firebaseUser = auth?.currentUser
   if (!firebaseUser) {
     throw new Error('User is not authenticated')
@@ -52,8 +53,8 @@ async function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = 
   })
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || `Request failed with status ${response.status}`)
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.message || '通信に失敗しました。しばらくしてから再度お試しください。')
   }
 
   return response
@@ -155,6 +156,7 @@ async function initializeSession(firebaseUser: FirebaseUser) {
 
 if (browser && auth) {
   onAuthStateChanged(auth, (firebaseUser) => {
+    authReady.set(true)
     if (firebaseUser) {
       user.set(toAppUser(firebaseUser))
       void setAnalyticsUser(firebaseUser.uid).then(() => trackEvent('authenticated_visit'))
@@ -167,4 +169,6 @@ if (browser && auth) {
     clearDashboardState()
     stopDashboardPolling()
   })
+} else if (browser) {
+  authReady.set(true)
 }

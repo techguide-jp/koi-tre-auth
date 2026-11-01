@@ -1,177 +1,127 @@
 <script lang="ts">
-  import { page } from '$app/stores'
   import { auth } from '$lib/firebaseConfig'
   import { signOut } from 'firebase/auth'
-  import logo from '$lib/images/logo.svg'
-  import { user } from '$lib/stores' // Assuming there's a user store to manage authentication state
-  import { goto } from '$app/navigation'
-  import Menu from '@smui/menu'
-  import List, { Item, Separator, Text } from '@smui/list'
-  import Button, { Label } from '@smui/button'
-
-  let menu: Menu
-  const configuredDomain = import.meta.env.VITE_APP_DOMAIN?.trim()
-  const homeUrl = configuredDomain
-    ? /^(https?:)?\/\//.test(configuredDomain)
-      ? configuredDomain
-      : `https://${configuredDomain}`
-    : '/'
-
+  import { user } from '$lib/stores'
+  let pending = false
+  let message = ''
   async function logout() {
-    if (!auth) {
-      return
-    }
-
+    if (!auth || pending) return
+    pending = true
+    message = ''
     try {
       await signOut(auth)
-      user.set(null)
-      console.log('Logged out successfully')
-    } catch (error) {
-      console.error('Logout failed:', error)
+    } catch {
+      message = 'ログアウトできませんでした。もう一度お試しください。'
+    } finally {
+      pending = false
     }
   }
 </script>
 
 <header>
-  <div class="corner">
-    <a href="{homeUrl}">
-      <img src="{logo}" alt="Koi-Tre" />
-    </a>
-  </div>
-
-  <nav>
-    <svg viewBox="0 0 2 3" aria-hidden="true">
-      <path d="M0,0 L1,2 C1.5,3 1.5,3 2,3 L2,0 Z"></path>
-    </svg>
-    <ul>
-      <li aria-current="{$page.url.pathname === '/' ? 'page' : undefined}">
-        <a href="/">Home</a>
-      </li>
-      <li aria-current="{$page.url.pathname === '/about' ? 'page' : undefined}">
-        <a href="https://www.koi-tre.com/">About</a>
-      </li>
-      <li aria-current="{$page.url.pathname === '/contact' ? 'page' : undefined}">
-        <a href="/contact">Contact</a>
-      </li>
-    </ul>
-    <svg viewBox="0 0 2 3" aria-hidden="true">
-      <path d="M0,0 L0,3 C0.5,3 0.5,3 1,2 L2,0 Z"></path>
-    </svg>
+  <a class="brand" href="/" aria-label="Koi-Tre ホーム"
+    ><span class="brand-mark" aria-hidden="true">k.</span><span
+      >Koi-Tre<span class="brand-caption">会話の小さな練習室</span></span
+    ></a
+  >
+  <nav aria-label="メインメニュー">
+    <a href="/about">使い方</a><a href="/contact">お問い合わせ</a>{#if $user}<button
+        class="logout"
+        disabled="{pending}"
+        aria-busy="{pending}"
+        on:click="{logout}">{pending ? 'ログアウト中…' : 'ログアウト'}</button
+      >{:else}<a class="login-link" href="/login">ログイン</a>{/if}
   </nav>
-
-  <!-- right menu -->
-  <div>
-    {#if $user}
-      <div style="min-width: 100px;">
-        <Button on:click="{() => menu.setOpen(true)}">
-          <Label>Open Menu</Label>
-        </Button>
-        <Menu bind:this="{menu}">
-          <List>
-            <Separator />
-            <Item on:SMUI:action="{() => logout()}">
-              <Text>Logout</Text>
-            </Item>
-          </List>
-        </Menu>
-      </div>
-    {:else}
-      <button
-        on:click="{() => goto('/login')}"
-        class="text-primary font-bold py-2 px-4 rounded"
-        style="flex: 1; padding-left: 10px;">Login</button
-      >
-    {/if}
-  </div>
 </header>
+{#if message}<p class="error" role="alert">{message}</p>{/if}
 
 <style>
   header {
+    max-width: 72rem;
+    margin: 0 auto;
+    width: 100%;
+    padding: 1.35rem 2rem;
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--border);
   }
-
-  .corner {
-    width: 3em;
-    height: 3em;
-    position: relative;
-  }
-
-  .corner a {
+  .brand {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
+    gap: 0.7rem;
+    color: var(--ink);
+    font-size: 1.3rem;
+    font-weight: 750;
+    letter-spacing: -0.03em;
   }
-
-  .corner img {
-    width: 2em;
-    height: 2em;
-    object-fit: contain;
+  .brand:hover {
+    text-decoration: none;
   }
-
+  .brand-mark {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.8rem;
+    background: var(--accent);
+    color: white;
+    font-family: Georgia, serif;
+    font-size: 1.65rem;
+  }
+  .brand-caption {
+    display: block;
+    font-size: 0.55rem;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
   nav {
     display: flex;
-    justify-content: center;
-    --background: rgba(255, 255, 255, 0.7);
-  }
-
-  svg {
-    width: 2em;
-    height: 3em;
-    display: block;
-  }
-
-  path {
-    fill: var(--background);
-  }
-
-  ul {
-    position: relative;
-    padding: 0;
-    margin: 0;
-    height: 3em;
-    display: flex;
-    justify-content: center;
     align-items: center;
-    list-style: none;
-    background: var(--background);
-    background-size: contain;
-  }
-
-  li {
-    position: relative;
-    height: 100%;
-  }
-
-  li[aria-current='page']::before {
-    --size: 6px;
-    content: '';
-    width: 0;
-    height: 0;
-    position: absolute;
-    top: 0;
-    left: calc(50% - var(--size));
-    border: var(--size) solid transparent;
-    border-top: var(--size) solid var(--color-theme-1);
-  }
-
-  nav a {
-    display: flex;
-    height: 100%;
-    align-items: center;
-    padding: 0 0.5rem;
-    color: var(--color-text);
-    font-weight: 700;
+    gap: 1.5rem;
     font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    text-decoration: none;
-    transition: color 0.2s linear;
   }
-
-  a:hover {
-    color: var(--color-theme-1);
+  nav a {
+    color: var(--ink);
+  }
+  .login-link,
+  .logout {
+    border: 1px solid var(--border);
+    padding: 0.55rem 0.9rem;
+    border-radius: 2rem;
+    background: white;
+    font-size: 0.8rem;
+  }
+  .logout {
+    cursor: pointer;
+  }
+  @media (max-width: 550px) {
+    header {
+      padding: 1rem;
+      gap: 0.5rem;
+    }
+    nav {
+      gap: 0.65rem;
+      font-size: 0.7rem;
+    }
+    .brand-caption {
+      display: none;
+    }
+    .brand {
+      font-size: 1.05rem;
+      gap: 0.4rem;
+    }
+    .brand-mark {
+      width: 2rem;
+      height: 2rem;
+    }
+    nav .login-link,
+    nav .logout {
+      padding: 0.45rem 0.6rem;
+      font-size: 0.7rem;
+    }
   }
 </style>

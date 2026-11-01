@@ -4,7 +4,8 @@ import {
   type AnalyticsContext
 } from '$lib/analytics-context'
 
-export async function trackQuestionSubmitted(
+async function trackServerEvent(
+  eventName: 'question_submitted' | 'practice_completed',
   uid: string,
   analyticsContext: AnalyticsContext | null
 ) {
@@ -37,7 +38,7 @@ export async function trackQuestionSubmitted(
         user_id: await getAnalyticsUserId(uid),
         events: [
           {
-            name: 'question_submitted',
+            name: eventName,
             params: {
               ...(context.sessionId ? { session_id: context.sessionId } : {}),
               source: 'dify'
@@ -56,4 +57,12 @@ export async function trackQuestionSubmitted(
     console.warn('GA4 の質問イベント送信に失敗しました。')
     return 'failed' as const
   }
+}
+
+export function trackQuestionSubmitted(uid: string, context: AnalyticsContext | null) {
+  return trackServerEvent('question_submitted', uid, context)
+}
+
+export function trackPracticeCompleted(uid: string, context: AnalyticsContext | null) {
+  return trackServerEvent('practice_completed', uid, context)
 }
