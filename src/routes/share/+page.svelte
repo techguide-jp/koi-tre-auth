@@ -102,6 +102,7 @@
     <a
       class="flyer-preview"
       href="/promo/koi-tre-event-guide.pdf"
+      data-sveltekit-reload
       aria-label="QR付きA4案内のPDFを見る"
       ><img
         src="/promo/event-guide-preview.png"
