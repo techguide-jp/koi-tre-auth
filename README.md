@@ -112,7 +112,7 @@ GA4 のイベントレポートで期間を指定し、各イベントの「総�
 
 設定済みの [Koi-Tre 利用状況（訪問・ログイン・質問）](https://analytics.google.com/analytics/web/#/analysis/a312696206p439720447/edit/4kk5Vx4fT4KEAZ845_Cqeg) では、初期期間を「今月」とし、対象イベントの総ユーザー数とイベント数を一覧できます。計測開始前や GA4 の反映待ちで行がない場合は、実際の利用ゼロとは見なしません。
 
-User-ID には Firebase UID の SHA-256 値を使い、メール・氏名・質問文・回答・アクセスキーは送信しません。URL の検索パラメーターとフラグメントも除きます。ログアウト時には User-ID を解除します。GA4 は氏名・メールを表示する顧客一覧ではありません。
+User-ID には Firebase UID の SHA-256 値を使い、メール・氏名・質問文・回答・アクセスキーは送信しません。URLのフラグメントと任意の検索パラメーターも除きます。紹介素材で使う固定のUTMの組み合わせだけを許可します。ログアウト時には User-ID を解除します。GA4 は氏名・メールを表示する顧客一覧ではありません。
 
 ### 必要な設定
 
@@ -153,6 +153,14 @@ NODE_ENV=production pnpm ga:list
 登録不要の会話ネタ帳は `/topics`、会話ガイド一覧は `/guides` です。記事は `src/lib/content/guides.ts`、話題カードは `src/lib/content/topics.ts` で管理します。公開メタデータとサイトマップの対象URLは `src/lib/seo.ts` を使います。ログイン・練習・雛形・エラーページは検索対象外です。
 
 本番ビルドのプレビューを起動した状態で `pnpm check:seo` を実行すると、公開ページのSSRメタデータ、サイトマップ、noindex、404を検証できます。別の環境は `pnpm check:seo https://app.koi-tre.com` のように指定します。HTTP取得のみで、GA4イベントや質問は送信しません。調査・施策・効果判定は [検索流入と公開入口の改善](docs/pv-growth.md) を参照してください。
+
+## 紹介素材と30秒のお試し
+
+`/share` にSNS画像3枚・投稿文・QR付きA4案内、`/try` に選択式の3問のお試しがあります。紹介リンクはcampaign `conversation_202611` と固定のsource/medium/contentを使用します。`src/lib/promotion.ts` の許可リストに一致するUTMだけを `page_view` のURLに残し、GA4の「トラフィック獲得」でセッションのキャンペーンと参照元/メディアを確認できます。自由入力や回答本文は送信しません。
+
+イベントは `promotion_download`（素材取得）、`promotion_copy`（紹介文のコピー）、`quick_try_started`・`quick_try_answered`・`quick_try_completed`（お試し）、`quick_try_shared`（共有リンクのコピー）です。選択は固定のquestion_id/option_idだけを送ります。ダウンロードやコピーは、実際の紹介・投稿・新規訪問を意味しません。お試しの回答ごとにPVを増やす処理はありません。計測は本番ドメインだけで動作します。
+
+素材の定義は `src/lib/content/promotion-data.json`、生成は `scripts/build-promotion-assets.py`、成果物は `static/promo/` です。再生成にはmacOSのヒラギノフォント、Pillow、reportlab、Poppler、および埋め込み用のNoto Sans JP Regular TrueTypeを用意し、`python3 scripts/build-promotion-assets.py --pdf-font /path/to/NotoSansJP-Regular.ttf` を実行します。フォントはGoogle Fonts公式配布のものを使用しました。詳細と公開記録は [追加施策の方針・検証](docs/pv-growth-round2.md) に記録します。
 
 ## Code Quality
 

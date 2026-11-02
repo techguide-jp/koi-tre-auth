@@ -11,7 +11,18 @@ const { response, html: sitemap } = await read('/sitemap.xml')
 assert.equal(response.status, 200, 'サイトマップを取得できる')
 assert.match(response.headers.get('content-type'), /(?:application|text)\/xml/)
 const urls = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => new URL(match[1]))
-assert.ok(urls.length >= 8, '公開入口がサイトマップにある')
+assert.ok(urls.length >= 12, '公開入口がサイトマップにある')
+for (const path of [
+  '/share',
+  '/try',
+  '/guides/matching-app-phone-topics',
+  '/guides/second-date-conversation'
+]) {
+  assert.ok(
+    urls.some((url) => url.pathname === path),
+    `${path} がサイトマップにある`
+  )
+}
 assert.equal(new Set(urls.map(String)).size, urls.length, 'サイトマップに重複がない')
 const titles = new Set()
 for (const url of urls) {

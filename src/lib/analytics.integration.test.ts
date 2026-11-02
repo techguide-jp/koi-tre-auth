@@ -25,6 +25,7 @@ import {
   trackPageView,
   trackSignup
 } from './analytics'
+import { promotionChannels, promotionUrl } from './promotion'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -40,6 +41,49 @@ afterEach(() => {
 })
 
 describe('ブラウザ計測', () => {
+  it('紹介用の固定UTMだけを残し、混在する個人情報やフラグメントは送らない', () => {
+    const url = new URL(promotionUrl('instagram', 'silence'))
+    url.searchParams.set('email', 'private@example.test')
+    url.searchParams.set('utm_term', 'private-message')
+    url.hash = 'private-fragment'
+    trackPageView(url, url.href)
+    expect(sdk.logEvent).toHaveBeenCalledWith(
+      sdk.analytics,
+      'page_view',
+      expect.objectContaining({
+        page_location: promotionUrl('instagram', 'silence'),
+        page_path: '/topics',
+        page_referrer: 'https://app.koi-tre.com/topics'
+      })
+    )
+    expect(JSON.stringify(sdk.logEvent.mock.calls)).not.toContain('private')
+  })
+
+  it('全紹介チャネルの既知の組み合わせを計測できる', () => {
+    for (const channel of Object.keys(promotionChannels) as (keyof typeof promotionChannels)[]) {
+      const url = new URL(promotionUrl(channel, 'quick_try'))
+      trackPageView(url, '')
+      expect(sdk.logEvent.mock.calls.at(-1)?.[2].page_location).toBe(url.href)
+    }
+  })
+
+  it('既知のcampaignでも任意の紹介元・medium・content・campaignを除外する', () => {
+    for (const [key, value] of [
+      ['utm_source', 'private-source'],
+      ['utm_medium', 'private-medium'],
+      ['utm_content', 'private-content'],
+      ['utm_campaign', 'private-campaign']
+    ]) {
+      const url = new URL(promotionUrl('x', 'questions'))
+      url.searchParams.set(key, value)
+      trackPageView(url, '')
+      expect(sdk.logEvent.mock.calls.at(-1)?.[2].page_location).toBe(
+        'https://app.koi-tre.com/topics'
+      )
+    }
+    expect(JSON.stringify(sdk.logEvent.mock.calls)).not.toContain('private')
+  })
+
   it('初回・SPA 遷移のページビューから検索パラメーターとフラグメントを除外する', () => {
     trackPageView(new URL('https://app.koi-tre.com/?accessKey=private#secret'), '')
     trackPageView(

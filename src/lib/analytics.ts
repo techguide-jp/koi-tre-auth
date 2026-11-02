@@ -1,6 +1,7 @@
 import { getGoogleAnalyticsClientId, logEvent, setUserId } from 'firebase/analytics'
 import { getAnalyticsUserId, readAnalyticsContext } from './analytics-context'
 import { analytics } from './firebaseConfig'
+import { readPromotionQuery } from './promotion'
 
 let requestedUserUid: string | null = null
 
@@ -13,11 +14,12 @@ export function trackEvent(eventName: string, params?: Record<string, string | n
   }
 }
 
-function pageUrl(value: string) {
+function pageUrl(value: string, includeCampaign = false) {
   if (!value) return ''
   try {
     const url = new URL(value, window.location.origin)
-    return `${url.origin}${url.pathname}`
+    const campaign = includeCampaign ? readPromotionQuery(url.searchParams) : ''
+    return `${url.origin}${url.pathname}${campaign ? `?${campaign}` : ''}`
   } catch {
     return ''
   }
@@ -25,7 +27,7 @@ function pageUrl(value: string) {
 
 export function trackPageView(url: URL, referrer: string) {
   trackEvent('page_view', {
-    page_location: pageUrl(url.href),
+    page_location: pageUrl(url.href, true),
     page_path: url.pathname,
     page_referrer: pageUrl(referrer),
     page_title: document.title

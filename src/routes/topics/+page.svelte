@@ -91,6 +91,8 @@
   </section>
   <aside class="resource-cta">
     <h2>会話の流れごと、読んでみる。</h2>
+    <p>3つの短い場面で返し方を選ぶ、登録不要のお試しもあります。</p>
+    <a class="button secondary" href="/try">30秒の会話お試しへ →</a>
     <p>初デートや沈黙したときの会話例を、ガイドにまとめています。</p>
     <a class="text-link" href="/guides">会話ガイドを読む →</a>
   </aside>

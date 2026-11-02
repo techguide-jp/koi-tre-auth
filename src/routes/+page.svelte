@@ -332,6 +332,7 @@
   <h2 id="reading-title">何を話そう、と思ったら。</h2>
   <p>会う前に使える話題と、短い会話の例を集めました。</p>
   <a class="button secondary" href="/topics">登録不要の会話ネタ帳を開く →</a>
+  <p><a class="text-link" href="/try">まずは30秒。返し方を選ぶお試しへ →</a></p>
   <div class="reading-grid">
     {#each guides as guide}
       <a href="{`/guides/${guide.slug}`}" class="reading-card">
