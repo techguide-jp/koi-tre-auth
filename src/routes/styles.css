@@ -211,14 +211,15 @@ button:disabled {
 .button:hover {
   text-decoration: none;
 }
-.primary {
+/* SMUIのa:visitedより優先し、訪問済みのリンクボタンも読みやすい文字色を保つ。 */
+.button.primary {
   background: var(--accent);
   color: white;
 }
 .primary:hover:not(:disabled) {
   background: #913d2d;
 }
-.secondary {
+.button.secondary {
   background: white;
   color: var(--ink);
   border-color: var(--border);
