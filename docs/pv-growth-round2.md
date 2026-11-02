@@ -32,3 +32,20 @@ GA4ではcampaign `conversation_202611` のセッション・利用者・入口�
 ## 素材の再生成
 
 `scripts/build-promotion-assets.py --pdf-font /path/to/NotoSansJP-Regular.ttf` を使用。Pillow・reportlab・Popplerが必要。SNS用にはmacOS標準のヒラギノ角ゴシックW3/W6を使う。PDFには[Google Fonts公式のNoto Sans JP](https://github.com/google/fonts/tree/main/ofl/notosansjp)をweight 400にしたTrueTypeを埋め込む。生成用のフォント本体をアプリへ追加する必要はない。
+
+## 本番公開・受信の確認
+
+- 実装 `87dc5a0`、PDFプレビューの直接遷移修正 `4c0148f` を `codex/pv-growth-distribution` に保存・pushした。VercelのProduction設定でステージし、対象コミットと新設4ページを確認してから公開。最終デプロイ `dpl_G6DzQ9XAC1n95WhGeJGh6DoE9oY5` はREADY、`https://app.koi-tre.com/` の参照先とコミットも確認した。
+- 本番で公開12ページのSEOチェックが成功。紹介素材6ファイル（PNG 5枚・PDF 1件）のHTTP 200、ファイル形式、Content-Typeを確認。ブラウザーでもPDFの実ダウンロード、投稿文コピー、お試しの完了・共有を確認した。PDFを見るリンクには `data-sveltekit-reload` を付け、SvelteKitのページとして先読み・遷移しないようにした。
+- GA4プロパティ439720447のリアルタイム画面で `quick_try_started`・`quick_try_answered`・`quick_try_completed`・`quick_try_shared`・`promotion_copy`・`promotion_download` の受信を確認。`page_view` の `page_location` を開き、`/try?utm_source=visitor&utm_medium=share&utm_campaign=conversation_202611&utm_content=quick_try` と `/share` が届いていることも確認した。
+- この検証でアクセス・イベントを発生させているため、公開直後の数値を集客成果に数えない。後日のレポートで自己アクセスを確実に識別できない場合は混入の限界を示す。最終デプロイの公開後ログ（2026-11-02 04:46:24〜04:56:24 UTC、error/fatal、最大20件）には該当ログなし。静的配信を含む全リクエストの無障害を保証するものではない。
+- 既存の自動測定 `koi-tre-28` を更新し、5記事・`/share`・`/try`、紹介campaign、紹介素材とお試しのイベントを対象に追加。2026-11-30 09:00 JST、一度のみ、読み取り専用の条件は維持した。素材取得・コピーと新規流入、お試し完了とAI練習完了を区別して報告する。
+
+公開URL：
+
+- https://app.koi-tre.com/share
+- https://app.koi-tre.com/guides/matching-app-phone-topics
+- https://app.koi-tre.com/guides/second-date-conversation
+- https://app.koi-tre.com/try
+
+外部SNSアカウントや送信先は指定されておらず、リポジトリにも公式アカウントの案内は見つからなかった。今回完了した紹介施策は、誰でも使える素材・共有操作・測定付きの導線の公開まで。外部SNSへの投稿・イベント参加者等への送信は未実施。
