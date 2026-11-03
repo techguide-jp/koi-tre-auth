@@ -3,3 +3,6 @@ pnpm-lock.yaml
 package-lock.json
 yarn.lock
 static/smui.css
+# Googleから取得した所有権確認ファイルは内容をそのまま公開する。
+static/google36aa78f53b678ecd.html
+.playwright-mcp/

@@ -4,6 +4,7 @@ import { writable } from 'svelte/store'
 import { DASHBOARD_POLL_INTERVAL_MS, MONTHLY_USAGE_LIMIT } from '$lib/constants/usage'
 import type { DashboardResponse, DifyAccessKeyResponse } from '$lib/types/api'
 import { auth } from './firebaseConfig'
+import { getAnalyticsContext, setAnalyticsUser, trackEvent } from './analytics'
 
 interface User {
   uid: string
@@ -13,6 +14,7 @@ interface User {
 }
 
 export const user = writable<User | null>(null)
+export const authReady = writable(false)
 export const usage = writable(MONTHLY_USAGE_LIMIT)
 export const usageLimit = writable(MONTHLY_USAGE_LIMIT)
 export const lastLlmText = writable('')
@@ -31,7 +33,7 @@ function clearDashboardState() {
   dashboardError.set(null)
 }
 
-async function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = {}) {
+export async function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   const firebaseUser = auth?.currentUser
   if (!firebaseUser) {
     throw new Error('User is not authenticated')
@@ -51,8 +53,8 @@ async function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = 
   })
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || `Request failed with status ${response.status}`)
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.message || '通信に失敗しました。しばらくしてから再度お試しください。')
   }
 
   return response
@@ -111,7 +113,13 @@ export async function refreshDashboard() {
 }
 
 export async function fetchDifyAccessKey() {
-  const response = await authenticatedFetch('/api/me/dify-access-key')
+  const context = await getAnalyticsContext()
+  const headers = new Headers()
+  if (context) {
+    headers.set('x-ga-client-id', context.clientId)
+    if (context.sessionId) headers.set('x-ga-session-id', context.sessionId)
+  }
+  const response = await authenticatedFetch('/api/me/dify-access-key', { headers })
   return (await response.json()) as DifyAccessKeyResponse
 }
 
@@ -148,14 +156,19 @@ async function initializeSession(firebaseUser: FirebaseUser) {
 
 if (browser && auth) {
   onAuthStateChanged(auth, (firebaseUser) => {
+    authReady.set(true)
     if (firebaseUser) {
       user.set(toAppUser(firebaseUser))
+      void setAnalyticsUser(firebaseUser.uid).then(() => trackEvent('authenticated_visit'))
       void initializeSession(firebaseUser)
       return
     }
 
     user.set(null)
+    void setAnalyticsUser(null)
     clearDashboardState()
     stopDashboardPolling()
   })
+} else if (browser) {
+  authReady.set(true)
 }

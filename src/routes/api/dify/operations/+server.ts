@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { createOperationWithLimitCheck } from '$lib/server/db/repositories/operations'
 import { requireDifyAccessKey, requireDifyToken } from '$lib/server/request-auth'
+import { trackQuestionSubmitted } from '$lib/server/analytics'
 
 function readRequiredString(payload: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
@@ -32,6 +33,9 @@ export const POST: RequestHandler = async ({ request }) => {
     throw error(400, 'accessKey, conversationId, llmText, and query are required')
   }
 
+  if (conversationId.startsWith('practice:'))
+    throw error(400, 'Native practice is saved by the app')
+
   const decodedAccessKey = requireDifyAccessKey(accessKey)
   const result = await createOperationWithLimitCheck({
     uid: decodedAccessKey.uid,
@@ -47,6 +51,8 @@ export const POST: RequestHandler = async ({ request }) => {
   if (result.status === 'usage_limit_exceeded') {
     throw error(429, 'Monthly usage limit exceeded')
   }
+
+  await trackQuestionSubmitted(decodedAccessKey.uid, decodedAccessKey.analyticsContext)
 
   return json({
     ok: true

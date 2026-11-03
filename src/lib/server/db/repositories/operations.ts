@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte } from 'drizzle-orm'
+import { and, count, desc, eq, gte, notLike } from 'drizzle-orm'
 import { MONTHLY_USAGE_LIMIT } from '$lib/constants/usage'
 import { getTokyoMonthStart } from '$lib/utils/tokyo-month'
 import { getDb } from '../client'
@@ -46,7 +46,13 @@ export async function createOperationWithLimitCheck(input: CreateOperationInput)
         count: count()
       })
       .from(operations)
-      .where(and(eq(operations.uid, input.uid), gte(operations.createdAt, getTokyoMonthStart())))
+      .where(
+        and(
+          eq(operations.uid, input.uid),
+          gte(operations.createdAt, getTokyoMonthStart()),
+          notLike(operations.conversationId, 'practice:%')
+        )
+      )
 
     if (Number(result?.count ?? 0) >= MONTHLY_USAGE_LIMIT) {
       return {
@@ -84,7 +90,13 @@ export async function getRemainingUsage(uid: string, now = new Date()) {
       count: count()
     })
     .from(operations)
-    .where(and(eq(operations.uid, uid), gte(operations.createdAt, getTokyoMonthStart(now))))
+    .where(
+      and(
+        eq(operations.uid, uid),
+        gte(operations.createdAt, getTokyoMonthStart(now)),
+        notLike(operations.conversationId, 'practice:%')
+      )
+    )
 
   return Math.max(MONTHLY_USAGE_LIMIT - Number(result?.count ?? 0), 0)
 }

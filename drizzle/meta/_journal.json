@@ -8,6 +8,20 @@
       "when": 1772942148962,
       "tag": "0000_closed_namorita",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793520989366,
+      "tag": "0001_sour_loners",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793525841203,
+      "tag": "0002_optimal_baron_zemo",
+      "breakpoints": true
     }
   ]
 }

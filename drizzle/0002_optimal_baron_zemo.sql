@@ -1,0 +1,1 @@
+ALTER TABLE "practices" ADD COLUMN "custom_scene" jsonb;

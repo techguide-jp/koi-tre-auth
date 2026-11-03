@@ -1,0 +1,11 @@
+.git
+.cursor
+.playwright-mcp
+.env
+.env.*
+db_cluster-*
+node_modules
+.svelte-kit
+.output
+build
+*.log

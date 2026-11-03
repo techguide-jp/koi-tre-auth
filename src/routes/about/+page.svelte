@@ -1,26 +1,79 @@
-<svelte:head>
-  <title>About</title>
-  <meta name="description" content="About this app" />
-</svelte:head>
-
-<div class="text-column">
-  <h1>About this app</h1>
-
+<article class="card info">
+  <p class="eyebrow">Koi-Treについて</p>
+  <h1>会話の小さな練習室</h1>
   <p>
-    This is a <a href="https://kit.svelte.dev">SvelteKit</a> app. You can make your own by typing the
-    following into your command line and following the prompts:
+    初対面やデートで、何を話したらいいか迷うときに。Koi-Treは、AIとの短い会話で自分の伝え方を練習する場所です。
   </p>
-
-  <pre>npm create svelte@latest</pre>
-
+  <h2>使い方</h2>
   <p>
-    The page you're looking at is purely static HTML, with no client-side interactivity needed.
-    Because of that, we don't need to load any JavaScript. Try viewing the page's source, or opening
-    the devtools network panel and reloading.
+    女性も男性も、性別を問わず利用できます。3つの場面では、AIの練習相手を男性・女性から選べます。性別を指定しないこともできます。ご自身の性別や性的指向を登録する必要はありません。
   </p>
-
+  <ol>
+    <li>
+      練習したい場面と相手を選ぶか、「練習したい場面を、自分で決める」から状況を書き、Googleアカウントでログインします。
+    </li>
+    <li>AIと3回やり取りします。ご自身の名前・性別・年齢の入力は不要です。</li>
+    <li>よかった点、改善点、あなたの発言の言い換え例を振り返ります。</li>
+  </ol>
+  <h2>自分の場面をつくるには</h2>
   <p>
-    The <a href="/sverdle">Sverdle</a> page illustrates SvelteKit's data loading and form handling. Try
-    using it with JavaScript disabled!
+    「2回目のデートの帰りに、来週も会う約束をしたい」など、場所・相手との関係・話したいことを500文字以内で書けます。相手の呼び名と最初のひと言は任意です。呼び名には架空の名前を使ってください。最初のひと言を指定しない場合は、あなたから会話を始めます。
   </p>
-</div>
+  <p>
+    設定は練習と一緒に保存され、途中再開や同じ場面での再練習に使います。カスタム場面も、通常と同じ月10回の練習枠を使います。
+  </p>
+  <h2>月10回の無料枠について</h2>
+  <p>
+    最初のAIの返答を正常に保存できた時点で、1回分を使用します。途中で閉じても、同じ練習の続きや振り返りに追加の回数は必要ありません。新しくやり直すと別の練習になります。失敗した生成や会話例の閲覧では消費しません。毎月1日の日本時間0時に、新しい練習を10回始められる枠に更新されます。
+  </p>
+  <h2>データの扱い</h2>
+  <p>
+    ログインにはFirebase
+    Authenticationを利用します。Googleのプロフィール情報はアカウント管理のために保存し、会話の初期設定としてAIへ自動送信することはありません。
+  </p>
+  <p>
+    入力した場面設定と会話は返答と振り返りを作るためにDifyへ送信され、練習の再開と振り返りのために設定・会話履歴・結果を保存します。実名、連絡先、相手の個人情報などは入力しないでください。
+  </p>
+  <p>
+    利用状況の計測にはGoogle
+    Analyticsを利用します。場面設定・会話本文・氏名・メールアドレスは計測イベントに含めません。
+  </p>
+  <h2>練習のヒント</h2>
+  <p>
+    AIの反応は実際の相手の気持ちを保証するものではありません。振り返りは会話を試すためのヒントとして、自分に合う言葉を選んでください。
+  </p>
+  <a class="button primary" href="/">場面を選ぶ</a>
+</article>
+
+<style>
+  .info {
+    max-width: 46rem;
+    margin: 2rem auto;
+    padding: 2.5rem;
+    line-height: 1.9;
+  }
+  h1 {
+    text-align: left;
+    font-size: 1.9rem;
+    margin: 1rem 0;
+  }
+  h2 {
+    font-size: 1.2rem;
+    margin-top: 2rem;
+  }
+  li {
+    margin: 0.6rem 0;
+  }
+  ol {
+    padding-left: 1.5rem;
+  }
+  .button {
+    margin-top: 2rem;
+  }
+  @media (max-width: 550px) {
+    .info {
+      padding: 1.5rem;
+      margin: 1rem 0;
+    }
+  }
+</style>
