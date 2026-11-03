@@ -2,16 +2,52 @@ name: CI
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  lint:
+  verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # CIでは公開設定のダミー値だけでビルドし、外部サービスへ接続しない。
+    env:
+      VITE_API_KEY: ci-placeholder
+      VITE_AUTH_DOMAIN: localhost
+      VITE_PROJECT_ID: demo-koi-tre-ci
+      VITE_APP_ID: demo-ci-app
+      VITE_MEASUREMENT_ID: ''
+      VITE_APP_DOMAIN: https://app.koi-tre.com
+      PRACTICE_ENABLED: 'true'
 
     steps:
-      - uses: actions/checkout@v2
-      - name: Use Node.js
-        uses: actions/setup-node@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: '20'
-      - run: npm install
-      - run: npm run lint
-      - run: npm run check
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - name: Use Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm build
+      - name: Check public pages
+        shell: bash
+        run: |
+          pnpm preview --host 127.0.0.1 --port 5184 > /tmp/koi-tre-preview.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --silent --fail http://127.0.0.1:5184/sitemap.xml > /dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          pnpm check:seo

@@ -11,13 +11,13 @@ Firebase 認証、Drizzle、PostgreSQL を使って Dify アプリ連携用の A
 - 月10回の練習枠、途中再開、二重送信防止
 - Drizzle + PostgreSQL を利用したデータベース連携
 - Dify アプリから利用する内部 API
-- Vercel をデプロイ先として利用（現状は手動デプロイ）
+- Vercel の Git 連携による Preview・本番デプロイ
 - ESLint と Prettier によるコードフォーマットと静的解析
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) v20 以上
-- pnpm
+- [Node.js](https://nodejs.org/) v24
+- pnpm 10.30.2（`package.json` の `packageManager` に固定）
 - PostgreSQL
 - Firebase プロジェクト設定
 
@@ -33,7 +33,7 @@ cd koi-tre-auth
 ### 2. 依存パッケージのインストール
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 ### 3. 環境変数の設定
@@ -189,13 +189,15 @@ pnpm preview
 
 公式の `@sveltejs/adapter-vercel` 5.10.3 を使い、ランタイムを `nodejs24.x` に固定しています。旧 `adapter-auto` が自動導入する Vercel アダプターは Node.js 24 に対応しないため使用しません。
 
-本プロジェクトでは、Vercel をデプロイ先として利用していますが、現状自動デプロイの設定は行っていません。
-Vercel の管理画面から手動でデプロイするか、今後 GitHub Actions などを用いて自動デプロイを実装してください。
+Vercel プロジェクト `koi-tre-auth` はこのリポジトリと Git 連携しています。作業ブランチへの push で Preview を作り、production branch の `main` への push で本番をビルドします。PR の CI と Preview を確認してから main にマージし、Vercel の READY と `app.koi-tre.com` の参照先を確認してください。
+
+手動で本番を切り替える場合は `vercel deploy --prod --skip-domain` でステージし、確認したデプロイを `vercel promote` で昇格します。アプリの秘密情報は Vercel の環境変数で管理し、GitHub Actions にはコピーしません。
 
 ## CI/CD
 
-プロジェクトには GitHub Actions を利用した CI ワークフローも用意されています。
-現状ではコードの静的解析やテストを実行する設定となっています。
+GitHub Actions は Node.js 24・固定した pnpm で lockfile を変更せずにインストールし、lint・型チェック・テスト・Vercel 向けビルド・公開ページの HTTP チェックを行います。DB の保存・認証・月10回の利用枠は PGlite を使った統合テストで検証します。
+
+CI ビルドの Firebase 公開設定はダミー値で、計測と外部 API 接続を行いません。デプロイは Vercel の Git 連携が担当します。Vercel のデプロイ成功と GitHub CI の成功は別々に確認してください。
 
 ## Contributing
 
