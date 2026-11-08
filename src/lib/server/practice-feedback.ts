@@ -43,7 +43,7 @@ function parseAnalysis(value: unknown, userTexts: string[]): PracticeAnalysis {
   const item = record(value)
   if (item.version !== 2 || userTexts.length !== PRACTICE_TURNS)
     throw new Error('Invalid practice analysis version')
-  const strengths = list(item.strengths, 1, 3).map((value) => {
+  const strengths = list(item.strengths, 0, 3).map((value) => {
     const point = record(value)
     return {
       title: text(point.title, 100),
@@ -76,11 +76,25 @@ function parseAnalysis(value: unknown, userTexts: string[]): PracticeAnalysis {
     throw new Error('Duplicate analysis aspect')
   const turns = list(item.turns, PRACTICE_TURNS, PRACTICE_TURNS).map((value) => {
     const turn = record(value)
+    const rewrite = text(turn.rewrite)
+    const alternative = turn.alternative == null ? undefined : record(turn.alternative)
+    const alternate = alternative
+      ? {
+          purpose: text(alternative.purpose, 80),
+          rewrite: text(alternative.rewrite),
+          reason: text(alternative.reason)
+        }
+      : undefined
     return {
       ...evidence(turn, userTexts),
       observation: text(turn.observation),
-      rewrite: text(turn.rewrite),
-      reason: text(turn.reason)
+      rewrite,
+      reason: text(turn.reason),
+      ...(turn.rewritePurpose === undefined
+        ? {}
+        : { rewritePurpose: text(turn.rewritePurpose, 80) }),
+      // 任意の別案が主案と重複しても、根拠を検証済みの分析全体は失敗させない。
+      ...(alternate && alternate.rewrite !== rewrite ? { alternative: alternate } : {})
     }
   })
   if (new Set(turns.map(({ turn }) => turn)).size !== PRACTICE_TURNS)

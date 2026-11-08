@@ -6,7 +6,8 @@ import {
   type PracticeTurn,
   type SceneId
 } from '$lib/practice'
-import { assessPractice } from './jev-practice'
+import { assessPractice, selectPracticeCoaching } from './jev-practice'
+import { practiceCoaching } from './practice-coaching'
 import { parsePracticeOutput } from './practice-feedback'
 export { parsePracticeOutput } from './practice-feedback'
 
@@ -34,7 +35,17 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
     ]),
     { role: 'user', content: input.text, turn: input.turns.length + 1 }
   ]
-  const assessment = final ? await assessPractice(scene, transcript, signal) : null
+  // 場面の分類と補助評価を合わせて6秒以内にし、文章生成の時間を確保する。
+  const assessmentSignal = AbortSignal.any([signal, AbortSignal.timeout(6000)])
+  const coaching = final
+    ? await selectPracticeCoaching(scene, assessmentSignal)
+    : practiceCoaching(scene)
+  const measured = final
+    ? await assessPractice(scene, transcript, assessmentSignal, coaching)
+    : null
+  const assessment = measured
+    ? { ...measured, rubric: { version: 2 as const, profile: coaching.id } }
+    : null
   const response = await fetch(`${base.replace(/\/$/, '')}/workflows/run`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
@@ -45,6 +56,14 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
       inputs: {
         scene: JSON.stringify({
           ...scene,
+          coaching: {
+            ...coaching,
+            replyStyle: final
+              ? 'close_naturally'
+              : input.turns.length === 0
+                ? 'respond_and_share'
+                : 'share_or_follow_up'
+          },
           assessment: assessment
             ? {
                 ...assessment,

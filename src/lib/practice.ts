@@ -152,6 +152,7 @@ export interface PracticeEvidence {
 export interface PracticeAssessment {
   provider: 'jev'
   model: string
+  rubric?: { version: 2; profile: string }
   aspects: {
     id: AnalysisAspectId
     score: number
@@ -177,6 +178,8 @@ export interface PracticeAnalysis {
     quote: string
     rewrite: string
     reason: string
+    rewritePurpose?: string
+    alternative?: { purpose: string; rewrite: string; reason: string }
   }[]
   nextPractice: { goal: string; example: string }
   assessment?: PracticeAssessment
