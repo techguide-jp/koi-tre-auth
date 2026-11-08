@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { readAnalyticsContext } from '$lib/analytics-context'
-import { MAX_MESSAGE_LENGTH, PRACTICE_TURNS } from '$lib/practice'
+import { MAX_MESSAGE_LENGTH, MAX_PRACTICE_TURNS } from '$lib/practice'
 import { requireFirebaseUser } from '$lib/server/request-auth'
 import { submitPracticeMessage } from '$lib/server/practice-service'
 import {
@@ -23,7 +23,7 @@ export const POST: RequestHandler = async ({ request, params }) => {
     body.text.length > MAX_MESSAGE_LENGTH ||
     !Number.isInteger(body.expectedTurn) ||
     Number(body.expectedTurn) < 0 ||
-    Number(body.expectedTurn) >= PRACTICE_TURNS
+    Number(body.expectedTurn) >= MAX_PRACTICE_TURNS
   )
     throw error(400, '1〜1000文字で返答を入力してください。')
   const result = await submitPracticeMessage(

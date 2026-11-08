@@ -2,38 +2,33 @@
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
   import { authReady, authenticatedFetch, user } from '$lib/stores'
-  import {
-    scenes,
-    sceneWithPartner,
-    partnerNameForScene,
-    type BuiltInSceneId,
-    type PartnerPreference,
-    type CustomSceneInput,
-    type PracticeOverview,
-    type SceneId
-  } from '$lib/practice'
+  import { type CustomSceneInput, type PracticeOverview, type SceneId } from '$lib/practice'
+  import { type Adventure, type AdventureProgress } from '$lib/adventure'
   import { saveCustomSceneDraft } from '$lib/custom-scene-client'
-  import CustomSceneForm from '$lib/components/CustomSceneForm.svelte'
   import { startPractice } from '$lib/practice-client'
-  import SceneDrawing from '$lib/components/SceneDrawing.svelte'
+  import AdventureLobby from '$lib/components/adventure/AdventureLobby.svelte'
+  import AdventureProgressPanel from '$lib/components/adventure/AdventureProgress.svelte'
+  import CustomSceneForm from '$lib/components/CustomSceneForm.svelte'
   import LegacyHome from '$lib/components/LegacyHome.svelte'
   import { guides } from '$lib/content/guides'
   export let data
   let mounted = false
   let loadedUid = ''
   let overview: PracticeOverview | null = null
+  let progress: AdventureProgress | null = null
   let pendingScene: SceneId | null = null
-  let partners: Record<BuiltInSceneId, PartnerPreference> = {
-    cafe: 'unspecified',
-    hobbies: 'unspecified',
-    silence: 'unspecified'
-  }
   let loading = false
   let message = ''
   onMount(() => {
     mounted = true
     const refresh = () => {
-      if (data.practiceEnabled && $user && !loading && document.visibilityState === 'visible')
+      if (
+        data.practiceEnabled &&
+        $user &&
+        !loading &&
+        !pendingScene &&
+        document.visibilityState === 'visible'
+      )
         void loadOverview()
     }
     window.addEventListener('focus', refresh)
@@ -51,44 +46,52 @@
   $: if (!$user) {
     loadedUid = ''
     overview = null
+    progress = null
   }
   async function loadOverview() {
     loading = true
     message = ''
     const uid = $user?.uid
     try {
-      const result = await authenticatedFetch('/api/me/practices')
-      if ($user?.uid === uid) overview = await result.json()
+      const results = await Promise.all([
+        authenticatedFetch('/api/me/practices'),
+        authenticatedFetch('/api/me/adventure')
+      ])
+      const [nextOverview, nextProgress] = await Promise.all(
+        results.map((response) => response.json())
+      )
+      if ($user?.uid === uid) {
+        overview = nextOverview
+        progress = nextProgress
+      }
     } catch (error) {
-      message = error instanceof Error ? error.message : '利用状況を読み込めませんでした。'
+      if ($user?.uid === uid)
+        message = error instanceof Error ? error.message : '練習の足あとを読み込めませんでした。'
     } finally {
-      loading = false
+      if ($user?.uid === uid) loading = false
     }
   }
-  async function beginPreset(sceneId: BuiltInSceneId) {
-    const customScene = sceneWithPartner(sceneId, partners[sceneId])
-    await begin(customScene ? 'custom' : sceneId, customScene, sceneId)
-  }
-  async function begin(
-    sceneId: SceneId,
-    customScene?: CustomSceneInput,
-    pendingId: SceneId = sceneId
-  ) {
+  async function begin(sceneId: SceneId, customScene?: CustomSceneInput, adventure?: Adventure) {
     if (pendingScene || !$authReady) return
     if (!$user) {
-      const preset = !!customScene && pendingId !== 'custom'
-      if (customScene && !saveCustomSceneDraft(customScene, preset ? 'preset' : 'custom')) {
+      if (adventure) {
+        await goto(
+          `/login?character=${adventure.characterId}&episode=${adventure.episodeId}&turns=${adventure.turns}`
+        )
+        return
+      }
+      if (customScene && !saveCustomSceneDraft(customScene)) {
         message =
           '場面を引き継ぐための一時保存ができませんでした。ブラウザの保存を許可して、もう一度お試しください。'
         return
       }
-      await goto(`/login?scene=${sceneId}${preset ? '&preset=1' : ''}`)
+      await goto(`/login?scene=${sceneId}`)
       return
     }
-    pendingScene = pendingId
+    pendingScene = sceneId
     message = ''
     try {
-      const session = await startPractice(sceneId, customScene)
+      const session = await startPractice(sceneId, customScene, adventure)
       await goto(`/practice/${session.id}`)
     } catch (error) {
       message = error instanceof Error ? error.message : '練習を開始できませんでした。'
@@ -98,55 +101,42 @@
   }
 </script>
 
-{#if !data.practiceEnabled}
-  <LegacyHome />
-{:else}
+{#if !data.practiceEnabled}<LegacyHome />{:else}
   <section class="hero" aria-labelledby="hero-title">
     <div class="hero-copy">
-      <p class="section-label"><span></span>初対面・デートの会話練習</p>
-      <h1 id="hero-title">会う日の前に、<br />会話の<span class="underline">予行練習。</span></h1>
+      <p class="section-label">恋愛コミュニケーションの練習</p>
+      <h1 id="hero-title">今日は、どんな<br /><span>会話が生まれる？</span></h1>
       <p class="hero-description">
-        カフェで何を話そう。沈黙したらどうしよう。<br
-          class="wide-only"
-        />そんなときは、AI相手に少しだけ練習。<br
-          class="wide-only"
-        />次の会話で使える言い方を、一つ見つけませんか。
+        気になる相手と、少しずつ知り合っていく。<br />うまく言えない日も、言い直してみればいい。<br
+        />あなたの言葉で始まる、小さな物語。
       </p>
-      <a class="button primary hero-cta" href="#scenes"
-        >無料で会話を練習する<span aria-hidden="true">→</span></a
+      <a class="button primary" href="#scenes"
+        >お相手を選んで始める <span aria-hidden="true">→</span></a
       >
-      <p class="cta-caption">月10回無料 · 1回3往復 · スマホでそのまま</p>
-      <p class="inclusive-caption">女性も男性も。練習相手を選んで、自分のペースで。</p>
-      <a class="example-link" href="#example"
-        >まずは会話の例を見る<span aria-hidden="true">↓</span></a
-      >
+      <p class="small muted hero-note">月10回無料 · 3往復／6往復 · スマホでそのまま</p>
     </div>
-    <figure class="hero-visual">
+    <figure>
       <img
         src="/images/cafe-conversation.jpg"
-        alt="木漏れ日の入るカフェで、コーヒーを飲みながら穏やかに会話する二人のイラスト"
+        alt="木漏れ日の入るカフェで、穏やかに会話する二人のイラスト"
         width="1448"
         height="1086"
         fetchpriority="high"
       />
-      <figcaption><span class="caption-line"></span>話す前の、ちいさな準備。</figcaption>
+      <figcaption>話すたびに、少しずつ。</figcaption>
     </figure>
   </section>
-
   <div class="intro-strip" aria-label="練習の流れ">
-    <p>はじめの一歩は、<br /><strong>たった3回の返答から。</strong></p>
+    <p>キャラクター6人。<br /><strong>24の場面から、今日のひとつを。</strong></p>
     <ol>
-      <li><span>01</span>場面を選ぶ</li>
-      <li><span>02</span>自分の言葉で返す</li>
-      <li><span>03</span>言い換えを見つける</li>
+      <li><span>01</span>お相手を選ぶ</li>
+      <li><span>02</span>自分の言葉で話す</li>
+      <li><span>03</span>次の物語へ進む</li>
     </ol>
   </div>
-
-  {#if $user}
-    <section class="account-strip" aria-label="今月の練習">
+  {#if $user}<section class="account-strip" aria-label="今月の練習">
       <div>
         <p class="section-label">あなたの練習</p>
-        <h2>今日は、何を話してみよう。</h2>
         {#if overview}<p>
             今月はあと <strong>{overview.remaining}回</strong> / {overview.limit}回{overview.reserved
               ? `（ほかに${overview.reserved}回を処理中）`
@@ -156,894 +146,336 @@
             次の更新：{new Date(overview.resetsAt).toLocaleDateString('ja-JP', {
               timeZone: 'Asia/Tokyo'
             })}
-          </p>
-        {:else if loading}<p role="status">利用状況を読み込んでいます…</p>{/if}
+          </p>{:else if loading}<p role="status">練習の足あとを読み込んでいます…</p>{/if}
       </div>
       <div class="account-actions">
         {#if overview?.activePracticeId}<a
             class="button primary"
-            href="{`/practice/${overview.activePracticeId}`}">途中の練習を再開 →</a
-          >{/if}
-        {#if overview?.latestPracticeId && overview.latestPracticeId !== overview.activePracticeId}<a
-            class="text-link"
+            href="{`/practice/${overview.activePracticeId}`}">途中の会話を続ける →</a
+          >{/if}{#if overview?.latestPracticeId && overview.latestPracticeId !== overview.activePracticeId}<a
             href="{`/practice/${overview.latestPracticeId}`}">前回の振り返りを見る</a
-          >{/if}
-        {#if message}<button class="button secondary" disabled="{loading}" on:click="{loadOverview}"
-            >{loading ? '読み込み中…' : '利用状況を再取得'}</button
           >{/if}
       </div>
     </section>
-  {/if}
-
-  <section id="example" class="example-section" aria-labelledby="example-title">
-    <div class="example-copy">
-      <p class="section-label">こんなふうに練習します</p>
-      <h2 id="example-title">短いひと言から、<br />会話は広がります。</h2>
-      <p>気の利いた話をしなくても大丈夫。<br />いつもの自分の言葉で、返してみてください。</p>
-      <p>
-        3回のやり取りが終わったら、よかった点と<br
-          class="wide-only"
-        />次に試す言い方を一緒に振り返ります。
-      </p>
-      <div class="example-note">
-        <span aria-hidden="true">↳</span>
-        <p>点数はつけません。<br /><strong>あなたの発言をもとに、具体的に。</strong></p>
-      </div>
-    </div>
-    <div class="example-chat" aria-label="会話と振り返りの見本">
-      <div class="example-chat-heading">
-        <span class="initial-avatar" aria-hidden="true">は</span>
-        <div><strong>はるさん</strong><span>初対面のカフェ · AIとの会話例</span></div>
-        <span class="sample-label">見本</span>
-      </div>
-      <div class="sample-conversation">
-        <p class="sample-partner">お休みの日は、どんなふうに過ごしていますか？</p>
-        <p class="sample-mine">映画を観ることが多いです。</p>
-      </div>
-      <div class="sample-feedback">
-        <span class="feedback-caption">振り返りの例</span>
-        <h3>自分の話に、質問を一つ添えてみる。</h3>
-        <p>映画を観ることが多いです。<em>どんな映画がお好きですか？</em></p>
-        <span class="small muted">自分のことを伝えながら、相手の話も聞ける言い方に。</span>
-      </div>
-      <p class="sample-footnote">
-        ※説明用の会話例です。実際の振り返りは、あなたの発言に合わせて届きます。
-      </p>
-    </div>
-  </section>
-
-  <section id="scenes" class="scene-section" aria-labelledby="scenes-title">
-    <div class="section-heading">
-      <div>
-        <p class="section-label">さっそく、やってみよう</p>
-        <h2 id="scenes-title">今日は、どの場面にする？</h2>
-      </div>
-      <p>迷ったら、初対面のカフェから。<br />練習相手を選び、Googleでログインできます。</p>
-    </div>
-    <div class="scene-grid">
-      {#each scenes as scene, index}
-        <article class="scene-card">
-          <div class="scene-art" class:sage="{index === 1}" class:peach="{index === 2}">
-            <span class="scene-number">0{index + 1}</span><SceneDrawing scene="{scene.id}" />
-          </div>
-          <div class="scene-body">
-            <p class="scene-category">
-              {index === 0
-                ? 'はじめの一歩に'
-                : index === 1
-                  ? 'もう少し話したいときに'
-                  : '沈黙が気になるときに'}
-            </p>
-            <h3>{scene.title}</h3>
-            <p class="scene-description">{scene.subtitle}</p>
-            <label class="partner-choice" for="{`partner-${scene.id}`}"
-              >練習相手
-              <select
-                id="{`partner-${scene.id}`}"
-                bind:value="{partners[scene.id]}"
-                disabled="{!!pendingScene}"
-              >
-                <option value="unspecified">性別を指定しない</option>
-                <option value="male">男性</option>
-                <option value="female">女性</option>
-              </select>
-            </label>
-            <p class="scene-partner">
-              <span class="partner-dot" aria-hidden="true"></span>お相手：{partnerNameForScene(
-                scene.id,
-                partners[scene.id]
-              )}さん
-              <span>（AI）</span>
-            </p>
-            <button
-              class="button scene-button"
-              disabled="{!$authReady || !!pendingScene || overview?.remaining === 0}"
-              aria-busy="{pendingScene === scene.id}"
-              on:click="{() => beginPreset(scene.id)}"
-              >{pendingScene === scene.id ? '準備しています…' : 'この場面を練習する'}<span
-                aria-hidden="true">→</span
-              ></button
-            >
-          </div>
-        </article>
-      {/each}
-    </div>
+    {#if progress}<AdventureProgressPanel progress="{progress}" />{/if}{/if}
+  <AdventureLobby
+    progress="{progress}"
+    disabled="{!$authReady || !!pendingScene || overview?.remaining === 0}"
+    pending="{pendingScene === 'adventure'}"
+    on:start="{(event) => begin('adventure', undefined, event.detail)}"
+  />
+  {#if message}<div class="message-area">
+      <p class="error" role="alert">{message}</p>
+      {#if $user}<button
+          class="button secondary"
+          disabled="{loading || !!pendingScene}"
+          on:click="{loadOverview}">{loading ? '読み込み中…' : '足あとを再取得'}</button
+        >{/if}
+    </div>{/if}
+  {#if overview?.remaining === 0}<p class="notice">
+      今月の練習枠を使い切りました。途中の会話や振り返り、アルバムは引き続き楽しめます。
+    </p>{/if}
+  <section class="custom-section" aria-label="自分で場面を設定する">
     <CustomSceneForm
       disabled="{!$authReady || !!pendingScene || overview?.remaining === 0}"
       pending="{pendingScene === 'custom'}"
       on:start="{(event) => begin('custom', event.detail)}"
     />
-    {#if message}<p class="error" role="alert">{message}</p>{/if}
-    {#if overview?.remaining === 0}<p class="notice">
-        今月の練習枠を使い切りました。途中の練習は追加消費なしで再開できます。
-      </p>{/if}
-    <p class="quota-note">
-      ご自身の性別は入力不要です。相手の性別を指定せずに練習することもできます。<br />
-      最初の返答が届いたら1回分を使用。3回の返答と振り返りまで追加消費はありません。<br
-        class="wide-only"
-      />途中で閉じても、同じアカウントで再開できます。
-    </p>
   </section>
-
+  <section class="reasons" aria-labelledby="reasons-title">
+    <p class="section-label">話す楽しさを、少しずつ</p>
+    <h2 id="reasons-title">ひとつの会話が、次の一歩に。</h2>
+    <div class="reason-grid">
+      <article>
+        <span aria-hidden="true">✦</span>
+        <h3>小さなミッション</h3>
+        <p>
+          「自分の気持ちをひと言」など、今回試すことはひとつ。会話を終えると20XP、ミッションを達成するとさらに10XP。
+        </p>
+      </article>
+      <article>
+        <span aria-hidden="true">↗</span>
+        <h3>あなただけの振り返り</h3>
+        <p>
+          5つの観点のグラフと、実際の発言をもとにした言い換え。完了した会話では、ひと言だけ言い直して反応を試せます。
+        </p>
+      </article>
+      <article>
+        <span aria-hidden="true">◇</span>
+        <h3>思い出を集めよう</h3>
+        <p>
+          エピソードを終えると次の話が開き、アルバムに一枚が増えます。気に入った自分の言葉も保存できます。
+        </p>
+      </article>
+    </div>
+  </section>
   <section class="faq-section" aria-labelledby="faq-title">
+    <h2 id="faq-title">気になること。</h2>
     <div>
-      <p class="section-label">始める前に</p>
-      <h2 id="faq-title">気になること。</h2>
-      <p class="muted">使い方やデータについて、もう少し。</p>
-      <a class="text-link" href="/about">詳しい使い方を見る →</a>
-    </div>
-    <div class="faq-list">
       <details>
-        <summary>女性も使えますか？<span aria-hidden="true">＋</span></summary>
+        <summary>どんな相手と話せますか？</summary>
         <p>
-          はい。性別を問わず利用できます。3つの場面では、練習相手を男性・女性から選べます。相手の性別を指定しないこともできます。ご自身の性別や性的指向を登録する必要はありません。
+          初めに男性・女性からお相手を選び、その側の3人の成人キャラクターから選べます。お相手はAIです。あなた自身の性別や性的指向の登録は不要で、いつでも選び直せます。
         </p>
       </details>
       <details>
-        <summary>会話が苦手でも使えますか？<span aria-hidden="true">＋</span></summary>
+        <summary>無料でどこまで使えますか？</summary>
         <p>
-          はい。短い返答でも大丈夫です。相手はAIなので、自分のペースで言葉を考えられます。3回返答すると、実際の発言に合わせたアドバイスが届きます。
+          月10回、選んだ3往復または6往復と振り返りまで練習できます。最初の返答を正常に保存した時点で1回分を使います。途中の会話の再開や、同じ練習で一度だけの言い直しには追加消費がありません。
         </p>
       </details>
       <details>
-        <summary>無料でどこまで使えますか？<span aria-hidden="true">＋</span></summary>
+        <summary>何を話せばいいかわからなくても大丈夫？</summary>
         <p>
-          月10回、3回の返答と振り返りまで練習できます。日本時間の毎月1日に枠が更新されます。会話例の閲覧や、返答の生成に失敗した場合は消費しません。
+          場面と相手の最初のひと言は用意しています。迷ったら「おまかせの場面」で選べます。短い返答でも大丈夫。AI相手も、自分の好みや感じ方を話しながら会話を広げます。
         </p>
       </details>
       <details>
-        <summary>名前やプロフィールの入力は必要ですか？<span aria-hidden="true">＋</span></summary>
+        <summary>前の会話は残りますか？</summary>
         <p>
-          Googleアカウントでログインするだけで始められます。練習のための名前・性別・年齢の入力は不要です。Googleの氏名やメールアドレスを、練習相手への入力に使うこともありません。
-        </p>
-      </details>
-      <details>
-        <summary>入力した会話はどう扱われますか？<span aria-hidden="true">＋</span></summary>
-        <p>
-          返答を作るためにAIへ送信し、練習の再開と振り返りのために保存します。実名・連絡先などは入力しないでください。アクセス解析に会話本文は送りません。
+          同じGoogleアカウントでログインすると、途中の会話、振り返り、経験値、アルバムを確認できます。以前の3つの場面やカスタム練習の履歴も、そのまま再開・閲覧できます。
         </p>
       </details>
     </div>
+  </section>
+  <section class="guides-section" aria-labelledby="guides-title">
+    <p class="section-label">会う日の前に</p>
+    <h2 id="guides-title">会話のヒントを、ひとつ。</h2>
+    <div>
+      {#each guides.slice(0, 3) as guide}<a href="{`/guides/${guide.slug}`}"
+          >{guide.title} <span aria-hidden="true">↗</span></a
+        >{/each}
+    </div>
+    <a class="text-link" href="/topics">会話ネタ帳も見る →</a>
   </section>
 {/if}
 
-<section class="reading-section" aria-labelledby="reading-title">
-  <p class="section-label">ログインせずに、ここから</p>
-  <h2 id="reading-title">何を話そう、と思ったら。</h2>
-  <p>会う前に使える話題と、短い会話の例を集めました。</p>
-  <a class="button secondary" href="/topics">登録不要の会話ネタ帳を開く →</a>
-  <p><a class="text-link" href="/try">まずは30秒。返し方を選ぶお試しへ →</a></p>
-  <div class="reading-grid">
-    {#each guides as guide}
-      <a href="{`/guides/${guide.slug}`}" class="reading-card">
-        <span>{guide.category}</span>
-        <h3>{guide.title}</h3>
-        <span>会話例を読む →</span>
-      </a>
-    {/each}
-  </div>
-  <a class="text-link" href="/guides">会話ガイドをすべて見る →</a>
-</section>
-
 <style>
-  .inclusive-caption {
-    color: var(--muted);
-    font-size: 0.75rem;
-    line-height: 1.8;
-    margin: 0 0 1.3rem;
-  }
-  .partner-choice {
-    display: block;
-    font-size: 0.72rem;
-    color: var(--muted);
-    margin: 1.1rem 0 0.75rem;
-  }
-  .partner-choice select {
-    display: block;
-    width: 100%;
-    margin-top: 0.5rem;
-    padding: 0.65rem;
-    background: #fffefa;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    color: var(--ink);
-    font: inherit;
-    font-size: 0.85rem;
-  }
-  .reading-section {
-    padding: 3rem 0;
-    border-top: 1px solid var(--border);
-  }
-  .reading-section > p {
-    line-height: 1.9;
-  }
-  .reading-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin: 1.8rem 0;
-  }
-  .reading-card {
-    display: block;
-    padding: 1.5rem;
-    border: 1px solid var(--border);
-    color: var(--ink);
-    border-radius: 4px;
-  }
-  .reading-card span {
-    font-size: 0.75rem;
-    color: var(--accent);
-  }
-  .reading-card h3 {
-    font-size: 1.05rem;
-    line-height: 1.8;
-    margin: 0.75rem 0 1rem;
-  }
-  @media (max-width: 700px) {
-    .reading-grid {
-      grid-template-columns: 1fr;
-    }
-  }
   .section-label {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
     color: var(--accent);
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    margin: 0 0 1rem;
-  }
-  .section-label > span {
-    width: 1.3rem;
-    height: 1px;
-    background: currentColor;
+    margin: 0;
   }
   .hero {
     display: grid;
-    grid-template-columns: 0.95fr 1.1fr;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 40px;
     align-items: center;
-    gap: 1rem;
-    padding: 3.75rem 0 3.25rem;
+    padding: 64px 0;
   }
-  .hero-copy {
-    position: relative;
-    z-index: 1;
-  }
-  h1,
-  h2 {
-    font-family: var(--font-editorial);
-    font-weight: 600;
+  .hero h1 {
     text-align: left;
+    font-family: var(--font-editorial);
+    font-size: clamp(2.2rem, 4.7vw, 3.8rem);
+    line-height: 1.45;
+    letter-spacing: 0.02em;
+    margin: 20px 0;
   }
-  h1 {
-    font-size: clamp(2.2rem, 3.6vw, 3.25rem);
-    line-height: 1.65;
-    letter-spacing: 0.025em;
-    margin: 1.2rem 0 1.5rem;
-    white-space: nowrap;
-  }
-  .underline {
-    text-decoration: underline;
-    text-decoration-color: #e8b6a6;
-    text-decoration-thickness: 6px;
-    text-underline-offset: 9px;
+  .hero h1 span {
+    color: var(--accent);
   }
   .hero-description {
-    font-size: 0.9rem;
-    line-height: 2.15;
-    margin: 0 0 1.8rem;
+    font-size: 0.96rem;
+    line-height: 2.1;
+    margin-bottom: 24px;
   }
-  .hero-cta {
-    min-width: 17rem;
-    justify-content: space-between;
+  .hero-note {
+    margin: 12px 0 0;
   }
-  .cta-caption {
-    font-size: 0.69rem;
-    color: var(--muted);
-    margin: 0.65rem 0 1.3rem;
+  .hero figure {
+    margin: 0;
   }
-  .example-link {
-    font-size: 0.78rem;
-    color: var(--ink);
-    border-bottom: 1px solid #a6aca4;
-    padding-bottom: 0.35rem;
-    display: inline-flex;
-    gap: 1.8rem;
-  }
-  .example-link:hover {
-    text-decoration: none;
-    border-color: var(--accent);
-  }
-  .hero-visual {
-    margin: 0 -1.5rem 0 0;
-  }
-  .hero-visual img {
+  .hero img {
     width: 100%;
     height: auto;
-    display: block;
-    mix-blend-mode: multiply;
+    border-radius: 24px;
   }
-  .hero-visual figcaption {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 0.6rem;
-    margin-top: 1rem;
-    padding-right: 1.5rem;
-    font-family: var(--font-editorial);
-    font-size: 0.8rem;
+  .hero figcaption {
+    font-size: 0.7rem;
     color: var(--muted);
-    letter-spacing: 0.1em;
-  }
-  .caption-line {
-    width: 2rem;
-    height: 1px;
-    background: #9ea695;
+    margin-top: 12px;
+    text-align: right;
   }
   .intro-strip {
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    padding: 1.6rem 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 2rem;
+    gap: 24px;
+    padding: 28px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
   }
-  .intro-strip > p {
-    font-size: 0.8rem;
+  .intro-strip p {
     margin: 0;
-    line-height: 1.9;
-  }
-  .intro-strip strong {
-    font-size: 0.95rem;
-    font-weight: 600;
+    font-size: 0.85rem;
   }
   .intro-strip ol {
     display: flex;
-    gap: 2.1rem;
+    gap: 24px;
     padding: 0;
-    margin: 0;
     list-style: none;
-    font-size: 0.8rem;
   }
   .intro-strip li {
+    font-size: 0.8rem;
     display: flex;
     align-items: center;
-    gap: 0.65rem;
+    gap: 10px;
   }
   .intro-strip li span {
-    font-family: Georgia, serif;
-    font-style: italic;
-    font-size: 1.3rem;
     color: var(--accent);
+    font-size: 0.7rem;
   }
   .account-strip {
-    margin-top: 2.5rem;
-    padding: 1.5rem 2rem;
-    background: #edf0e8;
     display: flex;
     justify-content: space-between;
-    gap: 1.5rem;
+    gap: 24px;
     align-items: center;
-  }
-  .account-strip h2 {
-    font-size: 1.35rem;
-    margin: 0.5rem 0;
+    padding: 24px 0;
   }
   .account-strip p {
-    margin: 0.2rem 0;
+    margin: 8px 0;
+  }
+  .account-strip strong {
+    font-size: 1.5rem;
   }
   .account-actions {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 1rem;
-  }
-  h2 {
-    font-size: clamp(1.65rem, 2.8vw, 2.1rem);
-    line-height: 1.7;
-    letter-spacing: 0.03em;
-    margin: 0.7rem 0 1.5rem;
-  }
-  .example-section {
-    display: grid;
-    grid-template-columns: 0.9fr 1.1fr;
-    gap: 5rem;
+    gap: 16px;
+    flex-wrap: wrap;
     align-items: center;
-    padding: 5.5rem 0;
-    scroll-margin-top: 2rem;
-  }
-  .example-copy > p:not(.section-label) {
-    font-size: 0.84rem;
-    line-height: 2.1;
-  }
-  .example-note {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-top: 1.75rem;
-  }
-  .example-note > span {
-    font-family: Georgia, serif;
-    color: var(--accent);
-    font-size: 2.4rem;
-    transform: rotate(-10deg);
-  }
-  .example-note p {
-    font-size: 0.8rem;
-    margin: 0;
-    line-height: 1.9;
-  }
-  .example-note strong {
-    font-weight: 600;
-  }
-  .example-chat {
-    padding: 1.5rem;
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    box-shadow: 8px 8px 0 #efede5;
-  }
-  .example-chat-heading {
-    display: flex;
-    gap: 0.7rem;
-    align-items: center;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 1rem;
-  }
-  .initial-avatar {
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    background: #e7ecdf;
-    width: 2.5rem;
-    height: 2.5rem;
-    font-family: var(--font-editorial);
-    font-size: 1.15rem;
-  }
-  .example-chat-heading strong {
     font-size: 0.85rem;
-    font-weight: 600;
   }
-  .example-chat-heading div > span {
-    display: block;
-    font-size: 0.63rem;
-    color: var(--muted);
-    margin-top: 0.25rem;
+  .custom-section {
+    padding-bottom: 48px;
   }
-  .sample-label {
-    margin-left: auto;
-    color: var(--muted);
-    border: 1px solid var(--border);
-    font-size: 0.62rem;
-    padding: 0.2rem 0.5rem;
+  .message-area {
+    margin: -28px 0 36px;
   }
-  .sample-conversation {
-    display: flex;
-    flex-direction: column;
-    padding: 1.2rem 0 1.5rem;
-    gap: 0.85rem;
+  .reasons {
+    padding: 52px 0;
+    border-top: 1px solid var(--border);
   }
-  .sample-conversation p {
-    font-size: 0.8rem;
-    max-width: 87%;
-    padding: 0.75rem 1rem;
-    margin: 0;
+  .reasons h2,
+  .guides-section h2 {
+    font-size: 1.65rem;
+    margin: 14px 0 30px;
   }
-  .sample-partner {
-    background: #f2f3ed;
-    border-radius: 0 10px 10px 10px;
-    align-self: flex-start;
-  }
-  .sample-mine {
-    background: #f5e5dc;
-    border-radius: 10px 0 10px 10px;
-    align-self: flex-end;
-  }
-  .sample-feedback {
-    border-top: 1px dashed #cbd0c4;
-    padding-top: 1rem;
-  }
-  .feedback-caption {
-    color: #617258;
-    font-size: 0.65rem;
-    font-weight: 600;
-  }
-  .sample-feedback h3 {
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin: 0.45rem 0 0.7rem;
-  }
-  .sample-feedback p {
-    border-left: 2px solid #b9c4ab;
-    background: #f5f6f1;
-    padding: 0.75rem 1rem;
-    margin: 0 0 0.6rem;
-    font-size: 0.83rem;
-  }
-  .sample-feedback em {
-    font-style: normal;
-    color: #9e4936;
-    font-weight: 600;
-  }
-  .sample-feedback .small {
-    font-size: 0.67rem;
-  }
-  .sample-footnote {
-    font-size: 0.59rem;
-    color: var(--muted);
-    margin: 0.8rem 0 0;
-  }
-  .scene-section {
-    background: #efeee6;
-    margin: 0 -2rem;
-    padding: 3.5rem 2rem 2.5rem;
-    scroll-margin-top: 1rem;
-  }
-  .section-heading {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 1rem;
-    margin-bottom: 1.6rem;
-  }
-  .section-heading h2 {
-    margin-bottom: 0;
-  }
-  .section-heading > p {
-    font-size: 0.75rem;
-    color: var(--muted);
-    line-height: 1.9;
-    margin: 0 0 0.3rem;
-  }
-  .scene-grid {
+  .reason-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
   }
-  .scene-card {
-    background: #fffefa;
-    border: 1px solid #e0dfd4;
-  }
-  .scene-art {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    padding: 1.1rem 0 0.5rem;
-    background: #f2e9dd;
-  }
-  .scene-art.sage {
-    background: #e3e8da;
-  }
-  .scene-art.peach {
-    background: #f0e0d4;
-  }
-  .scene-number {
-    position: absolute;
-    left: 1rem;
-    top: 0.85rem;
-    font-family: Georgia, serif;
-    font-size: 0.85rem;
-    color: #747665;
-  }
-  .scene-body {
-    padding: 1.3rem;
-  }
-  .scene-category {
-    font-size: 0.65rem;
+  .reason-grid article > span {
+    font-size: 1.5rem;
     color: var(--accent);
-    margin: 0 0 0.55rem;
   }
-  .scene-card h3 {
+  .reason-grid h3 {
     font-size: 1rem;
-    line-height: 1.7;
-    min-height: 3.4em;
-    margin: 0 0 0.55rem;
-    font-weight: 600;
   }
-  .scene-description {
-    font-size: 0.75rem;
-    line-height: 1.85;
-    min-height: 3.7em;
-    margin: 0 0 1rem;
-  }
-  .scene-partner {
-    font-size: 0.7rem;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    margin: 0 0 1.1rem;
-  }
-  .scene-partner > span:last-child {
+  .reason-grid p {
+    font-size: 0.85rem;
     color: var(--muted);
-    font-size: 0.62rem;
-  }
-  .partner-dot {
-    width: 0.45rem;
-    height: 0.45rem;
-    border-radius: 50%;
-    background: #95a486;
-  }
-  .scene-button {
-    width: 100%;
-    background: transparent;
-    border: 1px solid #b5b7a8;
-    color: var(--ink);
-    font-size: 0.76rem;
-    padding: 0.7rem 0.8rem;
-    justify-content: space-between;
-    border-radius: 3px;
-    min-height: 45px;
-  }
-  .scene-button:hover:not(:disabled) {
-    background: var(--ink);
-    color: white;
-    border-color: var(--ink);
-  }
-  .quota-note {
-    text-align: center;
-    color: var(--muted);
-    font-size: 0.68rem;
-    line-height: 1.9;
-    margin: 1.7rem 0 0;
+    line-height: 1.95;
   }
   .faq-section {
     display: grid;
-    grid-template-columns: 0.8fr 1.2fr;
-    gap: 4rem;
-    padding: 5rem 0;
-  }
-  .faq-section h2 {
-    margin-bottom: 0.7rem;
-  }
-  .faq-section .muted {
-    font-size: 0.8rem;
-  }
-  .faq-list {
+    grid-template-columns: 1fr 2fr;
+    gap: 48px;
+    padding: 48px 0;
     border-top: 1px solid var(--border);
   }
-  details {
+  .faq-section h2 {
+    font-size: 1.65rem;
+  }
+  .faq-section details {
+    padding: 20px 0;
     border-bottom: 1px solid var(--border);
   }
-  summary {
-    padding: 1.3rem 0.2rem;
-    font-size: 0.82rem;
+  .faq-section summary {
     cursor: pointer;
-    list-style: none;
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: center;
+    font-size: 0.95rem;
   }
-  summary::-webkit-details-marker {
-    display: none;
-  }
-  summary span {
-    color: var(--accent);
-    font-size: 1.1rem;
-    transition: transform 0.2s;
-  }
-  details[open] summary span {
-    transform: rotate(45deg);
-  }
-  details p {
-    font-size: 0.78rem;
+  .faq-section p {
     color: var(--muted);
-    line-height: 2;
-    margin: 0 0 1.4rem;
-    padding: 0 0.2rem;
+    font-size: 0.85rem;
+    margin: 16px 0 0;
+    line-height: 1.95;
   }
-  @media (max-width: 900px) {
-    .hero {
-      gap: 0;
-    }
-    h1 {
-      font-size: 2.6rem;
-    }
-    .hero-description {
-      font-size: 0.8rem;
-    }
-    .example-section {
-      gap: 2.5rem;
-    }
-    .intro-strip ol {
-      gap: 1.1rem;
-    }
-    .scene-body {
-      padding: 1rem;
-    }
+  .guides-section {
+    padding: 40px 0 64px;
+  }
+  .guides-section > div {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .guides-section > div > a {
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.9rem;
+    line-height: 1.8;
+  }
+  .guides-section a span {
+    color: var(--accent);
+    margin-left: 12px;
   }
   @media (max-width: 700px) {
     .hero {
       grid-template-columns: 1fr;
-      padding: 2.5rem 0 1.8rem;
-      gap: 1.5rem;
+      padding: 36px 0;
+      gap: 28px;
     }
-    h1 {
-      font-size: clamp(2rem, 7.5vw, 3rem);
-      line-height: 1.65;
-      margin: 1rem 0 1.2rem;
+    .hero h1 {
+      font-size: 2.35rem;
+    }
+    .hero figure {
+      max-width: 480px;
     }
     .hero-description {
-      font-size: 0.83rem;
-      line-height: 2;
-    }
-    .hero-visual {
-      margin: 0;
-      width: 100%;
-    }
-    .hero-visual img {
-      max-height: 340px;
-      object-fit: contain;
-    }
-    .hero-visual figcaption {
-      margin-top: 0.5rem;
-      font-size: 0.7rem;
-      padding-right: 0.5rem;
-    }
-    .hero-cta {
-      min-width: 0;
-      width: 100%;
-      max-width: 23rem;
-    }
-    .cta-caption {
-      font-size: 0.68rem;
-    }
-    .example-link {
-      font-size: 0.75rem;
+      font-size: 0.9rem;
     }
     .intro-strip {
-      flex-direction: column;
       align-items: flex-start;
-      gap: 1rem;
-      padding: 1.5rem 0;
-    }
-    .intro-strip > p br {
-      display: none;
-    }
-    .intro-strip > p strong {
-      margin-left: 0.4rem;
-      font-size: 0.85rem;
+      flex-direction: column;
+      gap: 8px;
     }
     .intro-strip ol {
-      width: 100%;
-      justify-content: space-between;
-      gap: 0.5rem;
-      font-size: 0.66rem;
+      gap: 16px;
     }
     .intro-strip li {
-      gap: 0.35rem;
+      font-size: 0.7rem;
+      gap: 6px;
     }
-    .intro-strip li span {
-      font-size: 1.1rem;
-    }
-    .example-section {
-      grid-template-columns: 1fr;
-      gap: 2rem;
-      padding: 3.5rem 0;
-    }
-    .example-copy h2 br {
-      display: none;
-    }
-    h2 {
-      font-size: 1.65rem;
-    }
-    .example-copy > p:not(.section-label) {
-      font-size: 0.81rem;
-    }
-    .example-note {
-      margin-top: 1rem;
-    }
-    .example-chat {
-      padding: 1.2rem;
-    }
-    .scene-section {
-      margin: 0 -1.25rem;
-      padding: 2.6rem 1.25rem 2rem;
-    }
-    .section-heading {
-      flex-direction: column;
+    .account-strip {
       align-items: flex-start;
-      gap: 1rem;
+      flex-direction: column;
+      gap: 10px;
     }
-    .section-heading > p {
-      font-size: 0.73rem;
-    }
-    .scene-grid {
+    .reason-grid,
+    .guides-section > div {
       grid-template-columns: 1fr;
-      gap: 1rem;
+      gap: 18px;
     }
-    .scene-card {
-      display: grid;
-      grid-template-columns: 95px minmax(0, 1fr);
+    .reason-grid h3 {
+      margin: 8px 0;
     }
-    .scene-art {
-      padding: 2rem 0 0;
-      align-items: center;
-      overflow: hidden;
-    }
-    .scene-art :global(svg) {
-      min-width: 115px;
-      width: 115px;
-    }
-    .scene-number {
-      left: 0.7rem;
-      top: 0.65rem;
-    }
-    .scene-body {
-      padding: 1.1rem;
-    }
-    .scene-card h3 {
-      min-height: 0;
-      font-size: 0.95rem;
-      margin-bottom: 0.4rem;
-    }
-    .scene-description {
-      min-height: 0;
-      font-size: 0.7rem;
-      margin-bottom: 0.7rem;
-    }
-    .scene-category {
-      font-size: 0.6rem;
-      margin-bottom: 0.4rem;
-    }
-    .scene-partner {
-      font-size: 0.65rem;
-      margin-bottom: 0.8rem;
-    }
-    .scene-button {
-      font-size: 0.7rem;
-      min-height: 42px;
-    }
-    .quota-note {
-      font-size: 0.65rem;
-      text-align: left;
+    .reason-grid p {
+      margin: 0;
     }
     .faq-section {
       grid-template-columns: 1fr;
-      gap: 2rem;
-      padding: 3.5rem 0;
+      gap: 0;
+      padding: 32px 0;
     }
-    .faq-section h2 {
-      margin: 0.5rem 0;
-    }
-    summary {
-      font-size: 0.77rem;
-      padding: 1.2rem 0;
-    }
-    .account-strip {
-      flex-direction: column;
-      align-items: flex-start;
-      padding: 1.4rem;
-    }
-    .account-actions {
-      align-items: flex-start;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    summary span {
-      transition: none;
+    .reasons {
+      padding: 36px 0;
     }
   }
 </style>

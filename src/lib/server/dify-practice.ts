@@ -2,10 +2,11 @@ import {
   resolveScene,
   assessmentStatus,
   type CustomSceneInput,
-  PRACTICE_TURNS,
+  practiceTurnLimit,
   type PracticeTurn,
   type SceneId
 } from '$lib/practice'
+import { parseMission, parsePresentation, type Adventure } from '$lib/adventure'
 import { assessPractice, selectPracticeCoaching } from './jev-practice'
 import { practiceCoaching } from './practice-coaching'
 import { parsePracticeOutput } from './practice-feedback'
@@ -17,16 +18,19 @@ export interface GeneratePracticeInput {
   customScene?: CustomSceneInput | null
   turns: Pick<PracticeTurn, 'userText' | 'assistantText'>[]
   text: string
+  adventure?: Adventure | null
+  rehearsal?: boolean
 }
 
 export async function generatePracticeReply(input: GeneratePracticeInput) {
-  const scene = resolveScene(input.sceneId, input.customScene)
+  const scene = resolveScene(input.sceneId, input.customScene, input.adventure)
   const key = process.env.DIFY_PRACTICE_API_KEY
   if (!key || !scene) throw new Error('Practice is not configured')
   const base = process.env.DIFY_API_BASE_URL ?? 'https://api.dify.ai/v1'
   // Jevと生成で期限を共有し、保存予約・関数実行上限を超えないようにする。
   const signal = AbortSignal.timeout(55_000)
-  const final = input.turns.length + 1 === PRACTICE_TURNS
+  const turnLimit = practiceTurnLimit(input.adventure)
+  const final = !input.rehearsal && input.turns.length + 1 === turnLimit
   const transcript = [
     { role: 'assistant', content: scene.opener },
     ...input.turns.flatMap((turn, index) => [
@@ -76,7 +80,7 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
         }),
         transcript: JSON.stringify(transcript),
         turn: input.turns.length + 1,
-        total_turns: PRACTICE_TURNS
+        total_turns: input.rehearsal ? turnLimit + 1 : turnLimit
       }
     }),
     signal
@@ -84,10 +88,16 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
   if (!response.ok) throw new Error('Practice generation failed')
   const body = await response.json()
   if (body.data?.status !== 'succeeded') throw new Error('Practice workflow failed')
-  return parsePracticeOutput(
-    body.data.outputs?.result,
-    [...input.turns.map((turn) => turn.userText), input.text],
-    final,
-    assessment
-  )
+  const raw =
+    typeof body.data.outputs?.result === 'string'
+      ? JSON.parse(body.data.outputs.result)
+      : body.data.outputs?.result
+  const userTexts = [...input.turns.map((turn) => turn.userText), input.text]
+  const parsed = parsePracticeOutput(raw, userTexts, final, assessment)
+  if (!input.adventure) return parsed
+  return {
+    ...parsed,
+    presentation: parsePresentation(raw?.presentation),
+    mission: final ? parseMission(raw?.mission, input.adventure, userTexts) : null
+  }
 }

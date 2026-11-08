@@ -1,6 +1,11 @@
 import { error } from '@sveltejs/kit'
 import type { AnalyticsContext } from '$lib/analytics-context'
-import { PRACTICE_TURNS } from '$lib/practice'
+import { practiceTurnLimit } from '$lib/practice'
+import {
+  finishRehearsal,
+  reserveRehearsal,
+  type RehearsalInput
+} from './db/repositories/adventures'
 import { trackPracticeCompleted, trackQuestionSubmitted } from './analytics'
 import {
   finishPracticeTurn,
@@ -31,6 +36,7 @@ export async function submitPracticeMessage(input: MessageInput, context: Analyt
       id: input.id,
       sceneId: reservation.sceneId,
       customScene: reservation.customScene,
+      adventure: reservation.adventure,
       turns: reservation.turns,
       text: input.text
     })
@@ -46,6 +52,41 @@ export async function submitPracticeMessage(input: MessageInput, context: Analyt
     )
   }
   await trackQuestionSubmitted(input.uid, context)
-  if (input.expectedTurn + 1 === PRACTICE_TURNS) await trackPracticeCompleted(input.uid, context)
+  if (input.expectedTurn + 1 === practiceTurnLimit(reservation.adventure))
+    await trackPracticeCompleted(input.uid, context)
+  return { session: await getPractice(input.uid, input.id), pending: false }
+}
+
+export async function submitRehearsal(input: RehearsalInput) {
+  const reservation = await reserveRehearsal(input)
+  if (reservation.status === 'not_found') throw error(404, '言い直す会話が見つかりません。')
+  if (reservation.status === 'complete') throw error(409, 'この練習の言い直しは完了しています。')
+  if (reservation.status === 'conflict')
+    throw error(409, '内容を変えた場合は新しい送信としてお試しください。')
+  if (reservation.status === 'pending' || reservation.status === 'replay')
+    return {
+      session: await getPractice(input.uid, input.id),
+      pending: reservation.status === 'pending'
+    }
+  if (reservation.status !== 'ready') throw error(409, '会話を再読み込みしてください。')
+  try {
+    const output = await generatePracticeReply({
+      id: input.id,
+      sceneId: reservation.sceneId,
+      customScene: reservation.customScene,
+      adventure: reservation.adventure,
+      turns: reservation.turns,
+      text: input.text,
+      rehearsal: true
+    })
+    if (!(await finishRehearsal(input, reservation.token, output)))
+      throw new Error('Reservation changed')
+  } catch {
+    await releasePracticeTurn(input, reservation.token)
+    throw error(
+      502,
+      '返答を作成できませんでした。入力を残しています。同じ内容でもう一度お試しください。'
+    )
+  }
   return { session: await getPractice(input.uid, input.id), pending: false }
 }
