@@ -11,6 +11,7 @@
   } from '$lib/practice'
   import { getAnalyticsContext } from '$lib/analytics'
   import { startPractice } from '$lib/practice-client'
+  import PracticeAnalysis from '$lib/components/PracticeAnalysis.svelte'
   export let data
   let session: PracticeSession | null = null
   let text = ''
@@ -219,42 +220,41 @@
           <p>{turn.userText}</p>
         </div>
         <div class="line partner">
-          <!-- 最終回は次の返答を促さず、振り返りへの移動を明確にする。 -->
-          <span class="speaker"
-            >{turn.position === PRACTICE_TURNS ? 'Koi-Tre' : `${scene.partnerName}さん`}</span
-          >
-          <p>
-            {turn.position === PRACTICE_TURNS
-              ? '3回の練習が終わりました。今回の会話を振り返りましょう。'
-              : turn.assistantText}
-          </p>
+          <span class="speaker">{scene.partnerName}さん</span>
+          <p>{turn.assistantText}</p>
         </div>{/each}
       <div bind:this="{bottom}"></div>
     </section>
     {#if pending}<p class="notice" role="status" aria-live="polite">
-        返答を考えています… この画面を閉じても、あとから再開できます。
+        {session.turns.length + 1 === PRACTICE_TURNS
+          ? '会話全体を振り返り、分析と言い換えをまとめています…'
+          : '返答を考えています…'} この画面を閉じても、あとから再開できます。
       </p>{/if}
     {#if message && !session.completedAt}<p class="error" role="alert">{message}</p>{/if}
     {#if session.completedAt && feedback}
       <section class="card feedback" aria-label="練習の振り返り">
-        <p class="eyebrow">ひとつ、持ち帰ろう。</p>
+        <p class="eyebrow">会話を、次につなげよう。</p>
         <h2>おつかれさまでした。</h2>
-        <p class="muted">今回の会話を、次のひと言につなげましょう。</p>
-        <div class="feedback-item">
-          <h3><span aria-hidden="true">✦</span> よかった点</h3>
-          <p>{feedback.strength}</p>
-        </div>
-        <div class="feedback-item">
-          <h3>次に試すこと</h3>
-          <p>{feedback.improvement}</p>
-        </div>
-        <div class="rewrite">
-          <h3>あなたの言葉を、こんなふうに</h3>
-          <span class="small muted">今回の発言</span>
-          <blockquote>「{feedback.quote}」</blockquote>
-          <span class="small muted">言い換え例</span>
-          <blockquote class="rewrite-example">「{feedback.rewrite}」</blockquote>
-        </div>
+        <p class="muted">3回のやりとりを振り返り、あなたの言葉をもっと話しやすく。</p>
+        {#if feedback.analysis}
+          <PracticeAnalysis analysis="{feedback.analysis}" />
+        {:else}
+          <div class="feedback-item">
+            <h3><span aria-hidden="true">✦</span> よかった点</h3>
+            <p>{feedback.strength}</p>
+          </div>
+          <div class="feedback-item">
+            <h3>次に試すこと</h3>
+            <p>{feedback.improvement}</p>
+          </div>
+          <div class="rewrite">
+            <h3>あなたの言葉を、こんなふうに</h3>
+            <span class="small muted">今回の発言</span>
+            <blockquote>「{feedback.quote}」</blockquote>
+            <span class="small muted">言い換え例</span>
+            <blockquote class="rewrite-example">「{feedback.rewrite}」</blockquote>
+          </div>
+        {/if}
         <div class="result-actions">
           <button
             class="button primary"
@@ -290,8 +290,10 @@
             disabled="{pending || !text.trim()}"
             aria-busy="{pending}"
             >{pending
-              ? '返答を考えています…'
-              : session.turns.length === 2
+              ? session.turns.length + 1 === PRACTICE_TURNS
+                ? '分析をまとめています…'
+                : '返答を考えています…'
+              : session.turns.length + 1 === PRACTICE_TURNS
                 ? '送信して振り返る'
                 : '返答を送る'}<span aria-hidden="true">↑</span></button
           >

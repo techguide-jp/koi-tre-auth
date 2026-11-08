@@ -17,6 +17,7 @@ import { submitPracticeMessage } from './practice-service'
 import { generatePracticeReply, parsePracticeOutput } from './dify-practice'
 import { trackPracticeCompleted, trackQuestionSubmitted } from './analytics'
 import { sceneWithPartner } from '$lib/practice'
+import { exampleFeedback, exampleTexts } from './fixtures/practice-analysis'
 
 let client: PGlite
 let db: ReturnType<typeof drizzle<typeof schema>>
@@ -136,6 +137,25 @@ describe('練習・保存・利用枠', () => {
     expect(trackPracticeCompleted).toHaveBeenCalledTimes(1)
     expect(await db.select().from(schema.operations)).toHaveLength(3)
   })
+  it('拡充した分析を最終回のJSONに保存し、再開・再送でも内容を保持する', async () => {
+    const id = await session()
+    vi.mocked(generatePracticeReply).mockImplementation(async (input) => ({
+      reply: '教えてくれてありがとうございます。',
+      feedback: input.turns.length === 2 ? exampleFeedback : null
+    }))
+    let last
+    for (let turn = 0; turn < 3; turn++) {
+      last = message(id, turn, exampleTexts[turn])
+      await submitPracticeMessage(last, null)
+    }
+    expect((await getPractice(uid, id))?.turns[2].feedback).toEqual(exampleFeedback)
+    await submitPracticeMessage(last!, null)
+    expect((await getPractice(uid, id))?.turns[2].feedback?.analysis).toEqual(
+      exampleFeedback.analysis
+    )
+    expect((await getPracticeOverview(uid)).remaining).toBe(9)
+    expect(generatePracticeReply).toHaveBeenCalledTimes(3)
+  })
   it('生成失敗は回数を減らさず、本文を保持して同じIDで再試行できる', async () => {
     const id = await session()
     const input = message(id)
@@ -238,69 +258,27 @@ describe('練習・保存・利用枠', () => {
 })
 
 describe('Difyからの振り返り', () => {
-  it('カスタム場面の別れ際に新しい質問を足さず、原文と定型句で言い換える', () => {
-    const text = 'では土曜の午後2時に駅の改札前で会いましょう。ゆうさん、また来週。'
-    const output = parsePracticeOutput(
-      {
-        reply: 'また来週。',
-        feedback: {
-          ...feedback,
-          quote: text,
-          custom_tip: 'closing',
-          rewrite: '来週はフレンチを食べましょう。'
-        }
-      },
-      [text],
-      true,
-      'custom'
-    )
-    expect(output.feedback?.rewrite).toBe(`今日はお話しできてうれしかったです。${text}`)
-    expect(output.feedback?.rewrite).not.toMatch(/[?？]|フレンチ/)
-    expect(
-      parsePracticeOutput(
-        { reply: 'また来週。', feedback: { ...feedback, quote: text } },
-        [text],
-        true,
-        'custom'
-      ).feedback?.rewrite
-    ).toBe(output.feedback?.rewrite)
-  })
-  it('未発言の好みや仮名を採用せず、本人の原文から言い換えを作る', () => {
-    const output = {
-      reply: 'ありがとうございます。',
-      feedback: { ...feedback, rewrite: 'ミステリーが好きです。○○さんはどんな映画がお好きですか？' }
-    }
-    expect(parsePracticeOutput(output, ['映画が好きです'], true).feedback?.rewrite).toBe(
-      '映画が好きです。普段はどんなふうに過ごすのがお好きですか？'
-    )
-    expect(
-      parsePracticeOutput(output, ['映画が好きです。○○さんに聞いてみたいです。'], true).feedback
-        ?.rewrite
-    ).toContain('映画が好きです。○○さんに聞いてみたいです。')
-  })
-  it('既に質問している発言には質問を追加せず、本人の説明も残す', () => {
+  it('生成された改善点と言い換えを定型文で上書きしない', () => {
     const text = '最近は小説を読んでいます。どんな本を読みますか？'
-    const output = parsePracticeOutput(
-      {
-        reply: 'ありがとうございます。',
-        feedback: { ...feedback, quote: 'どんな本を読みますか？' }
-      },
-      [text],
-      true
-    )
-    expect(output.feedback?.quote).toBe(text)
-    expect(output.feedback?.rewrite).toBe(
-      '最近は小説を読んでいます。よかったら、どんな本を読みますか？'
-    )
+    const generated = {
+      ...feedback,
+      quote: 'どんな本を読みますか？',
+      improvement: '相手が話していた小説の話題を拾って具体的に聞いてみましょう。',
+      rewrite: 'さっきの小説は、どんなところが面白かったですか？'
+    }
+    expect(
+      parsePracticeOutput({ reply: 'ありがとうございます。', feedback: generated }, [text], true)
+        .feedback
+    ).toEqual(generated)
   })
-  it('最終回では実際の発言の引用と具体的な言い換えを必須にする', () => {
+  it('最終回の引用と具体的な言い換えを必須にし、途中の分析は表示しない', () => {
     expect(
       parsePracticeOutput(
         JSON.stringify({ reply: 'ありがとうございます。', feedback }),
         ['映画が好きです'],
         true
       ).feedback
-    ).toMatchObject({ strength: feedback.strength, quote: '映画が好きです' })
+    ).toEqual(feedback)
     expect(() =>
       parsePracticeOutput(
         { reply: 'ありがとうございます。', feedback: { ...feedback, quote: '言っていないこと' } },
