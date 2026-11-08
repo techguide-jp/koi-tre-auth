@@ -25,6 +25,7 @@
   let loading = false
   let pending = false
   let restarting = false
+  let animateAffinity = false
   let message = ''
   let mounted = false
   let loadedKey = ''
@@ -44,6 +45,7 @@
   $: if (mounted && $authReady && $user && loadedKey !== sessionKey) {
     loadedKey = sessionKey
     session = null
+    animateAffinity = false
     text = ''
     message = ''
     void load(true)
@@ -87,6 +89,16 @@
     }
   }
   function applySession(result: PracticeSession, initial = false) {
+    // 履歴の読み直しを新しい獲得に見せず、この画面で完了・再評価した差分だけを動かす。
+    if (initial) animateAffinity = false
+    else if (
+      session?.id === result.id &&
+      ((!session.completedAt && !!result.completedAt) ||
+        ((!session.evaluation || session.evaluation.status === 'pending') &&
+          result.evaluation &&
+          result.evaluation.status !== 'pending'))
+    )
+      animateAffinity = true
     session = result
     if (initial) readDraft()
     const saved = result.turns.some((turn) => turn.requestId === requestId)
@@ -308,6 +320,7 @@
           session="{session}"
           enabled="{data.practiceEnabled}"
           starting="{restarting}"
+          animateAffinity="{animateAffinity}"
           on:update="{(event) => applySession(event.detail)}"
           on:next="{(event) => nextAdventure(event.detail)}"
         />{/if}
