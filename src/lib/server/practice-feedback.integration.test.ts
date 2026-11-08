@@ -40,7 +40,6 @@ describe('会話に基づく分析', () => {
         (v.feedback.analysis!.turns[0] = v.feedback.analysis!.turns[1]),
       (v: ReturnType<typeof output>) =>
         (v.feedback.analysis!.aspects[0] = v.feedback.analysis!.aspects[1]),
-      (v: ReturnType<typeof output>) => (v.feedback.analysis!.strengths = []),
       (v: ReturnType<typeof output>) => (v.feedback.analysis!.summary = ''),
       (v: ReturnType<typeof output>) => Object.assign(v.feedback.analysis!, { version: 99 })
     ]) {
@@ -48,6 +47,13 @@ describe('会話に基づく分析', () => {
       mutate(value)
       expect(() => parsePracticeOutput(value, exampleTexts, true)).toThrow()
     }
+  })
+  it('よかった点に根拠がない会話でも、改善点を保った分析を受け取れる', () => {
+    const value = output()
+    value.feedback.analysis!.strengths = []
+    const parsed = parsePracticeOutput(value, exampleTexts, true)
+    expect(parsed.feedback?.analysis?.strengths).toEqual([])
+    expect(parsed.feedback?.analysis?.improvements).toEqual(value.feedback.analysis!.improvements)
   })
   it('LLMが生成したJev判定を破棄し、実際に取得した補助判定だけを採用する', () => {
     const value = output()
@@ -76,6 +82,44 @@ describe('会話に基づく分析', () => {
     expect(parsePracticeOutput(value, exampleTexts, true).feedback?.analysis?.improvements).toEqual(
       []
     )
+  })
+  it('言い換えの目的と別案をそのまま保持し、不要な別案は省略できる', () => {
+    const value = output()
+    value.feedback.analysis!.turns[0].rewritePurpose = '自分の好みを伝える'
+    value.feedback.analysis!.turns[0].alternative = {
+      purpose: '相手にも話を渡す',
+      rewrite: 'ここにはよく仕事に来ます。落ち着ける場所はありますか？',
+      reason: '自分の過ごし方を伝えたうえで、相手にも話せる余地を残しています。'
+    }
+    expect(parsePracticeOutput(value, exampleTexts, true)).toEqual(value)
+    Object.assign(value.feedback.analysis!.turns[0], { alternative: null })
+    expect(
+      parsePracticeOutput(value, exampleTexts, true).feedback?.analysis?.turns[0]
+    ).not.toHaveProperty('alternative')
+  })
+  it('主な言い換えと同じ別案だけを省略し、分析は保持する', () => {
+    const value = output()
+    value.feedback.analysis!.turns[0].alternative = {
+      purpose: '別案',
+      rewrite: exampleFeedback.analysis!.turns[0].rewrite,
+      reason: '同じ文章'
+    }
+    const parsed = parsePracticeOutput(value, exampleTexts, true)
+    expect(parsed.feedback?.analysis?.turns[0]).not.toHaveProperty('alternative')
+    expect(parsed.feedback?.analysis?.turns[0].rewrite).toBe(
+      exampleFeedback.analysis!.turns[0].rewrite
+    )
+    expect(parsed.feedback?.analysis?.summary).toBe(value.feedback.analysis!.summary)
+  })
+  it('不完全な言い換えの目的や別案を拒否する', () => {
+    for (const patch of [
+      { rewritePurpose: '' },
+      { alternative: { purpose: '', rewrite: '別の表現です。', reason: '理由' } }
+    ]) {
+      const value = output()
+      Object.assign(value.feedback.analysis!.turns[0], patch)
+      expect(() => parsePracticeOutput(value, exampleTexts, true)).toThrow()
+    }
   })
   it('近い段階で迷う評価を参考表示し、材料不足と区別する', () => {
     const value = { id: analysisAspects[0].id, score: 2.4, confidence: 0.4, observable: 0.9 }

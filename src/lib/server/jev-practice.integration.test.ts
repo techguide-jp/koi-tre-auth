@@ -55,7 +55,10 @@ describe('Jevの補助評価', () => {
         status: 'rated'
       }))
     )
-    expect(result.feedback?.analysis?.assessment).toEqual(parseAssessment(exampleJevResponse()))
+    expect(result.feedback?.analysis?.assessment).toEqual({
+      ...parseAssessment(exampleJevResponse()),
+      rubric: { version: 2, profile: 'first_meeting' }
+    })
   })
   it('途中の返答ではJevを呼ばない', async () => {
     vi.stubEnv('TYPESAFE_API_KEY', 'test-jev-key')

@@ -24,6 +24,9 @@
       <h3 id="analysis-strengths">
         <span class="section-icon strength-icon" aria-hidden="true">✓</span> よかった点
       </h3>
+      {#if analysis.strengths.length === 0}
+        <p class="no-improvement">今回は、場面の目標に沿うよかった点を確認できませんでした。</p>
+      {/if}
       {#each analysis.strengths as point}
         <details class="point strength">
           <summary
@@ -80,8 +83,16 @@
         <div class="detail-body">
           <p>{turn.observation}</p>
           <blockquote><span>今回の発言</span>「{turn.quote}」</blockquote>
-          <blockquote class="rewrite"><span>言い換え例</span>「{turn.rewrite}」</blockquote>
+          <blockquote class="rewrite">
+            <span>{turn.rewritePurpose || '言い換え例'}</span>「{turn.rewrite}」
+          </blockquote>
           <p class="reason">{turn.reason}</p>
+          {#if turn.alternative}
+            <blockquote class="rewrite">
+              <span>別の選択肢 · {turn.alternative.purpose}</span>「{turn.alternative.rewrite}」
+            </blockquote>
+            <p class="reason">{turn.alternative.reason}</p>
+          {/if}
         </div>
       </details>
     {/each}
