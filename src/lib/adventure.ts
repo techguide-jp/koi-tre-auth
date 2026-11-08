@@ -1,0 +1,217 @@
+import { characters, episodes, missions, type CharacterId } from './adventure-catalog'
+import type { PracticeEvidence, PracticeScene } from './practice'
+export { characters, episodes, missions } from './adventure-catalog'
+export type { Character, CharacterId, Episode, PartnerGender } from './adventure-catalog'
+
+export const emotions = ['neutral', 'smile', 'shy', 'thinking', 'puzzled', 'relieved'] as const
+export type Emotion = (typeof emotions)[number]
+export const emotionLabels: Record<Emotion, string> = {
+  neutral: 'いつもの表情',
+  smile: '楽しそうな笑顔',
+  shy: '少し照れた表情',
+  thinking: '考え中',
+  puzzled: '少し戸惑った表情',
+  relieved: 'ほっとした表情'
+}
+export interface Presentation {
+  emotion: Emotion
+  gesture: string
+}
+export interface Adventure {
+  version: 1
+  characterId: CharacterId
+  episodeId: string
+  turns: 3 | 6
+}
+export interface MissionResult {
+  id: string
+  evidence: PracticeEvidence[]
+}
+export interface AdventureReward {
+  version: 1
+  xp: 20 | 30
+  mission: MissionResult | null
+}
+export interface Rehearsal {
+  position: number
+  requestId: string
+  text: string
+  reply?: string
+  presentation?: Presentation
+}
+export interface AdventureProgress {
+  xp: number
+  level: number
+  xpInLevel: number
+  completed: number
+  completedEpisodes: string[]
+  badges: { id: string; label: string; description: string; earned: boolean }[]
+  memories: {
+    practiceId: string
+    characterId: CharacterId
+    episodeId: string
+    title: string
+    completedAt: string
+  }[]
+  favorites: { practiceId: string; characterId: CharacterId; position: number; text: string }[]
+}
+export const characterById = (id: unknown) => characters.find((c) => c.id === id)
+export const episodeById = (id: unknown) => episodes.find((e) => e.id === id)
+export function normalizeAdventure(value: unknown): Adventure | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const input = value as Record<string, unknown>
+  const character = characterById(input.characterId),
+    episode = episodeById(input.episodeId)
+  if (
+    !character ||
+    !episode ||
+    (episode.characterId && episode.characterId !== character.id) ||
+    ![3, 6].includes(Number(input.turns)) ||
+    typeof input.turns !== 'number'
+  )
+    return null
+  return {
+    version: 1,
+    characterId: character.id,
+    episodeId: episode.id,
+    turns: input.turns as 3 | 6
+  }
+}
+export const episodeKey = (characterId: string, episodeId: string) => `${characterId}:${episodeId}`
+export function episodeUnlocked(adventure: Adventure, completed: string[]) {
+  const episode = episodeById(adventure.episodeId)
+  if (!episode || (episode.characterId && episode.characterId !== adventure.characterId))
+    return false
+  return (
+    !episode.chapter ||
+    episode.chapter === 1 ||
+    completed.includes(
+      episodeKey(adventure.characterId, `${adventure.characterId}-${episode.chapter - 1}`)
+    )
+  )
+}
+export function nextEpisode(characterId: CharacterId, completed: string[]) {
+  const own = episodes.filter((e) => e.characterId === characterId)
+  return (
+    own.find(
+      (e) =>
+        !completed.includes(episodeKey(characterId, e.id)) &&
+        episodeUnlocked({ version: 1, characterId, episodeId: e.id, turns: 6 }, completed)
+    ) ??
+    episodes.find(
+      (episode) => !episode.characterId && !completed.includes(episodeKey(characterId, episode.id))
+    ) ??
+    own[0]
+  )
+}
+export function resolveAdventure(
+  adventure: Adventure | null | undefined
+): PracticeScene | undefined {
+  const normalized = normalizeAdventure(adventure)
+  if (!normalized) return undefined
+  const character = characterById(normalized.characterId)!,
+    episode = episodeById(normalized.episodeId)!
+  return {
+    id: 'adventure',
+    title: episode.title,
+    subtitle: episode.subtitle,
+    partnerName: character.name,
+    partnerDescription: character.description,
+    goal: missions[episode.missionId].label,
+    opener: episode.opener,
+    hint: '気の利いた言葉でなくても大丈夫。今の気持ちを、あなたの言葉で。',
+    situation: episode.setting,
+    coachingProfile: episode.coachingProfile,
+    character: {
+      id: character.id,
+      age: character.age,
+      gender: character.gender,
+      detail: character.detail
+    },
+    mission: { id: episode.missionId, ...missions[episode.missionId] }
+  }
+}
+export function parsePresentation(value: unknown): Presentation {
+  if (!value || typeof value !== 'object') return { emotion: 'neutral', gesture: '' }
+  const fields = value as Record<string, unknown>
+  return {
+    emotion: emotions.includes(fields.emotion as Emotion) ? (fields.emotion as Emotion) : 'neutral',
+    gesture:
+      typeof fields.gesture === 'string' &&
+      fields.gesture.length <= 100 &&
+      !fields.gesture.includes('\0')
+        ? fields.gesture.trim()
+        : ''
+  }
+}
+export function parseMission(
+  value: unknown,
+  adventure: Adventure | null | undefined,
+  userTexts: string[]
+): MissionResult | null {
+  if (!adventure || !value || typeof value !== 'object') return null
+  const fields = value as Record<string, unknown>,
+    episode = episodeById(adventure.episodeId)
+  if (
+    !episode ||
+    fields.id !== episode.missionId ||
+    fields.achieved !== true ||
+    !Array.isArray(fields.evidence) ||
+    fields.evidence.length < 1 ||
+    fields.evidence.length > 2
+  )
+    return null
+  const evidence: PracticeEvidence[] = []
+  for (const raw of fields.evidence) {
+    if (!raw || typeof raw !== 'object') return null
+    const { turn, quote } = raw as Record<string, unknown>
+    if (
+      typeof turn !== 'number' ||
+      !Number.isInteger(turn) ||
+      typeof quote !== 'string' ||
+      !quote.trim() ||
+      quote.length > 1000 ||
+      !userTexts[turn - 1]?.includes(quote)
+    )
+      return null
+    evidence.push({ turn, quote })
+  }
+  return { id: episode.missionId, evidence }
+}
+export function emptyAdventureProgress(): AdventureProgress {
+  return {
+    xp: 0,
+    level: 1,
+    xpInLevel: 0,
+    completed: 0,
+    completedEpisodes: [],
+    memories: [],
+    favorites: [],
+    badges: [
+      {
+        id: 'first',
+        label: 'はじめの一歩',
+        description: 'はじめてのエピソードを終える',
+        earned: false
+      },
+      {
+        id: 'mission',
+        label: 'ひと言の勇気',
+        description: 'ミッションを3回達成する',
+        earned: false
+      },
+      {
+        id: 'story',
+        label: 'ひとつの物語',
+        description: '一人のキャラクターの3話を終える',
+        earned: false
+      },
+      {
+        id: 'encounters',
+        label: '広がる出会い',
+        description: '3人のキャラクターと話す',
+        earned: false
+      }
+    ]
+  }
+}

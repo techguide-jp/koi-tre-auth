@@ -1,6 +1,7 @@
 import {
   analysisAspects,
   PRACTICE_TURNS,
+  MAX_PRACTICE_TURNS,
   type PracticeAnalysis,
   type PracticeAssessment,
   type PracticeEvidence,
@@ -37,11 +38,11 @@ function evidence(value: unknown, userTexts: string[]): PracticeEvidence {
   return { turn, quote }
 }
 function citations(value: unknown, userTexts: string[], min = 1) {
-  return list(value, min, PRACTICE_TURNS).map((item) => evidence(item, userTexts))
+  return list(value, min, userTexts.length).map((item) => evidence(item, userTexts))
 }
 function parseAnalysis(value: unknown, userTexts: string[]): PracticeAnalysis {
   const item = record(value)
-  if (item.version !== 2 || userTexts.length !== PRACTICE_TURNS)
+  if (item.version !== 2 || ![PRACTICE_TURNS, MAX_PRACTICE_TURNS].includes(userTexts.length))
     throw new Error('Invalid practice analysis version')
   const strengths = list(item.strengths, 0, 3).map((value) => {
     const point = record(value)

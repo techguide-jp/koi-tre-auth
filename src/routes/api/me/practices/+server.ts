@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { findScene, normalizeCustomScene } from '$lib/practice'
+import { normalizeAdventure } from '$lib/adventure'
 import { requireFirebaseUser } from '$lib/server/request-auth'
 import {
   createPractice,
@@ -26,7 +27,8 @@ export const POST: RequestHandler = async ({ request }) => {
   const body = await readPracticeBody(request)
   const scene = findScene(body.sceneId)
   const customScene = body.sceneId === 'custom' ? normalizeCustomScene(body.customScene) : null
-  if ((!scene && !customScene) || !validId(body.id))
+  const adventure = body.sceneId === 'adventure' ? normalizeAdventure(body.adventure) : null
+  if ((!scene && !customScene && !adventure) || !validId(body.id))
     throw error(400, '練習する場面と入力内容を確認してください。')
   if (!(await findUserByFirebaseUid(actor.uid))) {
     await upsertUser({
@@ -42,7 +44,14 @@ export const POST: RequestHandler = async ({ request }) => {
   ) {
     throw error(429, '今月の10回の練習枠を使い切りました。途中の練習は再開できます。')
   }
-  if (!(await createPractice(actor.uid, body.id, customScene ? 'custom' : scene!.id, customScene)))
-    throw error(409, '別の練習として開始してください。')
+  const created = await createPractice(
+    actor.uid,
+    body.id,
+    adventure ? 'adventure' : customScene ? 'custom' : scene!.id,
+    customScene,
+    adventure
+  )
+  if (created === 'locked') throw error(403, '前のエピソードを終えると、この話が開きます。')
+  if (!created) throw error(409, '別の練習として開始してください。')
   return privateJson(await getPractice(actor.uid, body.id))
 }

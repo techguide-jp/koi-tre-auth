@@ -34,8 +34,11 @@
     ><span class="brand-name">Koi-Tre<span class="brand-kana">コイトレ</span></span></a
   >
   <nav aria-label="メインメニュー">
-    <a href="/topics">会話ネタ帳</a>
-    <a href="/try">30秒お試し</a><a class="contact-link" href="/about">使い方</a>{#if $user}<button
+    <a class="topics-link" href="/topics">会話ネタ帳</a>
+    {#if $user}<a href="/memories">アルバム</a>{:else}<a href="/try">30秒お試し</a>{/if}<a
+      class="contact-link"
+      href="/about">使い方</a
+    >{#if $user}<button
         class="logout"
         disabled="{pending}"
         aria-busy="{pending}"
@@ -63,6 +66,8 @@
     align-items: center;
     gap: 0.65rem;
     color: var(--ink);
+    flex-shrink: 0;
+    white-space: nowrap;
   }
   .brand:hover {
     text-decoration: none;
@@ -97,6 +102,7 @@
   }
   nav a {
     color: var(--ink);
+    white-space: nowrap;
   }
   .login-link,
   .logout {
@@ -107,6 +113,7 @@
     font-size: 0.75rem;
     cursor: pointer;
     color: var(--ink);
+    white-space: nowrap;
   }
   @media (max-width: 700px) {
     header {
@@ -133,6 +140,20 @@
     .logout {
       padding: 0.6rem 0.7rem;
       font-size: 0.7rem;
+    }
+  }
+  @media (max-width: 480px) {
+    .topics-link {
+      display: none;
+    }
+    header {
+      gap: 0.6rem;
+    }
+    nav {
+      gap: 0.7rem;
+    }
+    .brand {
+      gap: 0.45rem;
     }
   }
 </style>

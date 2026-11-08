@@ -12,6 +12,7 @@
   } from '$lib/practice'
   import { readCustomSceneDraft } from '$lib/custom-scene-client'
   import { startPractice } from '$lib/practice-client'
+  import { normalizeAdventure } from '$lib/adventure'
   import { syncCurrentUserToApi, user } from '$lib/stores'
   import { setAnalyticsUser, trackLogin, trackSignup } from '$lib/analytics'
   let message = ''
@@ -25,9 +26,16 @@
     customDraftReady = true
   })
   $: isCustom = $page.url.searchParams.get('scene') === 'custom'
-  $: scene = isCustom
-    ? resolveScene('custom', customScene)
-    : findScene($page.url.searchParams.get('scene'))
+  $: adventure = normalizeAdventure({
+    characterId: $page.url.searchParams.get('character'),
+    episodeId: $page.url.searchParams.get('episode'),
+    turns: Number($page.url.searchParams.get('turns'))
+  })
+  $: scene = adventure
+    ? resolveScene('adventure', null, adventure)
+    : isCustom
+      ? resolveScene('custom', customScene)
+      : findScene($page.url.searchParams.get('scene'))
   $: practiceId = $page.url.searchParams.get('practice')
   async function login() {
     if (pending) return
@@ -49,9 +57,9 @@
       await syncCurrentUserToApi(firebaseUser)
       if (practiceId && /^[0-9a-f-]{36}$/i.test(practiceId)) await goto(`/practice/${practiceId}`)
       else if (scene) {
-        const session = await startPractice(scene.id, isCustom ? customScene : null)
+        const session = await startPractice(scene.id, isCustom ? customScene : null, adventure)
         await goto(`/practice/${session.id}`)
-      } else await goto('/')
+      } else await goto($page.url.searchParams.get('returnTo') === 'memories' ? '/memories' : '/')
     } catch (error) {
       const code = (error as { code?: string }).code
       message =
@@ -76,7 +84,7 @@
   {#if scene}<div class="selection">
       <span class="small muted">選んだ場面</span><strong>{scene.title}</strong><span
         class="partner-name">お相手：{scene.partnerName}さん（AI）</span
-      ><span class="small">3回返答して振り返り・月10回無料</span>
+      ><span class="small">{adventure?.turns ?? 3}回返答して振り返り・月10回無料</span>
       {#if isCustom && customScene}<p class="custom-summary">{customScene.situation}</p>
         {#if customScene.openingLine}<p class="small">
             最初のひと言：{customScene.openingLine}

@@ -6,12 +6,15 @@
   import {
     resolveScene,
     MAX_MESSAGE_LENGTH,
-    PRACTICE_TURNS,
+    practiceTurnLimit,
     type PracticeSession
   } from '$lib/practice'
   import { getAnalyticsContext } from '$lib/analytics'
   import { startPractice } from '$lib/practice-client'
   import PracticeAnalysis from '$lib/components/PracticeAnalysis.svelte'
+  import CharacterPortrait from '$lib/components/adventure/CharacterPortrait.svelte'
+  import AdventureResult from '$lib/components/adventure/AdventureResult.svelte'
+  import { characterById, emotionLabels, episodeById, type Adventure } from '$lib/adventure'
   export let data
   let session: PracticeSession | null = null
   let text = ''
@@ -26,7 +29,14 @@
   let loadedKey = ''
   let pollTimer: ReturnType<typeof setTimeout> | undefined
   let bottom: HTMLDivElement
-  $: scene = session ? resolveScene(session.sceneId, session.customScene) : undefined
+  let reactionAnchor: HTMLDivElement
+  $: scene = session
+    ? resolveScene(session.sceneId, session.customScene, session.adventure)
+    : undefined
+  $: turnLimit = practiceTurnLimit(session?.adventure)
+  $: character = characterById(session?.adventure?.characterId)
+  $: episode = episodeById(session?.adventure?.episodeId)
+  $: presentation = session?.turns.at(-1)?.presentation
   $: feedback = session?.turns.at(-1)?.feedback
   $: sessionKey = `${$user?.uid}:${$page.params.id}`
   $: storageKey = `koi-practice-draft:${sessionKey}`
@@ -89,18 +99,27 @@
         /* 同上 */
       }
     }
-    if (result.pending) {
+    if (result.pending && !result.completedAt) {
       text = result.pending.text
       requestId = result.pending.requestId
       requestText = text
       expectedTurn = result.turns.length
       saveDraft()
     }
-    pending = !!result.pending?.until && new Date(result.pending.until).getTime() > Date.now()
+    pending =
+      !result.completedAt &&
+      !!result.pending?.until &&
+      new Date(result.pending.until).getTime() > Date.now()
     clearTimeout(pollTimer)
     if (pending && mounted) pollTimer = setTimeout(() => void load(false), 2000)
     void tick().then(() => {
-      if (mounted && saved) bottom?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      if (mounted && saved) {
+        const target = result.adventure && !result.completedAt ? reactionAnchor : bottom
+        target?.scrollIntoView({
+          behavior: result.adventure ? 'auto' : 'smooth',
+          block: result.adventure ? 'start' : 'nearest'
+        })
+      }
     })
   }
   async function load(initial = false) {
@@ -158,7 +177,20 @@
     restarting = true
     message = ''
     try {
-      const result = await startPractice(scene.id, session?.customScene)
+      const result = await startPractice(scene.id, session?.customScene, session?.adventure)
+      await goto(`/practice/${result.id}`)
+    } catch (error) {
+      message = error instanceof Error ? error.message : '開始できませんでした。'
+    } finally {
+      restarting = false
+    }
+  }
+  async function nextAdventure(adventure: Adventure) {
+    if (restarting) return
+    restarting = true
+    message = ''
+    try {
+      const result = await startPractice('adventure', null, adventure)
       await goto(`/practice/${result.id}`)
     } catch (error) {
       message = error instanceof Error ? error.message : '開始できませんでした。'
@@ -175,7 +207,7 @@
   /></svelte:head
 >
 <div class="practice-shell">
-  <a class="text-link" href="/">← 場面選択へ</a>
+  <a class="text-link" href="/#scenes">← お相手・場面選択へ</a>
   {#if !$authReady}<p role="status" class="notice">ログイン状態を確認しています…</p>
   {:else if !$user}<section class="card empty">
       <h1>ログインして続きを練習</h1>
@@ -192,50 +224,96 @@
       <span class="progress"
         >{session.completedAt
           ? '練習完了'
-          : `${Math.min(session.turns.length + 1, PRACTICE_TURNS)} / ${PRACTICE_TURNS}`}</span
+          : `${Math.min(session.turns.length + 1, turnLimit)} / ${turnLimit}`}</span
       >
     </header>
     <div class="progress-track" aria-label="{`${session.turns.length}回返答済み`}">
-      <span style="{`width:${(session.turns.length / PRACTICE_TURNS) * 100}%`}"></span>
+      <span style="{`width:${(session.turns.length / turnLimit) * 100}%`}"></span>
     </div>
-    {#if scene.situation}<section class="custom-context" aria-label="設定した場面">
-        <p class="eyebrow">設定した場面</p>
+    {#if character && episode && session.adventure}
+      {#if !session.completedAt}
+        <div bind:this="{reactionAnchor}"></div>
+        <section
+          class="character-stage {episode.theme}"
+          aria-label="{`${character.name}のリアクション`}"
+        >
+          <div class="stage-caption">
+            <span>{character.name} · {character.age}歳</span><span class="ai-label"
+              >AIの練習相手</span
+            >
+          </div>
+          <div class="stage-art">
+            <CharacterPortrait
+              characterId="{character.id}"
+              emotion="{presentation?.emotion ?? 'neutral'}"
+            />
+          </div>
+          <div class="stage-mood" aria-live="polite">
+            <span>{emotionLabels[presentation?.emotion ?? 'neutral']}</span
+            >{#if presentation?.gesture}<p>{presentation.gesture}</p>{/if}
+          </div>
+          <div class="stage-dialogue">
+            <p>{session.turns.at(-1)?.assistantText ?? scene.opener}</p>
+          </div>
+        </section>
+      {/if}
+      <details class="scene-setting">
+        <summary>この場面について</summary>
         <p>{scene.situation}</p>
-      </section>{/if}
-    <aside class="partner-profile" aria-label="会話の相手">
-      <span class="partner-avatar" aria-hidden="true">{scene.partnerName.slice(0, 1)}</span>
-      <div>
-        <p><strong>{scene.partnerName}さん</strong><span class="ai-label">AIの練習相手</span></p>
-        <p>{scene.partnerDescription}</p>
-        <p class="partner-address">「{scene.partnerName}さん」と呼びかけて話せます。</p>
-      </div>
-    </aside>
-    <section class="conversation" aria-label="練習の会話">
-      <div class="line partner">
-        <span class="speaker">{scene.partnerName}さん</span>
-        <p>{scene.opener}</p>
-      </div>
-      {#each session.turns as turn}<div class="line mine">
-          <span class="speaker">あなた · {turn.position}回目</span>
-          <p>{turn.userText}</p>
+        <p>{character.description}</p>
+      </details>
+    {:else}
+      {#if scene.situation}<section class="custom-context" aria-label="設定した場面">
+          <p class="eyebrow">設定した場面</p>
+          <p>{scene.situation}</p>
+        </section>{/if}
+      <aside class="partner-profile" aria-label="会話の相手">
+        <span class="partner-avatar" aria-hidden="true">{scene.partnerName.slice(0, 1)}</span>
+        <div>
+          <p><strong>{scene.partnerName}さん</strong><span class="ai-label">AIの練習相手</span></p>
+          <p>{scene.partnerDescription}</p>
+          <p class="partner-address">「{scene.partnerName}さん」と呼びかけて話せます。</p>
         </div>
+      </aside>
+    {/if}
+    <svelte:element this="{session.adventure ? 'details' : 'div'}" class="conversation-log">
+      {#if session.adventure}<summary
+          >これまでの会話を読む <span>{session.turns.length}往復</span></summary
+        >{/if}
+      <section class="conversation" aria-label="練習の会話">
         <div class="line partner">
           <span class="speaker">{scene.partnerName}さん</span>
-          <p>{turn.assistantText}</p>
-        </div>{/each}
-      <div bind:this="{bottom}"></div>
-    </section>
+          <p>{scene.opener}</p>
+        </div>
+        {#each session.turns as turn}<div class="line mine">
+            <span class="speaker">あなた · {turn.position}回目</span>
+            <p>{turn.userText}</p>
+          </div>
+          <div class="line partner">
+            <span class="speaker">{scene.partnerName}さん</span>
+            <p>{turn.assistantText}</p>
+          </div>{/each}
+      </section>
+    </svelte:element>
+    <div bind:this="{bottom}"></div>
     {#if pending}<p class="notice" role="status" aria-live="polite">
-        {session.turns.length + 1 === PRACTICE_TURNS
+        {session.turns.length + 1 === turnLimit && !session.completedAt
           ? '会話全体を振り返り、分析と言い換えをまとめています…'
           : '返答を考えています…'} この画面を閉じても、あとから再開できます。
       </p>{/if}
     {#if message && !session.completedAt}<p class="error" role="alert">{message}</p>{/if}
     {#if session.completedAt && feedback}
+      {#if session.adventure}<AdventureResult
+          session="{session}"
+          enabled="{data.practiceEnabled}"
+          starting="{restarting}"
+          on:update="{(event) => applySession(event.detail)}"
+          on:next="{(event) => nextAdventure(event.detail)}"
+        />{/if}
       <section class="card feedback" aria-label="練習の振り返り">
         <p class="eyebrow">会話を、次につなげよう。</p>
         <h2>おつかれさまでした。</h2>
-        <p class="muted">3回のやりとりを振り返り、あなたの言葉をもっと話しやすく。</p>
+        <p class="muted">{turnLimit}回のやりとりを振り返り、あなたの言葉をもっと話しやすく。</p>
         {#if feedback.analysis}
           <PracticeAnalysis analysis="{feedback.analysis}" />
         {:else}
@@ -290,10 +368,10 @@
             disabled="{pending || !text.trim()}"
             aria-busy="{pending}"
             >{pending
-              ? session.turns.length + 1 === PRACTICE_TURNS
+              ? session.turns.length + 1 === turnLimit
                 ? '分析をまとめています…'
                 : '返答を考えています…'
-              : session.turns.length + 1 === PRACTICE_TURNS
+              : session.turns.length + 1 === turnLimit
                 ? '送信して振り返る'
                 : '返答を送る'}<span aria-hidden="true">↑</span></button
           >
@@ -317,6 +395,114 @@
 </div>
 
 <style>
+  .character-stage {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse at 75% 25%, #fdf8e7, transparent 55%),
+      linear-gradient(145deg, #e4e7d8, #e9ddcb);
+    margin: 24px 0 12px;
+  }
+  .character-stage.evening {
+    background:
+      radial-gradient(ellipse at 80% 20%, #f8dfb9, transparent 50%),
+      linear-gradient(145deg, #c8ced1, #ded6cf);
+  }
+  .character-stage.books {
+    background: linear-gradient(135deg, #ded5c3, #ede5d6);
+  }
+  .stage-caption {
+    position: absolute;
+    top: 18px;
+    left: 20px;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    font-weight: 700;
+  }
+  .stage-caption > .ai-label {
+    background: #fffdf9d9;
+    padding: 5px 8px;
+    border-radius: 20px;
+  }
+  .stage-art {
+    height: 330px;
+    max-width: 300px;
+    margin: 30px auto 0;
+    overflow: hidden;
+  }
+  .stage-art :global(.portrait) {
+    height: 100%;
+    width: auto;
+    margin: auto;
+  }
+  .stage-mood {
+    padding: 10px 16px 0;
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  .stage-mood > span {
+    font-size: 0.7rem;
+  }
+  .stage-mood p {
+    margin: 4px 0 0;
+    color: var(--ink);
+  }
+  .stage-dialogue {
+    padding: 16px 20px;
+    margin: 12px 16px 16px;
+    background: var(--surface);
+    border: 1px solid #ffffffaa;
+    border-radius: 12px;
+  }
+  .stage-dialogue p {
+    font-size: 0.95rem;
+    line-height: 1.9;
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .conversation-log > summary {
+    cursor: pointer;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--muted);
+    padding: 10px 0;
+    margin-bottom: 16px;
+  }
+  .conversation-log > summary > span {
+    font-size: 0.7rem;
+  }
+  .scene-setting {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+  .scene-setting summary {
+    cursor: pointer;
+  }
+  .scene-setting p {
+    line-height: 1.9;
+  }
+  @media (max-width: 600px) {
+    .stage-art {
+      height: 300px;
+      max-width: 260px;
+      margin-top: 40px;
+    }
+    .stage-caption {
+      font-size: 0.9rem;
+      left: 16px;
+      top: 14px;
+    }
+  }
   .practice-shell {
     max-width: 47rem;
     width: 100%;

@@ -90,7 +90,11 @@ export function practiceCoaching(scene?: PracticeScene, id?: CoachingProfileId):
     hobbies: 'interests',
     silence: 'silence'
   }
-  const selected = id ?? (scene ? defaults[scene.id] : undefined) ?? 'general'
+  const contextual =
+    scene?.coachingProfile && Object.hasOwn(coachingProfiles, scene.coachingProfile)
+      ? (scene.coachingProfile as CoachingProfileId)
+      : undefined
+  const selected = id ?? contextual ?? (scene ? defaults[scene.id] : undefined) ?? 'general'
   return { id: selected, ...coachingProfiles[selected] }
 }
 export function contextQuestion() {

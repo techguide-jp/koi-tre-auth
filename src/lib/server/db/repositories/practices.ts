@@ -1,14 +1,24 @@
 import { randomUUID } from 'node:crypto'
-import { and, count, desc, eq, gte, gt, isNull, lt, or } from 'drizzle-orm'
+import { and, count, desc, eq, gte, gt, isNull, isNotNull, lt, or } from 'drizzle-orm'
 import {
   PRACTICE_LIMIT,
-  PRACTICE_TURNS,
+  practiceTurnLimit,
   type CustomSceneInput,
   type PracticeFeedback,
   type PracticeOverview,
   type PracticeSession,
   type SceneId
 } from '$lib/practice'
+import {
+  episodeKey,
+  episodeUnlocked,
+  normalizeAdventure,
+  parseMission,
+  parsePresentation,
+  type Adventure,
+  type MissionResult,
+  type Presentation
+} from '$lib/adventure'
 import { getNextTokyoMonthStart, getTokyoMonthStart } from '$lib/utils/tokyo-month'
 import { getDb } from '../client'
 import { operations, practices, practiceTurns, users } from '../schema'
@@ -42,15 +52,22 @@ export async function getPractice(uid: string, id: string): Promise<PracticeSess
       id: session.id,
       sceneId: session.sceneId,
       customScene: session.customScene,
+      adventure: session.adventure,
+      reward: session.reward,
+      favoriteTurn: session.favoriteTurn,
+      rehearsal: session.rehearsal,
       chargedAt: session.chargedAt?.toISOString() ?? null,
       completedAt: session.completedAt?.toISOString() ?? null,
-      turns: turns.map(({ requestId, position, userText, assistantText, feedback }) => ({
-        requestId,
-        position,
-        userText,
-        assistantText,
-        feedback
-      })),
+      turns: turns.map(
+        ({ requestId, position, userText, assistantText, feedback, presentation }) => ({
+          requestId,
+          position,
+          userText,
+          assistantText,
+          feedback,
+          presentation
+        })
+      ),
       pending:
         session.pendingRequestId && session.pendingText
           ? {
@@ -105,21 +122,37 @@ export async function createPractice(
   uid: string,
   id: string,
   sceneId: SceneId,
-  customScene: CustomSceneInput | null = null
+  customScene: CustomSceneInput | null = null,
+  adventure: Adventure | null = null
 ) {
   return getDb().transaction(async (tx) => {
     await tx.select().from(users).where(eq(users.firebaseUid, uid)).for('update')
     const existing = await tx.query.practices.findFirst({ where: eq(practices.id, id) })
     // 同じ作成IDを別の状況へ流用すると、再送と場面変更を区別できなくなる。
+    // jsonbはキー順を保持しないため、双方を正規化してから同一性を比べる。
     if (existing)
       return (
         existing.uid === uid &&
         existing.sceneId === sceneId &&
         existing.customScene?.situation === customScene?.situation &&
         existing.customScene?.partnerName === customScene?.partnerName &&
-        existing.customScene?.openingLine === customScene?.openingLine
+        existing.customScene?.openingLine === customScene?.openingLine &&
+        JSON.stringify(normalizeAdventure(existing.adventure)) ===
+          JSON.stringify(normalizeAdventure(adventure))
       )
-    await tx.insert(practices).values({ id, uid, sceneId, customScene })
+    if (sceneId === 'adventure') {
+      if (!normalizeAdventure(adventure)) return false
+      const completed = await tx
+        .select({ adventure: practices.adventure })
+        .from(practices)
+        .where(and(eq(practices.uid, uid), isNotNull(practices.completedAt)))
+      const keys = completed.flatMap((row) =>
+        row.adventure ? [episodeKey(row.adventure.characterId, row.adventure.episodeId)] : []
+      )
+      // 解放を画面だけに任せると、直接POSTで先の話へ進めてしまう。
+      if (!episodeUnlocked(adventure!, keys)) return 'locked' as const
+    } else if (adventure) return false
+    await tx.insert(practices).values({ id, uid, sceneId, customScene, adventure })
     return true
   })
 }
@@ -149,7 +182,7 @@ export async function reservePracticeTurn(input: MessageInput, now = new Date())
       return {
         status: replay.userText === input.text ? ('replay' as const) : ('conflict' as const)
       }
-    if (session.completedAt || turns.length >= PRACTICE_TURNS)
+    if (session.completedAt || turns.length >= practiceTurnLimit(session.adventure))
       return { status: 'complete' as const }
     if (session.pendingUntil && session.pendingUntil > now) return { status: 'pending' as const }
     if (turns.length !== input.expectedTurn) return { status: 'conflict' as const }
@@ -187,6 +220,7 @@ export async function reservePracticeTurn(input: MessageInput, now = new Date())
       token,
       sceneId: session.sceneId,
       customScene: session.customScene,
+      adventure: session.adventure,
       turns
     }
   })
@@ -209,7 +243,12 @@ export async function releasePracticeTurn(input: MessageInput, token: string) {
 export async function finishPracticeTurn(
   input: MessageInput,
   token: string,
-  output: { reply: string; feedback: PracticeFeedback | null },
+  output: {
+    reply: string
+    feedback: PracticeFeedback | null
+    presentation?: Presentation
+    mission?: MissionResult | null
+  },
   now = new Date()
 ) {
   return getDb().transaction(async (tx) => {
@@ -235,6 +274,7 @@ export async function finishPracticeTurn(
       userText: input.text,
       assistantText: output.reply,
       feedback: output.feedback,
+      presentation: session.adventure ? parsePresentation(output.presentation) : null,
       createdAt: now
     })
     // 新フローの保存主体はアプリのみ。Dify Workflowには旧保存コールバックを置かない。
@@ -245,11 +285,28 @@ export async function finishPracticeTurn(
       llmText: output.reply,
       createdAt: now
     })
+    const final = position === practiceTurnLimit(session.adventure)
+    let reward = session.reward
+    if (final && session.adventure) {
+      const prior = await tx
+        .select({ text: practiceTurns.userText })
+        .from(practiceTurns)
+        .where(eq(practiceTurns.practiceId, input.id))
+        .orderBy(practiceTurns.position)
+      const mission = parseMission(
+        output.mission ? { ...output.mission, achieved: true } : null,
+        session.adventure,
+        prior.map((row) => row.text)
+      )
+      // 完了と報酬を同じトランザクションに保存し、再送で経験値を増やさない。
+      reward = { version: 1, xp: mission ? 30 : 20, mission }
+    }
     await tx
       .update(practices)
       .set({
         chargedAt: session.chargedAt ?? now,
-        completedAt: position === PRACTICE_TURNS ? now : null,
+        completedAt: final ? now : null,
+        reward,
         pendingRequestId: null,
         pendingText: null,
         pendingToken: null,

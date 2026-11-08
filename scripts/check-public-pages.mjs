@@ -48,6 +48,7 @@ for (const url of urls) {
 }
 for (const path of [
   '/login?scene=cafe',
+  '/memories',
   '/practice/00000000-0000-0000-0000-000000000000',
   '/counter',
   '/sverdle',

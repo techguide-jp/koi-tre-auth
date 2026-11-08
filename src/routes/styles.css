@@ -137,6 +137,11 @@ button:focus:not(:focus-visible) {
   --muted: #69716a;
   --accent: #ac4d39;
   --border: #dfdfd4;
+  --surface: #fffdf9;
+  --surface-soft: #f1eee5;
+  --accent-soft: #f6e7df;
+  --olive: #596d46;
+  --olive-soft: #edf1e5;
   --color-text: var(--ink);
   --color-theme-1: var(--accent);
   --font-body:

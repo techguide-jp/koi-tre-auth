@@ -10,6 +10,7 @@ import {
   varchar
 } from 'drizzle-orm/pg-core'
 import type { CustomSceneInput, PracticeFeedback, SceneId } from '$lib/practice'
+import type { Adventure, AdventureReward, Presentation, Rehearsal } from '$lib/adventure'
 
 export const users = pgTable(
   'users',
@@ -57,6 +58,10 @@ export const practices = pgTable(
       .references(() => users.firebaseUid, { onDelete: 'restrict', onUpdate: 'cascade' }),
     sceneId: varchar('scene_id', { length: 32 }).$type<SceneId>().notNull(),
     customScene: jsonb('custom_scene').$type<CustomSceneInput>(),
+    adventure: jsonb('adventure').$type<Adventure>(),
+    reward: jsonb('reward').$type<AdventureReward>(),
+    favoriteTurn: integer('favorite_turn'),
+    rehearsal: jsonb('rehearsal').$type<Rehearsal>(),
     chargedAt: timestamp('charged_at', { withTimezone: true, mode: 'date' }),
     completedAt: timestamp('completed_at', { withTimezone: true, mode: 'date' }),
     pendingRequestId: varchar('pending_request_id', { length: 36 }),
@@ -81,6 +86,7 @@ export const practiceTurns = pgTable(
     userText: text('user_text').notNull(),
     assistantText: text('assistant_text').notNull(),
     feedback: jsonb('feedback').$type<PracticeFeedback>(),
+    presentation: jsonb('presentation').$type<Presentation>(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
   },
   (table) => [

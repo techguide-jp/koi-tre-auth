@@ -1,5 +1,15 @@
+import {
+  resolveAdventure,
+  type Adventure,
+  type AdventureReward,
+  type Presentation,
+  type Rehearsal
+} from './adventure'
 export const PRACTICE_LIMIT = 10
 export const PRACTICE_TURNS = 3
+export const MAX_PRACTICE_TURNS = 6
+export const practiceTurnLimit = (adventure?: Adventure | null) =>
+  adventure?.turns ?? PRACTICE_TURNS
 export const MAX_MESSAGE_LENGTH = 1000
 export const MAX_SITUATION_LENGTH = 500
 export const MAX_PARTNER_NAME_LENGTH = 20
@@ -73,7 +83,7 @@ export const scenes = [
 ] as const
 
 export type BuiltInSceneId = (typeof scenes)[number]['id']
-export type SceneId = BuiltInSceneId | 'custom'
+export type SceneId = BuiltInSceneId | 'custom' | 'adventure'
 export interface PracticeScene {
   id: SceneId
   title: string
@@ -84,6 +94,9 @@ export interface PracticeScene {
   opener: string
   hint: string
   situation?: string
+  coachingProfile?: string
+  character?: { id: string; age: number; gender: string; detail: string }
+  mission?: { id: string; label: string; instructions: string }
 }
 export function findScene(id: unknown) {
   return scenes.find((scene) => scene.id === id)
@@ -118,8 +131,10 @@ export function sceneWithPartner(
 
 export function resolveScene(
   id: SceneId,
-  customScene: CustomSceneInput | null = null
+  customScene: CustomSceneInput | null = null,
+  adventure?: Adventure | null
 ): PracticeScene | undefined {
+  if (id === 'adventure') return resolveAdventure(adventure)
   if (id !== 'custom') return findScene(id)
   if (!customScene) return undefined
   return {
@@ -246,6 +261,7 @@ export interface PracticeTurn {
   userText: string
   assistantText: string
   feedback: PracticeFeedback | null
+  presentation?: Presentation | null
 }
 
 export interface PracticeSession {
@@ -256,6 +272,10 @@ export interface PracticeSession {
   completedAt: string | null
   turns: PracticeTurn[]
   pending: { requestId: string; text: string; until: string | null } | null
+  adventure?: Adventure | null
+  reward?: AdventureReward | null
+  favoriteTurn?: number | null
+  rehearsal?: Rehearsal | null
 }
 
 export interface PracticeOverview {
