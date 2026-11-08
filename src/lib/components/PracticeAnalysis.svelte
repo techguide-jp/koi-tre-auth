@@ -1,11 +1,12 @@
 <script lang="ts">
-  import type { PracticeAnalysis } from '$lib/practice'
+  import type { PracticeAnalysis, PracticeAssessment } from '$lib/practice'
   import PracticeAspectChart from './PracticeAspectChart.svelte'
   export let analysis: PracticeAnalysis
+  export let assessment: PracticeAssessment | null | undefined = undefined
 </script>
 
 <div class="analysis">
-  <PracticeAspectChart analysis="{analysis}" />
+  <PracticeAspectChart analysis="{analysis}" assessment="{assessment}" />
 
   <section class="next-practice" aria-labelledby="analysis-next">
     <span class="next-icon" aria-hidden="true">↗</span>

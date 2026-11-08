@@ -1,8 +1,8 @@
-import { and, desc, eq, isNotNull } from 'drizzle-orm'
+import { and, desc, eq, isNotNull, sql } from 'drizzle-orm'
 import { assessmentPoints, assessmentTotal, analysisAspects } from '$lib/practice'
 import { episodeById } from '$lib/adventure'
 import { getDb } from '../client'
-import { practices, practiceTurns } from '../schema'
+import { practices, practiceTurns, practiceEvaluations } from '../schema'
 import { readCreditState } from './credits'
 export async function getPracticeHistory(uid: string) {
   const db = getDb()
@@ -12,15 +12,20 @@ export async function getPracticeHistory(uid: string) {
         id: practices.id,
         adventure: practices.adventure,
         completedAt: practices.completedAt,
-        feedback: practiceTurns.feedback
+        feedback: practiceTurns.feedback,
+        evaluation: practiceEvaluations.result
       })
       .from(practices)
       .innerJoin(practiceTurns, eq(practices.id, practiceTurns.practiceId))
+      .leftJoin(practiceEvaluations, eq(practices.id, practiceEvaluations.practiceId))
       .where(
         and(
           eq(practices.uid, uid),
           isNotNull(practices.completedAt),
-          isNotNull(practiceTurns.feedback)
+          eq(
+            practiceTurns.position,
+            sql`case when ${practices.adventure}->>'turns' = '6' then 6 else 3 end`
+          )
         )
       )
       .orderBy(desc(practices.completedAt))
@@ -28,7 +33,7 @@ export async function getPracticeHistory(uid: string) {
     readCreditState(db, uid)
   ])
   const history = rows.flatMap((row) => {
-    const assessment = row.feedback?.analysis?.assessment,
+    const assessment = row.evaluation?.assessment ?? row.feedback?.analysis?.assessment,
       total = assessmentTotal(assessment)
     if (!row.adventure || !assessment || assessment.rubric?.version !== 3 || total === null)
       return []

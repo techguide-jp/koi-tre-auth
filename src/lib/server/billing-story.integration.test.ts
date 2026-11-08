@@ -24,6 +24,7 @@ import {
 import { getAdventureProgress, selectStoryEnding } from './db/repositories/adventures'
 import { submitPracticeMessage } from './practice-service'
 import { episodeById, type Adventure } from '$lib/adventure'
+import { assessedFeedback } from './fixtures/progression-assessment'
 
 let client: PGlite
 let db: ReturnType<typeof drizzle<typeof schema>>
@@ -89,6 +90,7 @@ vi.mock('./dify-practice', () => ({
       reply: 'あなたの気持ちを聞けてうれしいです。私も一緒に過ごしたいです。',
       feedback: final
         ? {
+            ...assessedFeedback(input.text),
             strength: '希望を伝えた',
             improvement: 'この伝え方を次の場面でも。',
             quote: input.text,
@@ -295,14 +297,17 @@ async function seedStory(characterId: 'aoi' | 'yu' = 'aoi', through = 12) {
             }
           : null
     })
-    await db.insert(schema.practiceTurns).values({
-      id: randomUUID(),
-      practiceId: id,
-      requestId: randomUUID(),
-      position: 1,
-      userText: `第${chapter}話の気持ちです。`,
-      assistantText: `第${chapter}話の返答です。`
-    })
+    await db.insert(schema.practiceTurns).values(
+      Array.from({ length: 3 }, (_, i) => ({
+        id: randomUUID(),
+        practiceId: id,
+        requestId: randomUUID(),
+        position: i + 1,
+        userText: `第${chapter}話の気持ちです。`,
+        assistantText: `第${chapter}話の返答です。`,
+        feedback: i === 2 ? assessedFeedback(`第${chapter}話の気持ちです。`) : null
+      }))
+    )
   }
   if (through === 12)
     await db
@@ -872,6 +877,17 @@ describe('枠の消費とパート別再練習', () => {
       }
     })
     expect(await selectStoryEnding(other, id)).toBe(false)
+    await db.insert(schema.practiceTurns).values(
+      Array.from({ length: 3 }, (_, i) => ({
+        id: randomUUID(),
+        practiceId: id,
+        requestId: randomUUID(),
+        position: i + 1,
+        userText: 'ゆっくり知り合いたいです。',
+        assistantText: 'あなたの希望を大切にしたいです。',
+        feedback: i === 2 ? assessedFeedback('ゆっくり知り合いたいです。') : null
+      }))
+    )
     expect(await selectStoryEnding(uid, id)).toBe(true)
     await handleStripeEvent(event('invoice.paid', invoice))
     const daily = randomUUID()

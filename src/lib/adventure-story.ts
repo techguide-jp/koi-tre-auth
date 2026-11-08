@@ -1,5 +1,12 @@
 import type { CharacterId, CoachingKind, Episode, MissionId } from './adventure-catalog'
 
+export const stageRules = [10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22].map((score, index) => ({
+  chapter: index + 1,
+  score,
+  affinity: [0, 4, 8, 15, 22, 30, 39, 49, 60, 72, 84, 96][index],
+  consideration: index < 6 ? 2 : 3
+}))
+
 export const storyParts = [
   {
     id: 'meeting',

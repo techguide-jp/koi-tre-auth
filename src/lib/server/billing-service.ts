@@ -23,6 +23,7 @@ import {
   users
 } from './db/schema'
 import { readCreditState, type CreditDb } from './db/repositories/credits'
+import { readProgression, settleProgression } from './db/repositories/progression'
 import {
   billingBaseUrl,
   stripeClient,
@@ -47,8 +48,16 @@ export async function beginCheckout(uid: string, id: string, product: BillingPro
     if (product.kind === 'route' && state.ownedCharacters.includes(product.characterId))
       throw error(409, 'このルートパックは購入済みです。')
     if (product.kind === 'plus') {
+      await settleProgression(tx, uid, now)
+      const progression = await readProgression(tx, uid)
       const endings = await tx.select().from(characterEndings).where(eq(characterEndings.uid, uid))
-      if (!endings.some((e) => state.ownedCharacters.includes(e.characterId)))
+      if (
+        !endings.some(
+          (e) =>
+            state.ownedCharacters.includes(e.characterId) &&
+            progression.clearedEpisodes.includes(`${e.characterId}:${e.characterId}-12`)
+        )
+      )
         throw error(403, 'まずは1人の本編をクリアしてください。クリア後の交流をPlusで楽しめます。')
       const existing = await tx
         .select()

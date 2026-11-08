@@ -51,7 +51,9 @@ export const POST: RequestHandler = async ({ request }) => {
     customScene,
     adventure
   )
-  if (created === 'locked') throw error(403, '前のエピソードを終えると、この話が開きます。')
+  if (created === 'locked') throw error(403, '前のエピソードの合格点を満たすと、この話が開きます。')
+  if (created === 'affinity')
+    throw error(403, 'この話の必要好感度に届いていません。解放済みの場面で会話を重ねましょう。')
   if (created === 'purchase')
     throw error(403, 'この人物のルートパックを購入すると、本編を続けられます。')
   if (created === 'plus') throw error(403, '本編クリア後の交流・イベントはPlusの対象です。')

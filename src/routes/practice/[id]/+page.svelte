@@ -12,6 +12,7 @@
   import { getAnalyticsContext } from '$lib/analytics'
   import { startPractice } from '$lib/practice-client'
   import PracticeAnalysis from '$lib/components/PracticeAnalysis.svelte'
+  import PracticeAspectChart from '$lib/components/PracticeAspectChart.svelte'
   import CharacterPortrait from '$lib/components/adventure/CharacterPortrait.svelte'
   import AdventureResult from '$lib/components/adventure/AdventureResult.svelte'
   import { characterById, emotionLabels, episodeById, type Adventure } from '$lib/adventure'
@@ -315,8 +316,14 @@
         <h2>おつかれさまでした。</h2>
         <p class="muted">{turnLimit}回のやりとりを振り返り、あなたの言葉をもっと話しやすく。</p>
         {#if feedback.analysis}
-          <PracticeAnalysis analysis="{feedback.analysis}" />
+          <PracticeAnalysis
+            analysis="{feedback.analysis}"
+            assessment="{session.evaluation?.assessment}"
+          />
         {:else}
+          {#if session.evaluation?.assessment}<PracticeAspectChart
+              assessment="{session.evaluation.assessment}"
+            />{/if}
           <div class="feedback-item">
             <h3><span aria-hidden="true">✦</span> よかった点</h3>
             <p>{feedback.strength}</p>

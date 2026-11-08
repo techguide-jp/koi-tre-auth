@@ -2,6 +2,9 @@ import { and, asc, desc, eq, isNotNull } from 'drizzle-orm'
 import { characterEndings, practices, practiceTurns } from '../schema'
 import type { CreditDb } from './credits'
 import { episodeById, isLifeEpisode, type Adventure, type StoryContext } from '$lib/adventure'
+import { readProgression } from './progression'
+import { practiceEvaluations } from '../schema'
+import { affinityLabel, stageRules } from '$lib/adventure-progression'
 
 export async function buildStoryContext(
   db: CreditDb,
@@ -9,6 +12,11 @@ export async function buildStoryContext(
   adventure: Adventure
 ): Promise<StoryContext> {
   const episode = episodeById(adventure.episodeId)!
+  const progression = await readProgression(db, uid)
+  const evaluated = await db
+    .select()
+    .from(practiceEvaluations)
+    .where(eq(practiceEvaluations.uid, uid))
   const completed = await db
     .select()
     .from(practices)
@@ -20,14 +28,25 @@ export async function buildStoryContext(
   const own = completed.filter((s) => {
     if (s.adventure?.characterId !== adventure.characterId || s.adventure.revisit) return false
     const chapter = episodeById(s.adventure.episodeId)?.chapter
+    if (
+      chapter &&
+      (!progression.clearedEpisodes.includes(`${adventure.characterId}:${s.adventure.episodeId}`) ||
+        !evaluated.some((e) => e.practiceId === s.id && e.result.status === 'passed'))
+    )
+      return false
     if (!chapter) return isLifeEpisode(s.adventure.episodeId)
     if (seen.has(s.adventure.episodeId)) return false
     seen.add(s.adventure.episodeId)
     return true
   })
+  let historicalAffinity: number | undefined
   if (adventure.revisit) {
     const original = own.find((s) => s.adventure?.episodeId === adventure.episodeId)
     if (original?.storyContext) return { ...original.storyContext, revisit: true }
+    historicalAffinity =
+      evaluated.find((e) => e.practiceId === original?.id)?.result.affinityBefore ??
+      stageRules.find((r) => r.chapter === episode.chapter)?.affinity ??
+      0
   }
   const life = isLifeEpisode(episode.id)
   let relationship =
@@ -47,7 +66,11 @@ export async function buildStoryContext(
       )
     const ending = selected
       ? (own.find((s) => s.id === selected.practiceId) ??
-        completed.find((s) => s.id === selected.practiceId))
+        completed.find(
+          (s) =>
+            s.id === selected.practiceId &&
+            evaluated.some((e) => e.practiceId === s.id && e.result.status === 'passed')
+        ))
       : own.filter((s) => s.storyEnding).at(-1)
     relationship =
       ending?.storyEnding?.kind === 'lovers'
@@ -79,6 +102,13 @@ export async function buildStoryContext(
     relationship,
     chapter: episode.chapter ?? null,
     revisit: !!adventure.revisit,
-    memories
+    memories,
+    affinity: (() => {
+      const current = progression.relationships.find(
+        (r) => r.characterId === adventure.characterId
+      )!
+      const value = historicalAffinity ?? current.affinity
+      return { value, label: affinityLabel(value) }
+    })()
   }
 }

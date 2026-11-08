@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { and, desc, eq, isNull, isNotNull } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 import {
   practiceTurnLimit,
   type CustomSceneInput,
@@ -23,7 +23,15 @@ import {
 } from '$lib/adventure'
 import { practiceCreditCost } from '$lib/billing'
 import { getDb } from '../client'
-import { characterEndings, operations, practices, practiceTurns, users } from '../schema'
+import {
+  characterEndings,
+  operations,
+  practices,
+  practiceTurns,
+  practiceEvaluations,
+  users
+} from '../schema'
+import { readProgression, settleProgression } from './progression'
 import {
   commitCredits,
   commonCreditLimit,
@@ -45,6 +53,9 @@ export async function getPractice(uid: string, id: string): Promise<PracticeSess
       .where(and(eq(practices.id, id), eq(practices.uid, uid)))
       .for('share')
     if (!session) return null
+    const evaluation = await tx.query.practiceEvaluations.findFirst({
+      where: eq(practiceEvaluations.practiceId, id)
+    })
     const turns = await tx
       .select()
       .from(practiceTurns)
@@ -52,6 +63,13 @@ export async function getPractice(uid: string, id: string): Promise<PracticeSess
       .orderBy(practiceTurns.position)
     return {
       id: session.id,
+      evaluation: evaluation
+        ? {
+            ...evaluation.result,
+            retryAfter: evaluation.retryAfter?.toISOString() ?? null,
+            pending: !!evaluation.pendingUntil && evaluation.pendingUntil > new Date()
+          }
+        : null,
       sceneId: session.sceneId,
       customScene: session.customScene,
       adventure: session.adventure,
@@ -148,13 +166,9 @@ export async function createPractice(
       )
     if (sceneId === 'adventure') {
       if (!normalizeAdventure(adventure)) return false
-      const completed = await tx
-        .select({ adventure: practices.adventure })
-        .from(practices)
-        .where(and(eq(practices.uid, uid), isNotNull(practices.completedAt)))
-      const keys = completed.flatMap((row) =>
-        row.adventure ? [episodeKey(row.adventure.characterId, row.adventure.episodeId)] : []
-      )
+      await settleProgression(tx, uid)
+      const progression = await readProgression(tx, uid),
+        keys = progression.clearedEpisodes
       // 読了済みの本編は直接POSTや旧画面から始めても再練習として保存する。
       if (
         episodeById(adventure!.episodeId)?.chapter &&
@@ -167,7 +181,9 @@ export async function createPractice(
         adventure!,
         keys,
         billing.ownedCharacters,
-        !!billing.subscription?.active
+        !!billing.subscription?.active,
+        new Date(),
+        progression
       )
       if (access !== 'available') return access
     } else if (adventure) return false
@@ -219,20 +235,17 @@ export async function reservePracticeTurn(input: MessageInput, now = new Date())
     if (!session.chargedAt) {
       // 作成後に返金・期限切れになった場合も、最初の生成前に購入権を確かめる。
       if (session.adventure) {
-        const completed = await tx
-          .select({ adventure: practices.adventure })
-          .from(practices)
-          .where(and(eq(practices.uid, input.uid), isNotNull(practices.completedAt)))
+        await settleProgression(tx, input.uid, now)
+        const progression = await readProgression(tx, input.uid)
         const billing = await readCreditState(tx, input.uid, now)
-        const keys = completed.flatMap((row) =>
-          row.adventure ? [episodeKey(row.adventure.characterId, row.adventure.episodeId)] : []
-        )
+        const keys = progression.clearedEpisodes
         const access = adventureAccess(
           session.adventure,
           keys,
           billing.ownedCharacters,
           !!billing.subscription?.active,
-          now
+          now,
+          progression
         )
         if (access !== 'available') return { status: 'access' as const, access }
       }
@@ -370,16 +383,6 @@ export async function finishPracticeTurn(
       if (episodeById(session.adventure.episodeId)?.chapter === 12 && !storyEnding) {
         throw Error('The story ending requires conversation evidence')
       }
-      if (storyEnding && !session.adventure.revisit)
-        await tx
-          .insert(characterEndings)
-          .values({
-            id: `${input.uid}:${session.adventure.characterId}`,
-            uid: input.uid,
-            characterId: session.adventure.characterId,
-            practiceId: input.id
-          })
-          .onConflictDoNothing()
     }
     await tx
       .update(practices)
@@ -395,6 +398,30 @@ export async function finishPracticeTurn(
         updatedAt: now
       })
       .where(eq(practices.id, input.id))
+    if (final && session.adventure) {
+      await settleProgression(tx, input.uid, now)
+      const evaluation = await tx.query.practiceEvaluations.findFirst({
+        where: eq(practiceEvaluations.practiceId, input.id)
+      })
+      const progression = await readProgression(tx, input.uid)
+      if (
+        storyEnding &&
+        !session.adventure.revisit &&
+        evaluation?.result.status === 'passed' &&
+        progression.clearedEpisodes.includes(
+          episodeKey(session.adventure.characterId, session.adventure.episodeId)
+        )
+      )
+        await tx
+          .insert(characterEndings)
+          .values({
+            id: `${input.uid}:${session.adventure.characterId}`,
+            uid: input.uid,
+            characterId: session.adventure.characterId,
+            practiceId: input.id
+          })
+          .onConflictDoNothing()
+    }
     return true
   })
 }

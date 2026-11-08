@@ -5,13 +5,16 @@
     assessmentStatus,
     assessmentPoints,
     assessmentTotal,
-    type PracticeAnalysis
+    type PracticeAnalysis,
+    type PracticeAssessment
   } from '$lib/practice'
   import { createRadarGeometry } from '$lib/practice-radar'
 
-  export let analysis: PracticeAnalysis
+  export let analysis: PracticeAnalysis | undefined = undefined
+  export let assessment: PracticeAssessment | null | undefined = undefined
+  $: measured = assessment ?? analysis?.assessment
   $: rows = analysisAspects.map(({ id, label }) => {
-    const assessment = analysis.assessment?.aspects.find((item) => item.id === id)
+    const assessment = measured?.aspects.find((item) => item.id === id)
     const score = assessmentPoints(assessment)
     return {
       id,
@@ -19,12 +22,12 @@
       score,
       mode: assessmentStatus(assessment),
       status: assessment ? assessmentLabel(assessment) : '未評価',
-      detail: analysis.aspects.find((item) => item.id === id)
+      detail: analysis?.aspects.find((item) => item.id === id)
     }
   })
   $: evaluated = rows.filter(({ score }) => score !== null).length
-  $: total = assessmentTotal(analysis.assessment)
-  $: legacy = !!analysis.assessment && analysis.assessment.rubric?.version !== 3
+  $: total = assessmentTotal(measured)
+  $: legacy = !!measured && measured.rubric?.version !== 3
   $: radar = createRadarGeometry(
     rows.map(({ score }) => score),
     5
@@ -171,7 +174,7 @@
     {#if legacy}<span
         >旧基準（0〜3）の保存済み評価を5点満点へ換算しています。新基準との単純な比較はできません。</span
       >{:else}
-      {analysis.assessment
+      {measured
         ? '白抜き点は参考値、点線は未評価の軸をまたぐ補助線です。未評価の項目に点は置きません。'
         : '今回は数値評価を取得できませんでした。各観点を開くと、会話に基づく解説を読めます。'}
     {/if}

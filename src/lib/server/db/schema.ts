@@ -15,6 +15,7 @@ import type { StoryContext, StoryEnding } from '$lib/adventure'
 import type { CharacterId } from '$lib/adventure-catalog'
 import type { CreditKind } from '$lib/billing'
 import type Stripe from 'stripe'
+import type { PracticeEvaluation } from '$lib/adventure-progression'
 import { boolean } from 'drizzle-orm/pg-core'
 
 export const users = pgTable(
@@ -202,6 +203,66 @@ export const characterEndings = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
   },
   (table) => [unique('character_endings_uid_character_key').on(table.uid, table.characterId)]
+)
+
+export const characterRelationships = pgTable(
+  'character_relationships',
+  {
+    id: varchar('id', { length: 320 }).primaryKey(),
+    uid: varchar('uid', { length: 255 })
+      .notNull()
+      .references(() => users.firebaseUid),
+    characterId: varchar('character_id', { length: 32 }).$type<CharacterId>().notNull(),
+    version: integer('version').notNull(),
+    earned: integer('earned').notNull().default(0),
+    strain: integer('strain').notNull().default(0),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+  },
+  (table) => [unique('character_relationships_uid_character_key').on(table.uid, table.characterId)]
+)
+
+export const episodeAchievements = pgTable(
+  'episode_achievements',
+  {
+    id: varchar('id', { length: 380 }).primaryKey(),
+    uid: varchar('uid', { length: 255 })
+      .notNull()
+      .references(() => users.firebaseUid),
+    characterId: varchar('character_id', { length: 32 }).$type<CharacterId>().notNull(),
+    episodeId: varchar('episode_id', { length: 64 }).notNull(),
+    version: integer('version').notNull(),
+    bestScore: integer('best_score_tenths'),
+    bestPassingScore: integer('best_passing_score_tenths'),
+    contribution: integer('contribution').notNull().default(0),
+    clearedAt: timestamp('cleared_at', { withTimezone: true, mode: 'date' })
+  },
+  (table) => [
+    unique('episode_achievements_uid_character_episode_key').on(
+      table.uid,
+      table.characterId,
+      table.episodeId
+    )
+  ]
+)
+
+export const practiceEvaluations = pgTable(
+  'practice_evaluations',
+  {
+    practiceId: varchar('practice_id', { length: 36 })
+      .primaryKey()
+      .references(() => practices.id),
+    uid: varchar('uid', { length: 255 })
+      .notNull()
+      .references(() => users.firebaseUid),
+    characterId: varchar('character_id', { length: 32 }).$type<CharacterId>().notNull(),
+    version: integer('version').notNull(),
+    result: jsonb('result').$type<PracticeEvaluation>().notNull(),
+    settledAt: timestamp('settled_at', { withTimezone: true, mode: 'date' }),
+    pendingToken: varchar('pending_token', { length: 36 }),
+    pendingUntil: timestamp('pending_until', { withTimezone: true, mode: 'date' }),
+    retryAfter: timestamp('retry_after', { withTimezone: true, mode: 'date' })
+  },
+  (table) => [index('practice_evaluations_uid_idx').on(table.uid)]
 )
 
 export const practiceTurns = pgTable(
