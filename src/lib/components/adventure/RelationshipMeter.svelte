@@ -18,13 +18,15 @@
   let mounted = false
   let visible = false
   let reducedMotion = false
-  let celebrating = false
+  let changing = false
+  let revealed = !animate
   let activeKey = ''
   let revision = 0
   let finishTimer: ReturnType<typeof setTimeout> | undefined
   $: current = clamp(value)
   $: before = previous === null ? null : clamp(previous)
   $: gain = before === null ? 0 : current - before
+  $: celebrating = changing && gain > 0
   $: if (mounted) updateLevel(current, before, animate, visible, reducedMotion)
 
   onMount(() => {
@@ -38,6 +40,7 @@
         : new IntersectionObserver(([entry]) => (visible = entry.intersectionRatio >= 0.35), {
             threshold: 0.35
           })
+    // 人物欄だけが先に見えても、ハートが画面に入るまで両方の演出を待つ。
     if (observer) observer.observe(container)
     else visible = true
     mounted = true
@@ -61,35 +64,39 @@
     if (activeKey === key) {
       if (reduceMotion) {
         void displayed.set(target, { duration: 0 })
-        celebrating = false
+        changing = false
+        revealed = true
         clearTimeout(finishTimer)
       }
       return
     }
     const attempt = ++revision
-    celebrating = false
+    changing = false
     clearTimeout(finishTimer)
     if (!animateChange || start === null || start === target || reduceMotion) {
       activeKey = key
+      revealed = true
       void displayed.set(target, { duration: 0 })
       return
     }
     // 結果を見た瞬間に実際の差分を見せ、スクロールし直しても獲得演出を繰り返さない。
+    revealed = false
     void displayed.set(start, { duration: 0 })
     if (!inView) return
     activeKey = key
     void tick().then(() => {
       if (!mounted || attempt !== revision) return
-      celebrating = target > start
+      revealed = true
+      changing = true
       void displayed.set(target, { duration: 1250, easing: cubicOut }).then(() => {
-        if (mounted && attempt === revision)
-          finishTimer = setTimeout(() => (celebrating = false), 500)
+        if (mounted && attempt === revision) finishTimer = setTimeout(() => (changing = false), 500)
       })
     })
   }
 </script>
 
-<div class="relationship" class:celebrating="{celebrating}" bind:this="{container}">
+<div class="relationship" class:celebrating="{celebrating}">
+  <slot name="reaction" active="{changing}" revealed="{revealed}" />
   <div class="heading">
     <span>{name}との好感度</span><strong>{Math.round($displayed)}<small> / 100</small></strong>
   </div>
@@ -102,6 +109,7 @@
     aria-valuenow="{current}"
     aria-valuetext="{`${current}点、100点満点。${affinityLabel(current)}。ハート1つで20点。`}"
     style="{`--heart-mask:${heartMask}`}"
+    bind:this="{container}"
   >
     {#each [0, 1, 2, 3, 4] as index}{@const level = heartLevel($displayed, index)}{@const changed =
         before !== null && heartLevel(before, index) < heartLevel(current, index)}

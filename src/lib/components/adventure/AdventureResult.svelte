@@ -18,6 +18,8 @@
   import { earnedSpecialCard } from '$lib/special-card-art'
   import StageEvaluation from './StageEvaluation.svelte'
   import RelationshipMeter from './RelationshipMeter.svelte'
+  import CharacterAffinityReaction from './CharacterAffinityReaction.svelte'
+  import { affinityReaction } from '$lib/affinity-reaction'
   export let session: PracticeSession
   export let enabled = true
   export let starting = false
@@ -76,6 +78,7 @@
   $: missionXp = session.reward?.xp === 70 ? 20 : 10
   $: part = storyPart(episode.chapter)
   $: artwork = earnedSpecialCard(session)
+  $: reaction = affinityReaction(session)
   $: selectedEnding = progress?.endings?.some((e) => e.practiceId === session.id && e.selected)
   onMount(() => {
     alive = true
@@ -246,7 +249,15 @@
         ? session.evaluation.affinityBefore
         : null}"
       animate="{animateAffinity}"
-    />{/if}
+    >
+      <svelte:fragment slot="reaction" let:active let:revealed>
+        {#if reaction}<CharacterAffinityReaction
+            reaction="{reaction}"
+            active="{active}"
+            revealed="{revealed}"
+          />{/if}
+      </svelte:fragment>
+    </RelationshipMeter>{/if}
   <div class="reward" role="status">
     <div>
       <p class="eyebrow">エピソード完了</p>
