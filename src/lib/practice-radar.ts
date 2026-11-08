@@ -7,24 +7,26 @@ interface Point {
   y: number
 }
 
-function point(index: number, score: number): Point {
+function point(index: number, score: number, maxScore: number): Point {
   const angle = -Math.PI / 2 + (index * 2 * Math.PI) / AXES
-  const radius = (score / 3) * RADIUS
+  const radius = (score / maxScore) * RADIUS
   return { x: CENTER.x + Math.cos(angle) * radius, y: CENTER.y + Math.sin(angle) * radius }
 }
 function coordinates(points: Point[]) {
   return points.map(({ x, y }) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')
 }
 
-export function createRadarGeometry(values: (number | null)[]) {
+export function createRadarGeometry(values: (number | null)[], maxScore: 3 | 5 = 3) {
   if (values.length !== AXES) throw new Error('A practice radar requires five aspects')
   const vertices = values.map((value, index) =>
-    value !== null && Number.isFinite(value) && value >= 0 && value <= 3
-      ? point(index, value)
+    value !== null && Number.isFinite(value) && value >= 0 && value <= maxScore
+      ? point(index, value, maxScore)
       : null
   )
-  const axes = values.map((_, index) => point(index, 3))
-  const rings = [1, 2, 3].map((level) => coordinates(values.map((_, index) => point(index, level))))
+  const axes = values.map((_, index) => point(index, maxScore, maxScore))
+  const rings = Array.from({ length: maxScore }, (_, i) => i + 1).map((level) =>
+    coordinates(values.map((_, index) => point(index, level, maxScore)))
+  )
   const evaluated = vertices.flatMap((vertex, index) => (vertex ? [{ vertex, index }] : []))
   // 欠測値は補完せず、実在する点を結ぶ。欠測軸をまたぐ接続は画面で点線にする。
   const segments =

@@ -66,9 +66,13 @@
             memory.characterId
           )}{@const episode = episodeById(memory.episodeId)}{#if character && episode}<a
               class="memory {episode.theme}"
+              class:deep="{memory.variant === 'deep'}"
               href="{`/practice/${memory.practiceId}`}"
               ><div class="art">
-                <CharacterPortrait characterId="{character.id}" emotion="relieved" />
+                <CharacterPortrait
+                  characterId="{character.id}"
+                  emotion="{memory.emotion ?? 'relieved'}"
+                />
               </div>
               <div class="caption">
                 <span
@@ -77,6 +81,8 @@
                   })}</span
                 >
                 <h2>{memory.title}</h2>
+                {#if memory.variant === 'deep'}<span class="deep-label">✦ 6往復の、特別な一枚</span
+                  >{#if memory.quote}<blockquote>「{memory.quote}」</blockquote>{/if}{/if}
                 <p>会話と振り返りを読む ↗</p>
               </div></a
             >{/if}{/each}
@@ -96,6 +102,24 @@
 </div>
 
 <style>
+  .memory.deep {
+    border: 2px solid #a89366;
+  }
+  .deep-label {
+    display: inline-block;
+    color: #735b2d;
+    font-size: 0.7rem;
+    margin: 6px 0;
+  }
+  .caption blockquote {
+    font-size: 0.78rem;
+    line-height: 1.8;
+    margin: 12px 0;
+    padding: 12px;
+    background: #ffffffb3;
+    border-radius: 8px;
+    overflow-wrap: anywhere;
+  }
   .album {
     max-width: 960px;
     width: 100%;

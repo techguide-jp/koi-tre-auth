@@ -91,7 +91,7 @@ async function complete(input = adventure) {
   return { id, last: last! }
 }
 describe('物語の進行・報酬・再送', () => {
-  it('6回目で完了・30XPを確定し、再送と再読込でも報酬・利用枠を増やさない', async () => {
+  it('6回目で完了・70XPと2枠を確定し、再送と再読込でも報酬・利用枠を増やさない', async () => {
     const id = await create()
     for (let i = 0; i < 5; i++) await submitPracticeMessage(message(id, i), null)
     expect((await getPractice(uid, id))?.completedAt).toBeNull()
@@ -101,14 +101,14 @@ describe('物語の進行・報酬・再送', () => {
     await submitPracticeMessage(last, null)
     expect(generatePracticeReply).toHaveBeenCalledTimes(6)
     expect((await getPractice(uid, id))?.reward).toMatchObject({
-      xp: 30,
+      xp: 70,
       mission: { id: 'feeling' }
     })
     const progress = await getAdventureProgress(uid)
-    expect(progress).toMatchObject({ xp: 30, completed: 1, completedEpisodes: ['aoi:aoi-1'] })
+    expect(progress).toMatchObject({ xp: 70, completed: 1, completedEpisodes: ['aoi:aoi-1'] })
     expect(progress.memories).toHaveLength(1)
     expect(progress.badges.find((b) => b.id === 'first')?.earned).toBe(true)
-    expect((await getPracticeOverview(uid)).remaining).toBe(9)
+    expect((await getPracticeOverview(uid)).remaining).toBe(8)
     expect((await getPractice(uid, id))?.turns[0].presentation?.emotion).toBe('smile')
   })
   it('3往復モードと不正なミッション根拠では通常の完了20XPを保存する', async () => {

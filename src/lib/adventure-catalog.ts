@@ -1,3 +1,5 @@
+import { storyEpisodes } from './adventure-story'
+
 export const characters = [
   {
     id: 'aoi',
@@ -119,6 +121,7 @@ export type CoachingKind =
   | 'boundary'
   | 'conflict'
   | 'positive_event'
+  | 'feelings'
 export interface Episode {
   id: string
   characterId?: CharacterId
@@ -444,5 +447,6 @@ export const episodes: Episode[] = [
     coachingProfile: 'silence',
     missionId: 'calm',
     theme: 'evening'
-  }
+  },
+  ...storyEpisodes
 ]

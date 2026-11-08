@@ -42,7 +42,7 @@ export const POST: RequestHandler = async ({ request }) => {
     !(await getPractice(actor.uid, body.id)) &&
     (await getPracticeOverview(actor.uid)).remaining === 0
   ) {
-    throw error(429, '今月の10回の練習枠を使い切りました。途中の練習は再開できます。')
+    throw error(429, 'この練習に使える枠が足りません。途中の練習は再開できます。')
   }
   const created = await createPractice(
     actor.uid,
@@ -52,6 +52,10 @@ export const POST: RequestHandler = async ({ request }) => {
     adventure
   )
   if (created === 'locked') throw error(403, '前のエピソードを終えると、この話が開きます。')
+  if (created === 'purchase')
+    throw error(403, 'この人物のルートパックを購入すると、本編を続けられます。')
+  if (created === 'plus') throw error(403, '本編クリア後の交流・イベントはPlusの対象です。')
+  if (created === 'unpublished') throw error(403, 'このイベントは公開前です。')
   if (!created) throw error(409, '別の練習として開始してください。')
   return privateJson(await getPractice(actor.uid, body.id))
 }

@@ -35,7 +35,8 @@
   >
   <nav aria-label="メインメニュー">
     <a class="topics-link" href="/topics">会話ネタ帳</a>
-    {#if $user}<a href="/memories">アルバム</a>{:else}<a href="/try">30秒お試し</a>{/if}<a
+    {#if $user}<a class="album-link" href="/memories">アルバム</a><a href="/account">マイページ</a
+      >{:else}<a class="try-link" href="/try">30秒お試し</a>{/if}<a href="/pricing">料金</a><a
       class="contact-link"
       href="/about">使い方</a
     >{#if $user}<button
@@ -134,6 +135,11 @@
       font-size: 0.45rem;
     }
     .contact-link {
+      display: none;
+    }
+    .topics-link,
+    .album-link,
+    .try-link {
       display: none;
     }
     .login-link,

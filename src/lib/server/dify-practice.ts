@@ -6,7 +6,14 @@ import {
   type PracticeTurn,
   type SceneId
 } from '$lib/practice'
-import { parseMission, parsePresentation, type Adventure } from '$lib/adventure'
+import {
+  parseMission,
+  parsePresentation,
+  parseStoryEnding,
+  episodeById,
+  type Adventure,
+  type StoryContext
+} from '$lib/adventure'
 import { assessPractice, selectPracticeCoaching } from './jev-practice'
 import { practiceCoaching } from './practice-coaching'
 import { parsePracticeOutput } from './practice-feedback'
@@ -20,6 +27,7 @@ export interface GeneratePracticeInput {
   text: string
   adventure?: Adventure | null
   rehearsal?: boolean
+  storyContext?: StoryContext | null
 }
 
 export async function generatePracticeReply(input: GeneratePracticeInput) {
@@ -48,8 +56,40 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
     ? await assessPractice(scene, transcript, assessmentSignal, coaching)
     : null
   const assessment = measured
-    ? { ...measured, rubric: { version: 2 as const, profile: coaching.id } }
+    ? { ...measured, rubric: { version: 3 as const, profile: coaching.id } }
     : null
+  const sceneData = {
+    ...scene,
+    ...(input.adventure
+      ? {
+          storyContext: input.storyContext ? structuredClone(input.storyContext) : null,
+          chapter: episodeById(input.adventure.episodeId)?.chapter ?? null,
+          revisit: !!input.adventure.revisit
+        }
+      : {}),
+    coaching: {
+      ...coaching,
+      replyStyle: final
+        ? 'close_naturally'
+        : input.turns.length === 0
+          ? 'respond_and_share'
+          : 'share_or_follow_up'
+    },
+    assessment: assessment
+      ? {
+          ...assessment,
+          aspects: assessment.aspects.map((aspect) => ({
+            ...aspect,
+            status: assessmentStatus(aspect)
+          }))
+        }
+      : null
+  }
+  // Difyのscene入力上限を超えると会話自体が失敗するため、古い記憶から表示用文脈を縮める。
+  while (JSON.stringify(sceneData).length > 4000 && sceneData.storyContext?.memories.length)
+    sceneData.storyContext.memories.shift()
+  if (JSON.stringify(sceneData).length > 4000)
+    throw Error('Practice scene exceeds workflow input limit')
   const response = await fetch(`${base.replace(/\/$/, '')}/workflows/run`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
@@ -58,26 +98,7 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
       user: input.id,
       response_mode: 'blocking',
       inputs: {
-        scene: JSON.stringify({
-          ...scene,
-          coaching: {
-            ...coaching,
-            replyStyle: final
-              ? 'close_naturally'
-              : input.turns.length === 0
-                ? 'respond_and_share'
-                : 'share_or_follow_up'
-          },
-          assessment: assessment
-            ? {
-                ...assessment,
-                aspects: assessment.aspects.map((aspect) => ({
-                  ...aspect,
-                  status: assessmentStatus(aspect)
-                }))
-              }
-            : null
-        }),
+        scene: JSON.stringify(sceneData),
         transcript: JSON.stringify(transcript),
         turn: input.turns.length + 1,
         total_turns: input.rehearsal ? turnLimit + 1 : turnLimit
@@ -98,6 +119,9 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
   return {
     ...parsed,
     presentation: parsePresentation(raw?.presentation),
-    mission: final ? parseMission(raw?.mission, input.adventure, userTexts) : null
+    mission: final ? parseMission(raw?.mission, input.adventure, userTexts) : null,
+    storyEnding: final
+      ? parseStoryEnding(raw?.storyEnding ?? raw?.feedback?.storyEnding, input.adventure, userTexts)
+      : null
   }
 }

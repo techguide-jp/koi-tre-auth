@@ -3,13 +3,15 @@
   import type { PracticeSession } from '$lib/practice'
   import {
     characterById,
-    episodes,
-    episodeKey,
-    episodeUnlocked,
+    episodeById,
+    adventureAccess,
+    nextEpisode,
+    isLifeEpisode,
     missions,
     type Adventure,
     type AdventureProgress
   } from '$lib/adventure'
+  import { storyPart } from '$lib/adventure-story'
   import { authenticatedFetch } from '$lib/stores'
   import CharacterPortrait from './CharacterPortrait.svelte'
   export let session: PracticeSession
@@ -19,7 +21,7 @@
   let progress: AdventureProgress | null = null
   let progressLoading = false
   let progressError = ''
-  let pendingAction: 'favorite' | 'rehearsal' | null = null
+  let pendingAction: 'favorite' | 'rehearsal' | 'ending' | null = null
   let message = ''
   let success = ''
   let position = session.rehearsal?.position ?? session.turns.length
@@ -34,15 +36,29 @@
   let timer: ReturnType<typeof setTimeout> | undefined
   $: adventure = session.adventure!
   $: character = characterById(adventure.characterId)!
-  $: episode = episodes.find((e) => e.id === adventure.episodeId)!
+  $: episode = episodeById(adventure.episodeId)!
   $: last = session.turns.at(-1)
   $: next =
-    episodes.find(
-      (e) =>
-        (!e.characterId || e.characterId === adventure.characterId) &&
-        !progress?.completedEpisodes.includes(episodeKey(adventure.characterId, e.id)) &&
-        episodeUnlocked({ ...adventure, episodeId: e.id }, progress?.completedEpisodes ?? [])
-    ) ?? episodes.find((e) => !e.characterId)!
+    episode.chapter === 12 || isLifeEpisode(episode.id)
+      ? episodeById('daily-today')!
+      : nextEpisode(adventure.characterId, progress?.completedEpisodes ?? [])
+  let nextSelection: Adventure
+  $: nextSelection = {
+    version: 1,
+    characterId: adventure.characterId,
+    episodeId: next.id,
+    turns: adventure.turns
+  }
+  $: nextAccess = adventureAccess(
+    nextSelection,
+    progress?.completedEpisodes ?? [],
+    progress?.billing?.ownedCharacters ?? [],
+    !!progress?.billing?.subscription?.active
+  )
+  $: baseXp = (session.reward?.xp ?? 20) >= 50 ? 50 : 20
+  $: missionXp = session.reward?.xp === 70 ? 20 : 10
+  $: part = storyPart(episode.chapter)
+  $: selectedEnding = progress?.endings?.some((e) => e.practiceId === session.id && e.selected)
   onMount(() => {
     alive = true
     void loadProgress()
@@ -77,6 +93,24 @@
   function apply(value: PracticeSession) {
     session = value
     dispatch('update', value)
+  }
+  async function chooseEnding() {
+    if (pendingAction) return
+    pendingAction = 'ending'
+    message = ''
+    success = ''
+    try {
+      await authenticatedFetch(`/api/me/practices/${session.id}/ending`, {
+        method: 'POST',
+        body: '{}'
+      })
+      await loadProgress()
+      if (alive) success = 'この結末を、これからの交流へ引き継ぎました。'
+    } catch (e) {
+      if (alive) message = e instanceof Error ? e.message : '結末を保存できませんでした。'
+    } finally {
+      if (alive) pendingAction = null
+    }
   }
   async function poll() {
     try {
@@ -147,7 +181,7 @@
 </script>
 
 <section class="adventure-result" aria-label="エピソードの報酬と思い出">
-  <div class="memory-card {episode.theme}">
+  <div class="memory-card {episode.theme}" class:deep="{adventure.turns === 6}">
     <div class="memory-art">
       <CharacterPortrait
         characterId="{character.id}"
@@ -155,7 +189,9 @@
       />
     </div>
     <div class="memory-copy">
-      <p class="eyebrow">{character.name}との、今日の一枚</p>
+      <p class="eyebrow">
+        {character.name}との、{adventure.turns === 6 ? 'じっくり話した特別な一枚' : '今日の一枚'}
+      </p>
       <h2>{episode.title}</h2>
       <blockquote>「{last?.assistantText}」</blockquote>
       <p class="small muted">このエピソードを、思い出アルバムに残しました。</p>
@@ -165,11 +201,11 @@
     <div>
       <p class="eyebrow">エピソード完了</p>
       <strong>+{session.reward?.xp ?? 20} <span>XP</span></strong>
-      <p>会話を終えた経験に、20XP。</p>
+      <p>会話を終えた経験に、{baseXp}XP。</p>
     </div>
     <div>
       <p class="mission-label">✦ {missions[episode.missionId].label}</p>
-      {#if session.reward?.mission}<p class="mission-achieved">ミッション達成！ +10XP</p>
+      {#if session.reward?.mission}<p class="mission-achieved">ミッション達成！ +{missionXp}XP</p>
         <details>
           <summary>達成したひと言</summary
           >{#each session.reward.mission.evidence as evidence}<blockquote>
@@ -182,16 +218,54 @@
         </p>{/if}
     </div>
   </div>
+  {#if session.storyEnding}<section class="ending-card">
+      <p class="eyebrow">二人の物語の、ひと区切り</p>
+      <h2>
+        {session.storyEnding.kind === 'lovers' ? '恋人として、ここから' : '急がずに、もう少しずつ'}
+      </h2>
+      <p>{session.storyEnding.reason}</p>
+      {#if selectedEnding}<p class="small">
+          この結末を、日常交流へ引き継いでいます。
+        </p>{:else}<button
+          class="button secondary"
+          disabled="{!!pendingAction}"
+          aria-busy="{pendingAction === 'ending'}"
+          on:click="{chooseEnding}"
+          >{pendingAction === 'ending' ? '結末を保存中…' : 'この結末を日常交流へ引き継ぐ'}</button
+        >{/if}
+    </section>{/if}
   <div class="next-actions">
-    <button
-      class="button primary"
-      disabled="{starting || !enabled || !!pendingAction || !progress}"
-      aria-busy="{starting}"
-      on:click="{() => dispatch('next', { ...adventure, episodeId: next.id })}"
-      >{starting ? '次の物語を準備しています…' : '次のエピソードへ'} →</button
-    ><a class="button secondary" href="/memories">思い出アルバム</a>
+    {#if adventure.revisit}<a
+        class="button primary"
+        href="/?character={adventure.characterId}&part={part?.id ?? 'meeting'}&mode=revisit#scenes"
+        >同じパートで、別の場面を練習 →</a
+      >{:else if nextAccess === 'purchase'}<a
+        class="button primary"
+        href="/pricing?character={adventure.characterId}">{character.name}の、本編の続きへ →</a
+      >{:else if nextAccess === 'plus'}<a
+        class="button primary"
+        href="/pricing?character={adventure.characterId}#plus">今の二人で話してみる · Plus →</a
+      >{:else}<button
+        class="button primary"
+        disabled="{starting || !enabled || !!pendingAction || !progress}"
+        aria-busy="{starting}"
+        on:click="{() => dispatch('next', nextSelection)}"
+        >{starting
+          ? '次の場面を準備しています…'
+          : isLifeEpisode(next.id)
+            ? '今の二人で話してみる'
+            : '次のエピソードへ'} →</button
+      >{/if}
+    <a class="button secondary" href="/memories">思い出アルバム</a>
   </div>
-  <p class="small muted">次の練習は別の1回分になります。今回の会話はいつでも読み返せます。</p>
+  {#if part}<a
+      class="small"
+      href="/?character={adventure.characterId}&part={part.id}&mode=revisit#scenes"
+      >{part.label}に戻って練習する →</a
+    >{/if}
+  <p class="small muted">
+    新しい練習は3往復1枠・6往復2枠を使います。今回の会話はいつでも読み返せます。
+  </p>
   {#if progressError}
     <p class="small" role="status">{progressError}</p>
     <button
@@ -278,6 +352,25 @@
 </section>
 
 <style>
+  .memory-card.deep {
+    border: 2px solid #a89366;
+    box-shadow: 0 8px 28px #a893661a;
+  }
+  .ending-card {
+    padding: 26px;
+    margin: 24px 0;
+    background: linear-gradient(135deg, #f0e4d5, #e8eddc);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+  }
+  .ending-card h2 {
+    font-size: 1.5rem;
+    margin: 12px 0;
+  }
+  .ending-card > p {
+    font-size: 0.9rem;
+    line-height: 1.9;
+  }
   .adventure-result {
     margin: 32px 0;
   }

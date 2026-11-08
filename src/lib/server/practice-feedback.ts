@@ -42,7 +42,10 @@ function citations(value: unknown, userTexts: string[], min = 1) {
 }
 function parseAnalysis(value: unknown, userTexts: string[]): PracticeAnalysis {
   const item = record(value)
-  if (item.version !== 2 || ![PRACTICE_TURNS, MAX_PRACTICE_TURNS].includes(userTexts.length))
+  if (
+    ![2, 3].includes(Number(item.version)) ||
+    ![PRACTICE_TURNS, MAX_PRACTICE_TURNS].includes(userTexts.length)
+  )
     throw new Error('Invalid practice analysis version')
   const strengths = list(item.strengths, 0, 3).map((value) => {
     const point = record(value)
@@ -75,7 +78,8 @@ function parseAnalysis(value: unknown, userTexts: string[]): PracticeAnalysis {
   )
   if (new Set(aspects.map(({ id }) => id)).size !== analysisAspects.length)
     throw new Error('Duplicate analysis aspect')
-  const turns = list(item.turns, PRACTICE_TURNS, PRACTICE_TURNS).map((value) => {
+  const analyzed = item.version === 3 ? userTexts.length : PRACTICE_TURNS
+  const turns = list(item.turns, analyzed, analyzed).map((value) => {
     const turn = record(value)
     const rewrite = text(turn.rewrite)
     const alternative = turn.alternative == null ? undefined : record(turn.alternative)
@@ -98,17 +102,34 @@ function parseAnalysis(value: unknown, userTexts: string[]): PracticeAnalysis {
       ...(alternate && alternate.rewrite !== rewrite ? { alternative: alternate } : {})
     }
   })
-  if (new Set(turns.map(({ turn }) => turn)).size !== PRACTICE_TURNS)
+  if (new Set(turns.map(({ turn }) => turn)).size !== analyzed)
     throw new Error('Duplicate analysis turn')
   const next = record(item.nextPractice)
+  let development: PracticeAnalysis['development']
+  if (item.development != null && userTexts.length === 6) {
+    const point = record(item.development)
+    // モデルが引用を複数返した場合も全件を照合してから、前半・後半の代表を保存する。
+    const beforeQuotes = (
+      Array.isArray(point.before) ? list(point.before, 1, 3) : [point.before]
+    ).map((quote) => evidence(quote, userTexts))
+    const afterQuotes = (Array.isArray(point.after) ? list(point.after, 1, 3) : [point.after]).map(
+      (quote) => evidence(quote, userTexts)
+    )
+    if (beforeQuotes.some((quote) => quote.turn > 3) || afterQuotes.some((quote) => quote.turn < 4))
+      throw Error('Invalid development evidence')
+    const before = beforeQuotes[0],
+      after = afterQuotes.at(-1)!
+    development = { observation: text(point.observation), before, after }
+  }
   return {
-    version: 2,
+    version: item.version as 2 | 3,
     summary: text(item.summary),
     strengths,
     improvements,
     aspects: analysisAspects.map(({ id }) => aspects.find((aspect) => aspect.id === id)!),
     turns: turns.sort((a, b) => a.turn - b.turn),
-    nextPractice: { goal: text(next.goal), example: text(next.example) }
+    nextPractice: { goal: text(next.goal), example: text(next.example) },
+    ...(development ? { development } : {})
   }
 }
 

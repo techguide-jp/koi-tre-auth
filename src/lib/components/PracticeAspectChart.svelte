@@ -3,7 +3,8 @@
     analysisAspects,
     assessmentLabel,
     assessmentStatus,
-    assessmentValue,
+    assessmentPoints,
+    assessmentTotal,
     type PracticeAnalysis
   } from '$lib/practice'
   import { createRadarGeometry } from '$lib/practice-radar'
@@ -11,7 +12,7 @@
   export let analysis: PracticeAnalysis
   $: rows = analysisAspects.map(({ id, label }) => {
     const assessment = analysis.assessment?.aspects.find((item) => item.id === id)
-    const score = assessmentValue(assessment)
+    const score = assessmentPoints(assessment)
     return {
       id,
       label,
@@ -22,11 +23,16 @@
     }
   })
   $: evaluated = rows.filter(({ score }) => score !== null).length
-  $: radar = createRadarGeometry(rows.map(({ score }) => score))
+  $: total = assessmentTotal(analysis.assessment)
+  $: legacy = !!analysis.assessment && analysis.assessment.rubric?.version !== 3
+  $: radar = createRadarGeometry(
+    rows.map(({ score }) => score),
+    5
+  )
   const labelLines = [
     ['受け止め・共感'],
     ['自分の', '伝え方'],
-    ['質問の', '答えやすさ'],
+    ['キャッチ', 'ボール'],
     ['話題の', 'つながり'],
     ['距離感・', '配慮']
   ]
@@ -45,7 +51,16 @@
       <p class="eyebrow">今回の会話の傾向</p>
       <h3 id="analysis-aspects">5つの観点をひと目で</h3>
     </div>
-    <span class="coverage">今回の目安 <strong>{evaluated}</strong><span> / 5</span></span>
+    <div
+      class="total-score"
+      aria-label="{total === null
+        ? `25点満点の採点は${evaluated}観点まで取得済み`
+        : `合計${total.toFixed(1)}点、25点満点`}"
+    >
+      <span>今回の会話</span><strong>{total === null ? '—' : total.toFixed(1)}</strong><span>
+        / 25点</span
+      >
+    </div>
   </div>
 
   <div class="radar-layout">
@@ -66,7 +81,7 @@
               )
               .join('。')}</desc
           >
-          <polygon class="radar-background" points="{radar.rings[2]}"></polygon>
+          <polygon class="radar-background" points="{radar.rings.at(-1)}"></polygon>
           {#each radar.rings as ring}
             <polygon class="radar-grid" points="{ring}"></polygon>
           {/each}
@@ -121,6 +136,9 @@
           <summary>
             <span class="aspect-label">{row.label}</span>
             <span class="assessment-label" class:muted="{row.score === null}">
+              {#if row.score !== null}<strong class="aspect-score"
+                  >{row.score.toFixed(1)}<small> / 5</small></strong
+                >{/if}
               {row.status}
               {#if row.mode === 'reference'}<span class="reference-badge">参考</span>{/if}
             </span>
@@ -150,14 +168,53 @@
     </div>
   </div>
   <p class="chart-note">
-    {analysis.assessment
-      ? '白抜き点は参考値、点線は未評価の軸をまたぐ補助線です。未評価の項目に点は置きません。'
-      : '今回は観点別の目安は未評価です。各観点を開くと、会話に基づく解説を読めます。'}
+    {#if legacy}<span
+        >旧基準（0〜3）の保存済み評価を5点満点へ換算しています。新基準との単純な比較はできません。</span
+      >{:else}
+      {analysis.assessment
+        ? '白抜き点は参考値、点線は未評価の軸をまたぐ補助線です。未評価の項目に点は置きません。'
+        : '今回は数値評価を取得できませんでした。各観点を開くと、会話に基づく解説を読めます。'}
+    {/if}
   </p>
+  {#if total === null && evaluated > 0}<p class="chart-note">
+      {evaluated} / 5観点を採点済みです。未評価を0点で埋めず、合計点は5観点がそろった場合に表示します。
+    </p>{/if}
   <p class="detail-hint">各観点をタップすると、解説と根拠の発言を確認できます。</p>
 </section>
 
 <style>
+  .total-score {
+    flex-shrink: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    color: var(--muted);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 150px;
+    font-size: 0.75rem;
+  }
+  .total-score > span:first-child {
+    width: 100%;
+    text-align: right;
+  }
+  .total-score > strong {
+    font-size: 2.4rem;
+    line-height: 1.1;
+    color: var(--accent);
+    font-family: Georgia, serif;
+  }
+  .aspect-score {
+    display: block;
+    font-size: 1.05rem;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+  .aspect-score small {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
   .aspect-chart {
     padding: 1.25rem;
     border: 1px solid var(--border);
@@ -180,16 +237,6 @@
   h3 {
     margin: 0;
     font-size: 1.1rem;
-  }
-  .coverage {
-    flex-shrink: 0;
-    font-size: 0.7rem;
-    color: var(--muted);
-  }
-  .coverage strong {
-    color: var(--ink);
-    font-size: 1.25rem;
-    margin-left: 0.35rem;
   }
   .radar {
     position: relative;
@@ -391,9 +438,6 @@
     }
     h3 {
       font-size: 1rem;
-    }
-    .coverage {
-      font-size: 0.75rem;
     }
     .radar-label {
       font-size: 0.75rem;

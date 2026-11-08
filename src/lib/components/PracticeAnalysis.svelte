@@ -67,6 +67,18 @@
   </div>
 
   <section class="turns" aria-labelledby="analysis-turns">
+    {#if analysis.development}<section class="development" aria-label="前半から後半の変化">
+        <h3>会話のなかで、変わったこと</h3>
+        <p>{analysis.development.observation}</p>
+        <blockquote>
+          <span>前半・{analysis.development.before.turn}回目</span>「{analysis.development.before
+            .quote}」
+        </blockquote>
+        <blockquote>
+          <span>後半・{analysis.development.after.turn}回目</span>「{analysis.development.after
+            .quote}」
+        </blockquote>
+      </section>{/if}
     <h3 id="analysis-turns">ひと言ずつ、見直してみる</h3>
     <p class="section-note">気になる返答を開くと、言い換えとその理由が読めます。</p>
     {#each analysis.turns as turn}
