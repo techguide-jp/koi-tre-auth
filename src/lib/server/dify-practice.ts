@@ -1,5 +1,6 @@
 import {
   resolveScene,
+  assessmentStatus,
   type CustomSceneInput,
   PRACTICE_TURNS,
   type PracticeTurn,
@@ -42,7 +43,18 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
       user: input.id,
       response_mode: 'blocking',
       inputs: {
-        scene: JSON.stringify({ ...scene, assessment }),
+        scene: JSON.stringify({
+          ...scene,
+          assessment: assessment
+            ? {
+                ...assessment,
+                aspects: assessment.aspects.map((aspect) => ({
+                  ...aspect,
+                  status: assessmentStatus(aspect)
+                }))
+              }
+            : null
+        }),
         transcript: JSON.stringify(transcript),
         turn: input.turns.length + 1,
         total_turns: PRACTICE_TURNS

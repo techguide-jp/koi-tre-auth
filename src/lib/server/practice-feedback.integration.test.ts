@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { analysisAspects, assessmentLabel, assessmentValue } from '$lib/practice'
+import { analysisAspects, assessmentLabel, assessmentStatus, assessmentValue } from '$lib/practice'
 import { parsePracticeOutput } from './practice-feedback'
 import { parseAssessment } from './jev-practice'
 import { exampleFeedback, exampleJevResponse, exampleTexts } from './fixtures/practice-analysis'
@@ -77,26 +77,48 @@ describe('会話に基づく分析', () => {
       []
     )
   })
-  it('低確信や機会がない観点では良否を断定しない', () => {
-    for (const extra of [{ confidence: 0.4 }, { observable: 0.2 }])
-      expect(
-        assessmentLabel({
-          id: analysisAspects[0].id,
-          score: 0,
-          confidence: 1,
-          observable: 1,
-          ...extra
-        })
-      ).toBe('判断保留')
+  it('近い段階で迷う評価を参考表示し、材料不足と区別する', () => {
+    const value = { id: analysisAspects[0].id, score: 2.4, confidence: 0.4, observable: 0.9 }
+    expect(assessmentStatus(value)).toBe('reference')
+    expect(assessmentValue(value)).toBe(2.4)
+    expect(assessmentStatus({ ...value, observable: 0.2 })).toBe('insufficient')
+    expect(assessmentLabel({ ...value, observable: 0.2 })).toBe('材料不足')
   })
   it('グラフの未評価・判断保留と、評価済みの0を区別する', () => {
     const value = { id: 'questions' as const, score: 0, confidence: 0.9, observable: 0.9 }
     expect(assessmentValue()).toBeNull()
-    expect(assessmentValue({ ...value, confidence: 0.69 })).toBeNull()
+    expect(assessmentValue({ ...value, confidence: 0.69 })).toBe(0)
     expect(assessmentValue({ ...value, observable: 0.69 })).toBeNull()
     expect(assessmentValue(value)).toBe(0)
     expect(assessmentLabel(value)).toBe('工夫の余地あり')
     expect(assessmentValue({ ...value, score: NaN })).toBeNull()
     expect(assessmentValue({ ...value, score: 3.1 })).toBeNull()
+  })
+  it('隣接する段階の間のスコアは保持し、極端に割れた平均値は描かない', () => {
+    const base = { id: analysisAspects[0].id, score: 1.5, confidence: 0.1, observable: 0.9 }
+    expect(assessmentValue({ ...base, probabilities: [0, 0.5, 0.5, 0] })).toBe(1.5)
+    for (const probabilities of [
+      [0.5, 0, 0, 0.5],
+      [0.25, 0.25, 0.25, 0.25]
+    ] as const) {
+      const value = {
+        ...base,
+        probabilities: [...probabilities] as [number, number, number, number]
+      }
+      expect(assessmentStatus(value)).toBe('uncertain')
+      expect(assessmentValue(value)).toBeNull()
+      expect(assessmentLabel(value)).toBe('評価に幅あり')
+    }
+  })
+  it('不正な分布や確信度を参考値として描かない', () => {
+    const base = { id: analysisAspects[0].id, score: 1.5, confidence: 0.4, observable: 0.9 }
+    for (const patch of [
+      { confidence: NaN },
+      { confidence: -1 },
+      { observable: Infinity },
+      { probabilities: [0, NaN, 0, 1] as [number, number, number, number] },
+      { probabilities: [0, 0.2, 0.2, 0] as [number, number, number, number] }
+    ])
+      expect(assessmentValue({ ...base, ...patch })).toBeNull()
   })
 })

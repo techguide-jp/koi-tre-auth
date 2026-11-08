@@ -157,6 +157,7 @@ export interface PracticeAssessment {
     score: number
     confidence: number
     observable: number
+    probabilities?: [number, number, number, number]
   }[]
 }
 export interface PracticeAnalysis {
@@ -180,22 +181,48 @@ export interface PracticeAnalysis {
   nextPractice: { goal: string; example: string }
   assessment?: PracticeAssessment
 }
-export function assessmentValue(value?: PracticeAssessment['aspects'][number]): number | null {
-  // 判断保留の値を0として描くと、評価材料の不足が低評価に見えてしまう。
+export type AssessmentStatus = 'rated' | 'reference' | 'insufficient' | 'uncertain' | 'unavailable'
+export function assessmentStatus(value?: PracticeAssessment['aspects'][number]): AssessmentStatus {
   if (
     !value ||
-    !(value.observable >= 0.7 && value.observable <= 1) ||
-    !(value.confidence >= 0.7 && value.confidence <= 1) ||
+    !(value.observable >= 0 && value.observable <= 1) ||
+    !(value.confidence >= 0 && value.confidence <= 1) ||
     !Number.isFinite(value.score) ||
     value.score < 0 ||
     value.score > 3
   )
-    return null
-  return value.score
+    return 'unavailable'
+  if (value.observable < 0.7) return 'insufficient'
+  // 隣接段階で迷うだけなら参考値にする。離れた段階へ分散した平均値は描かない。
+  if (value.probabilities) {
+    const p = value.probabilities
+    const total = p.reduce((sum, probability) => sum + probability, 0)
+    if (
+      p.length !== 4 ||
+      p.some((probability) => !(probability >= 0 && probability <= 1)) ||
+      Math.abs(total - 1) > 0.02
+    )
+      return 'unavailable'
+    const mean = p.reduce((sum, probability, level) => sum + (probability / total) * level, 0)
+    const variance = p.reduce(
+      (sum, probability, level) => sum + (probability / total) * (level - mean) ** 2,
+      0
+    )
+    if (variance > 1) return 'uncertain'
+  }
+  // 過去の評価には分布がないため、低確信の保存済みスコアも断定せず参考表示する。
+  return value.confidence >= 0.7 ? 'rated' : 'reference'
+}
+export function assessmentValue(value?: PracticeAssessment['aspects'][number]): number | null {
+  const status = assessmentStatus(value)
+  return status === 'rated' || status === 'reference' ? value!.score : null
 }
 export function assessmentLabel(value: PracticeAssessment['aspects'][number]) {
+  const status = assessmentStatus(value)
+  if (status === 'insufficient') return '材料不足'
+  if (status === 'uncertain') return '評価に幅あり'
   const score = assessmentValue(value)
-  if (score === null) return '判断保留'
+  if (score === null) return '未評価'
   if (score >= 2.5) return 'よくできている'
   if (score >= 1.5) return 'できている'
   return '工夫の余地あり'
