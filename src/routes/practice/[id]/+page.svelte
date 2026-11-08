@@ -94,7 +94,7 @@
     else if (
       session?.id === result.id &&
       ((!session.completedAt && !!result.completedAt) ||
-        (session.evaluation?.status === 'pending' &&
+        ((!session.evaluation || session.evaluation.status === 'pending') &&
           result.evaluation &&
           result.evaluation.status !== 'pending'))
     )
