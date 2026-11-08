@@ -48,6 +48,13 @@
     !!progress?.billing?.subscription?.active
   )
   $: cost = practiceCreditCost(turns)
+  $: illustrationEarned =
+    progress?.memories.some(
+      (memory) =>
+        memory.characterId === characterId &&
+        memory.episodeId === episodeId &&
+        memory.variant === 'deep'
+    ) ?? false
   $: remaining = progress?.billing
     ? availableCredits(progress.billing.credits, characterId, !!episode.chapter)
     : null
@@ -280,6 +287,12 @@
           <small>2枠・最大70XP</small></label
         >
       </fieldset>
+      {#if turns === 6}<p class="illustration-reward">
+          <span aria-hidden="true">✦</span>
+          {illustrationEarned
+            ? 'この場面の専用イラストは獲得済み。もう一度、違う言葉で話してみよう。'
+            : '6往復を終えると、この場面だけの専用イラストを獲得。アルバムで大きく鑑賞できます。'}
+        </p>{/if}
       {#if access === 'purchase'}<a class="button primary" href="/pricing?character={characterId}"
           >{character.name}の本編へ</a
         >
@@ -316,6 +329,16 @@
 </section>
 
 <style>
+  .illustration-reward {
+    margin: 14px 0 18px;
+    padding: 12px 15px;
+    border: 1px solid #dfd0ac;
+    border-radius: 10px;
+    color: #75613b;
+    background: #f8f2e3;
+    font-size: 0.78rem;
+    line-height: 1.9;
+  }
   .picker-heading {
     display: flex;
     justify-content: space-between;

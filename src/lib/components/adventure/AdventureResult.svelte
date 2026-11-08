@@ -14,6 +14,8 @@
   import { storyPart } from '$lib/adventure-story'
   import { authenticatedFetch } from '$lib/stores'
   import CharacterPortrait from './CharacterPortrait.svelte'
+  import SpecialCardArt from './SpecialCardArt.svelte'
+  import { earnedSpecialCard } from '$lib/special-card-art'
   export let session: PracticeSession
   export let enabled = true
   export let starting = false
@@ -58,6 +60,7 @@
   $: baseXp = (session.reward?.xp ?? 20) >= 50 ? 50 : 20
   $: missionXp = session.reward?.xp === 70 ? 20 : 10
   $: part = storyPart(episode.chapter)
+  $: artwork = earnedSpecialCard(session)
   $: selectedEnding = progress?.endings?.some((e) => e.practiceId === session.id && e.selected)
   onMount(() => {
     alive = true
@@ -181,22 +184,33 @@
 </script>
 
 <section class="adventure-result" aria-label="エピソードの報酬と思い出">
-  <div class="memory-card {episode.theme}" class:deep="{adventure.turns === 6}">
-    <div class="memory-art">
-      <CharacterPortrait
-        characterId="{character.id}"
-        emotion="{last?.presentation?.emotion ?? 'neutral'}"
-      />
-    </div>
-    <div class="memory-copy">
-      <p class="eyebrow">
-        {character.name}との、{adventure.turns === 6 ? 'じっくり話した特別な一枚' : '今日の一枚'}
-      </p>
-      <h2>{episode.title}</h2>
-      <blockquote>「{last?.assistantText}」</blockquote>
-      <p class="small muted">このエピソードを、思い出アルバムに残しました。</p>
-    </div>
-  </div>
+  {#if artwork}<div class="memory-card deep scene-reward">
+      <div class="special-image"><SpecialCardArt art="{artwork}" priority /></div>
+      <div class="memory-copy special-copy">
+        <p class="collection-stamp">✦ 場面限定イラスト</p>
+        <p class="eyebrow">{character.name}と、じっくり話した一枚</p>
+        <h2>{episode.title}</h2>
+        <blockquote>「{last?.assistantText}」</blockquote>
+        <p class="small muted">
+          思い出アルバムに保存しました。<br />絵をタップすると、大きく鑑賞できます。
+        </p>
+      </div>
+    </div>{:else}<div class="memory-card {episode.theme}">
+      <div class="memory-art">
+        <CharacterPortrait
+          characterId="{character.id}"
+          emotion="{last?.presentation?.emotion ?? 'neutral'}"
+        />
+      </div>
+      <div class="memory-copy">
+        <p class="eyebrow">
+          {character.name}との、{adventure.turns === 6 ? 'じっくり話した特別な一枚' : '今日の一枚'}
+        </p>
+        <h2>{episode.title}</h2>
+        <blockquote>「{last?.assistantText}」</blockquote>
+        <p class="small muted">このエピソードを、思い出アルバムに残しました。</p>
+      </div>
+    </div>{/if}
   <div class="reward" role="status">
     <div>
       <p class="eyebrow">エピソード完了</p>
@@ -356,6 +370,34 @@
     border: 2px solid #a89366;
     box-shadow: 0 8px 28px #a893661a;
   }
+  .memory-card.scene-reward {
+    grid-template-columns: 1fr 1.05fr;
+    padding: 0;
+    gap: 0;
+    background: linear-gradient(135deg, #f7f0df, #fffaf0);
+  }
+  .special-image {
+    width: 100%;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    background: #e5e1d4;
+  }
+  .special-image :global(.art-open) {
+    width: 100%;
+  }
+  .special-copy {
+    padding: 24px;
+  }
+  .special-copy h2 {
+    font-size: 1.25rem;
+  }
+  .special-copy .collection-stamp {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: #7f652e;
+    margin: 0 0 20px;
+  }
   .ending-card {
     padding: 26px;
     margin: 24px 0;
@@ -514,6 +556,17 @@
     overflow: hidden;
   }
   @media (max-width: 580px) {
+    .memory-card.scene-reward {
+      grid-template-columns: 1fr;
+      padding: 0;
+      gap: 0;
+    }
+    .special-copy {
+      padding: 22px;
+    }
+    .special-copy .collection-stamp {
+      margin-bottom: 14px;
+    }
     .memory-card {
       grid-template-columns: 110px 1fr;
       padding: 16px 16px 0;
