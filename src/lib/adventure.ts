@@ -2,6 +2,8 @@ import { characters, episodes, missions, type CharacterId } from './adventure-ca
 import type { PracticeEvidence, PracticeScene } from './practice'
 import { dailyEpisodes, eventEpisode, eventPublished } from './adventure-life'
 import type { BillingOverview } from './billing'
+import type { ProgressionView } from './adventure-progression'
+import { stageRules } from './adventure-story'
 export { characters, episodes, missions } from './adventure-catalog'
 export type { Character, CharacterId, Episode, PartnerGender } from './adventure-catalog'
 
@@ -43,6 +45,8 @@ export interface Rehearsal {
   presentation?: Presentation
 }
 export interface AdventureProgress {
+  progression?: ProgressionView
+  stages?: StageProgress[]
   xp: number
   level: number
   xpInLevel: number
@@ -68,6 +72,56 @@ export interface AdventureProgress {
     selected: boolean
   }[]
 }
+export interface StageProgress {
+  characterId: CharacterId
+  episodeId: string
+  cleared: boolean
+  requiredScore: number
+  requiredConsideration: number
+  requiredAffinity: number
+  bestScore: number | null
+  affinity: number
+  scoreGap: number
+  affinityGap: number
+  lockedReasons: ('previous' | 'affinity' | 'purchase')[]
+}
+export function stageProgress(progression: ProgressionView, owned: CharacterId[]): StageProgress[] {
+  return characters.flatMap((character) =>
+    stageRules.map((rule) => {
+      const episodeId = `${character.id}-${rule.chapter}`
+      const cleared = progression.clearedEpisodes.includes(episodeKey(character.id, episodeId))
+      const achievement = progression.achievements.find(
+        (a) => a.characterId === character.id && a.episodeId === episodeId
+      )
+      const affinity =
+        progression.relationships.find((r) => r.characterId === character.id)?.affinity ?? 0
+      const lockedReasons: StageProgress['lockedReasons'] = []
+      if (
+        !cleared &&
+        rule.chapter > 1 &&
+        !progression.clearedEpisodes.includes(
+          episodeKey(character.id, `${character.id}-${rule.chapter - 1}`)
+        )
+      )
+        lockedReasons.push('previous')
+      if (!cleared && affinity < rule.affinity) lockedReasons.push('affinity')
+      if (rule.chapter > 3 && !owned.includes(character.id)) lockedReasons.push('purchase')
+      return {
+        characterId: character.id,
+        episodeId,
+        cleared,
+        requiredScore: rule.score,
+        requiredConsideration: rule.consideration,
+        requiredAffinity: rule.affinity,
+        bestScore: achievement?.bestScore ?? null,
+        affinity,
+        scoreGap: Math.max(0, rule.score - (achievement?.bestScore ?? 0)),
+        affinityGap: cleared ? 0 : Math.max(0, rule.affinity - affinity),
+        lockedReasons
+      }
+    })
+  )
+}
 export type StoryEndingKind = 'lovers' | 'slow'
 export interface StoryEnding {
   kind: StoryEndingKind
@@ -80,6 +134,7 @@ export interface StoryContext {
   chapter: number | null
   revisit: boolean
   memories: { episodeId: string; userQuote: string; partnerReply: string }[]
+  affinity?: { value: number; label: string }
 }
 export const characterById = (id: unknown) => characters.find((c) => c.id === id)
 export const episodeById = (id: unknown) =>
@@ -124,9 +179,23 @@ export function adventureAccess(
   completed: string[],
   owned: CharacterId[],
   plus: boolean,
-  now = new Date()
-): 'available' | 'locked' | 'purchase' | 'plus' | 'unpublished' {
+  now = new Date(),
+  progression?: ProgressionView
+): 'available' | 'locked' | 'affinity' | 'purchase' | 'plus' | 'unpublished' {
   const episode = episodeById(adventure.episodeId)
+  if (progression) {
+    completed = progression.clearedEpisodes
+    const cleared = completed.includes(episodeKey(adventure.characterId, adventure.episodeId))
+    const affinity =
+      progression.relationships.find((r) => r.characterId === adventure.characterId)?.affinity ?? 0
+    if (
+      episode?.chapter &&
+      !cleared &&
+      episodeUnlocked(adventure, completed) &&
+      affinity < stageRules[episode.chapter - 1].affinity
+    )
+      return 'affinity'
+  }
   if (!episode || !episodeUnlocked(adventure, completed)) return 'locked'
   if (
     adventure.revisit &&

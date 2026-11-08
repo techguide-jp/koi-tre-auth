@@ -20,7 +20,12 @@
   let alive = false
   $: roster = characters.filter((c) => c.gender === gender)
   $: owned = progress?.billing?.ownedCharacters ?? []
-  $: eligible = !!progress?.endings?.some((e) => owned.includes(e.characterId))
+  $: eligible = !!progress?.endings?.some(
+    (e) =>
+      owned.includes(e.characterId) &&
+      (!progress?.progression ||
+        progress.progression.clearedEpisodes.includes(`${e.characterId}:${e.characterId}-12`))
+  )
   $: subscribed = !!progress?.billing?.subscription?.active
   $: if (mounted && $user && $user.uid !== loadedUid) {
     loadedUid = $user.uid

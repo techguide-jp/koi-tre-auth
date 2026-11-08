@@ -1,3 +1,4 @@
+import type { CreditDb } from './db/repositories/credits'
 import { randomUUID } from 'node:crypto'
 import { readFile, readdir } from 'node:fs/promises'
 import { PGlite } from '@electric-sql/pglite'
@@ -14,6 +15,9 @@ import {
 import { submitPracticeMessage, submitRehearsal } from './practice-service'
 import { generatePracticeReply } from './dify-practice'
 import type { Adventure } from '$lib/adventure'
+import { assessedFeedback } from './fixtures/progression-assessment'
+import { settleProgression } from './db/repositories/progression'
+import { eq } from 'drizzle-orm'
 let client: PGlite
 let db: ReturnType<typeof drizzle<typeof schema>>
 let migrations: string[]
@@ -55,6 +59,7 @@ beforeEach(async () => {
     feedback:
       input.turns.length + 1 === (input.adventure?.turns ?? 3)
         ? {
+            ...assessedFeedback(input.text),
             strength: '気持ちを伝えた',
             improvement: 'この自然さを次も',
             quote: input.text,
@@ -239,6 +244,23 @@ describe('物語の進行・報酬・再送', () => {
         }
       }))
     )
+    const saved = await db.select().from(schema.practices)
+    for (const session of saved)
+      await db.insert(schema.practiceTurns).values(
+        Array.from({ length: 3 }, (_, index) => ({
+          id: randomUUID(),
+          practiceId: session.id,
+          requestId: randomUUID(),
+          position: index + 1,
+          userText: 'うれしいです。',
+          assistantText: '私もうれしいです。',
+          feedback: index === 2 ? assessedFeedback('うれしいです。') : null
+        }))
+      )
+    await db.transaction(async (tx) => {
+      await tx.select().from(schema.users).where(eq(schema.users.firebaseUid, uid)).for('update')
+      await settleProgression(tx as unknown as CreditDb, uid)
+    })
     const progress = await getAdventureProgress(uid)
     expect(progress).toMatchObject({ xp: 120, level: 2, xpInLevel: 20, completed: 4 })
     expect(progress.badges.filter((b) => b.earned).map((b) => b.id)).toEqual([

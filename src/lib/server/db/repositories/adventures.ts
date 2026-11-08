@@ -6,13 +6,22 @@ import {
   episodeKey,
   normalizeAdventure,
   parsePresentation,
+  stageProgress,
   type AdventureProgress,
   type Presentation
 } from '$lib/adventure'
 import { getDb } from '../client'
-import { characterEndings, operations, practices, practiceTurns, users } from '../schema'
+import {
+  characterEndings,
+  operations,
+  practices,
+  practiceTurns,
+  practiceEvaluations,
+  users
+} from '../schema'
 import { readCreditState } from './credits'
 import type { MessageInput } from './practices'
+import { readProgression, settleProgression } from './progression'
 
 export async function getAdventureProgress(uid: string): Promise<AdventureProgress> {
   const db = getDb()
@@ -73,6 +82,7 @@ export async function getAdventureProgress(uid: string): Promise<AdventureProgre
     db.select().from(characterEndings).where(eq(characterEndings.uid, uid))
   ])
   const progress = emptyAdventureProgress()
+  progress.progression = await readProgression(db, uid)
   const valid = completed.filter(
     (row) =>
       normalizeAdventure(row.adventure) &&
@@ -123,12 +133,15 @@ export async function getAdventureProgress(uid: string): Promise<AdventureProgre
     first: valid.length > 0,
     mission: valid.filter((row) => row.reward?.mission).length >= 3,
     story: [...encountered].some((id) =>
-      [1, 2, 3].every((chapter) => seen.has(episodeKey(id, `${id}-${chapter}`)))
+      [1, 2, 3].every((chapter) =>
+        progress.progression!.clearedEpisodes.includes(episodeKey(id, `${id}-${chapter}`))
+      )
     ),
     encounters: encountered.size >= 3
   }
   progress.badges = progress.badges.map((badge) => ({ ...badge, earned: earned[badge.id] }))
   progress.billing = billing
+  progress.stages = stageProgress(progress.progression, billing.ownedCharacters)
   progress.endings = valid.flatMap((row) =>
     row.storyEnding
       ? [
@@ -147,6 +160,7 @@ export async function getAdventureProgress(uid: string): Promise<AdventureProgre
 export async function selectStoryEnding(uid: string, id: string) {
   return getDb().transaction(async (tx) => {
     await tx.select().from(users).where(eq(users.firebaseUid, uid)).for('update')
+    await settleProgression(tx, uid)
     const session = await tx.query.practices.findFirst({
       where: and(eq(practices.id, id), eq(practices.uid, uid))
     })
@@ -155,6 +169,17 @@ export async function selectStoryEnding(uid: string, id: string) {
       !session.adventure ||
       !session.storyEnding ||
       episodeById(session.adventure.episodeId)?.chapter !== 12
+    )
+      return false
+    const progression = await readProgression(tx, uid)
+    const evaluation = await tx.query.practiceEvaluations.findFirst({
+      where: eq(practiceEvaluations.practiceId, id)
+    })
+    if (
+      !progression.clearedEpisodes.includes(
+        episodeKey(session.adventure.characterId, session.adventure.episodeId)
+      ) ||
+      evaluation?.result.status !== 'passed'
     )
       return false
     await tx

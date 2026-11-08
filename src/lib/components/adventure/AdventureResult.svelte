@@ -16,6 +16,8 @@
   import CharacterPortrait from './CharacterPortrait.svelte'
   import SpecialCardArt from './SpecialCardArt.svelte'
   import { earnedSpecialCard } from '$lib/special-card-art'
+  import StageEvaluation from './StageEvaluation.svelte'
+  import RelationshipMeter from './RelationshipMeter.svelte'
   export let session: PracticeSession
   export let enabled = true
   export let starting = false
@@ -40,10 +42,20 @@
   $: character = characterById(adventure.characterId)!
   $: episode = episodeById(adventure.episodeId)!
   $: last = session.turns.at(-1)
+  $: cleared =
+    progress?.progression?.clearedEpisodes.includes(
+      `${adventure.characterId}:${adventure.episodeId}`
+    ) ?? false
+  $: nextRule = progress?.stages?.find(
+    (stage) => stage.characterId === adventure.characterId && stage.episodeId === next.id
+  )
   $: next =
-    episode.chapter === 12 || isLifeEpisode(episode.id)
+    (episode.chapter === 12 && cleared) || isLifeEpisode(episode.id)
       ? episodeById('daily-today')!
-      : nextEpisode(adventure.characterId, progress?.completedEpisodes ?? [])
+      : nextEpisode(
+          adventure.characterId,
+          progress?.progression?.clearedEpisodes ?? progress?.completedEpisodes ?? []
+        )
   let nextSelection: Adventure
   $: nextSelection = {
     version: 1,
@@ -55,7 +67,9 @@
     nextSelection,
     progress?.completedEpisodes ?? [],
     progress?.billing?.ownedCharacters ?? [],
-    !!progress?.billing?.subscription?.active
+    !!progress?.billing?.subscription?.active,
+    new Date(),
+    progress?.progression
   )
   $: baseXp = (session.reward?.xp ?? 20) >= 50 ? 50 : 20
   $: missionXp = session.reward?.xp === 70 ? 20 : 10
@@ -211,6 +225,21 @@
         <p class="small muted">このエピソードを、思い出アルバムに残しました。</p>
       </div>
     </div>{/if}
+  <StageEvaluation
+    enabled="{enabled}"
+    session="{session}"
+    cleared="{cleared}"
+    on:update="{async (event) => {
+      apply(event.detail)
+      await loadProgress()
+    }}"
+  />
+  {#if progress?.progression}<RelationshipMeter
+      name="{character.name}"
+      value="{progress.progression.relationships.find((r) => r.characterId === character.id)
+        ?.affinity ?? 0}"
+      required="{nextRule?.requiredAffinity ?? 0}"
+    />{/if}
   <div class="reward" role="status">
     <div>
       <p class="eyebrow">エピソード完了</p>
@@ -240,6 +269,8 @@
       <p>{session.storyEnding.reason}</p>
       {#if selectedEnding}<p class="small">
           この結末を、日常交流へ引き継いでいます。
+        </p>{:else if session.evaluation?.status !== 'passed' || !cleared}<p class="small">
+          この結末の記録は残ります。第12話を新基準でクリアすると、日常交流へ引き継げます。
         </p>{:else}<button
           class="button secondary"
           disabled="{!!pendingAction}"
@@ -248,8 +279,22 @@
           >{pendingAction === 'ending' ? '結末を保存中…' : 'この結末を日常交流へ引き継ぐ'}</button
         >{/if}
     </section>{/if}
+  {#if nextRule && next.id !== episode.id}
+    <p class="small muted">
+      次の話は {nextRule.requiredScore} / 25点・配慮 {nextRule.requiredConsideration}点以上が目標。
+      必要好感度 {nextRule.requiredAffinity}（現在 {nextRule.affinity}）{nextRule.affinityGap > 0
+        ? `、あと${nextRule.affinityGap}`
+        : ''}。
+      {#if nextRule.lockedReasons.includes('previous')}前の話のクリアが必要です。{/if}
+      {#if nextRule.lockedReasons.includes('purchase')}この人物のルートパックが必要です。{/if}
+    </p>
+  {/if}
   <div class="next-actions">
-    {#if adventure.revisit}<a
+    {#if nextAccess === 'affinity' || nextAccess === 'locked'}<a
+        class="button primary"
+        href="/?character={adventure.characterId}#scenes">次の条件と、練習する場面を見る →</a
+      >
+    {:else if adventure.revisit}<a
         class="button primary"
         href="/?character={adventure.characterId}&part={part?.id ?? 'meeting'}&mode=revisit#scenes"
         >同じパートで、別の場面を練習 →</a
@@ -268,7 +313,9 @@
           ? '次の場面を準備しています…'
           : isLifeEpisode(next.id)
             ? '今の二人で話してみる'
-            : '次のエピソードへ'} →</button
+            : next.id === episode.id
+              ? 'この話にもう一度挑戦'
+              : '次のエピソードへ'} →</button
       >{/if}
     <a class="button secondary" href="/memories">思い出アルバム</a>
   </div>

@@ -12,7 +12,8 @@
     type AdventureProgress,
     type CharacterId
   } from '$lib/adventure'
-  import { storyParts, storyPart, type StoryPartId } from '$lib/adventure-story'
+  import { storyParts, storyPart, stageRules, type StoryPartId } from '$lib/adventure-story'
+  import RelationshipMeter from './RelationshipMeter.svelte'
   import { dailyEpisodes, publishedEvents } from '$lib/adventure-life'
   import { availableCredits, practiceCreditCost } from '$lib/billing'
   export let characterId: CharacterId
@@ -28,7 +29,12 @@
   let initialized = false
   let touched = false
   let note = ''
-  $: completed = progress?.completedEpisodes ?? []
+  $: completed = progress?.progression?.clearedEpisodes ?? progress?.completedEpisodes ?? []
+  $: relationship = progress?.progression?.relationships.find((r) => r.characterId === characterId)
+  $: rule = stageRules.find((r) => r.chapter === episode.chapter)
+  $: achievement = progress?.progression?.achievements.find(
+    (a) => a.characterId === characterId && a.episodeId === episodeId
+  )
   $: character = characters.find((c) => c.id === characterId)!
   $: part = storyParts.find((p) => p.id === partId)!
   $: own = episodes.filter((e) => e.characterId === characterId)
@@ -45,7 +51,9 @@
     selected,
     completed,
     progress?.billing?.ownedCharacters ?? [],
-    !!progress?.billing?.subscription?.active
+    !!progress?.billing?.subscription?.active,
+    new Date(),
+    progress?.progression
   )
   $: cost = practiceCreditCost(turns)
   $: illustrationEarned =
@@ -65,11 +73,14 @@
     previousCharacter = characterId
     touched = false
     mode = 'story'
-    continueStory()
+    ;({ partId, episodeId, turns } = storySelection())
   }
   $: if (progress && !initialized) {
     initialized = true
-    if (!touched) continueStory()
+    if (!touched) {
+      mode = 'story'
+      ;({ partId, episodeId, turns } = storySelection())
+    }
   }
   onMount(() => {
     const query = new URLSearchParams(window.location.search)
@@ -99,11 +110,20 @@
         : choices.find((e) => !completed.includes(episodeKey(characterId, e.id)))
     chooseEpisode((preferred ?? choices[0]).id)
   }
-  function continueStory() {
+  function storySelection() {
     const next = nextEpisode(characterId, completed)
+    const id = next.characterId ? next.id : `${characterId}-1`
+    const kind = episodeById(id)?.coachingProfile
+    return {
+      partId: storyPart(next.chapter)?.id ?? ('meeting' as StoryPartId),
+      episodeId: id,
+      turns: (kind === 'boundary' || kind === 'silence' ? 3 : 6) as 3 | 6
+    }
+  }
+  function continueStory() {
     mode = 'story'
-    partId = storyPart(next.chapter)?.id ?? 'meeting'
-    chooseEpisode(next.characterId ? next.id : `${characterId}-1`)
+    ;({ partId, episodeId, turns } = storySelection())
+    note = ''
   }
   function changeMode(value: typeof mode) {
     touched = true
@@ -185,7 +205,9 @@
           { ...selected, episodeId: item.id },
           completed,
           progress?.billing?.ownedCharacters ?? [],
-          !!progress?.billing?.subscription?.active
+          !!progress?.billing?.subscription?.active,
+          new Date(),
+          progress?.progression
         )}<button
           class:active="{episodeId === item.id}"
           class:locked="{state !== 'available'}"
@@ -197,12 +219,14 @@
           }}"
           ><span class="chapter"
             >EP.{item.chapter} · {done
-              ? '読了'
+              ? 'クリア'
               : state === 'purchase'
                 ? 'パックで開く'
                 : state === 'locked'
                   ? '前の話のあとに'
-                  : '未読'}</span
+                  : state === 'affinity'
+                    ? '好感度を深めよう'
+                    : '未クリア'}</span
           ><strong>{item.title}</strong><span
             >{mode === 'revisit'
               ? done
@@ -256,7 +280,9 @@
     <button class="text-button" disabled="{pending}" on:click="{randomScene}"
       >↻ おまかせで選ぶ</button
     >
-    <p class="small muted">共通場面は練習専用です。物語の関係や結末は変わりません。</p>
+    <p class="small muted">
+      共通場面でも好感度を深めたり、すれ違いを回復できます。物語の結末や過去の記憶は変わりません。
+    </p>
   </details>
   {#if note}<p class="small" role="status">{note}</p>{/if}
   <div class="episode-preview {episode.theme}">
@@ -271,6 +297,23 @@
               : 'ひと場面の練習'} · {character.name}
       </p>
       <h3>{episode.title}</h3>
+      {#if progress?.progression}<RelationshipMeter
+          name="{character.name}"
+          value="{relationship?.affinity ?? 0}"
+          required="{rule?.affinity ?? 0}"
+        />{/if}
+      {#if rule}<p class="stage-requirements">
+          クリア目標 {rule.score} / 25点 · 配慮 {rule.consideration}点以上<br />この話の必要好感度 {rule.affinity}
+          / 100
+        </p>{/if}
+      {#if rule && achievement?.bestScore !== null && achievement?.bestScore !== undefined}
+        <p class="small muted">
+          自己ベスト {achievement.bestScore.toFixed(1)} / 25点
+          {#if !achievement.cleared && achievement.bestScore < rule.score}
+            · 目標まであと{(rule.score - achievement.bestScore).toFixed(1)}点{/if}
+          {#if !achievement.cleared}（配慮の最低点も必要です）{/if}
+        </p>
+      {/if}
       <p>{access === 'available' ? episode.setting : episode.subtitle}</p>
       <div class="mission">
         <span aria-hidden="true">✦</span>
@@ -293,8 +336,18 @@
             ? 'この場面の専用イラストは獲得済み。もう一度、違う言葉で話してみよう。'
             : '6往復を終えると、この場面だけの専用イラストを獲得。アルバムで大きく鑑賞できます。'}
         </p>{/if}
-      {#if access === 'purchase'}<a class="button primary" href="/pricing?character={characterId}"
-          >{character.name}の本編へ</a
+      {#if access === 'affinity'}<p role="status">
+          この話まで好感度があと{Math.max(
+            0,
+            (rule?.affinity ?? 0) - (relationship?.affinity ?? 0)
+          )}必要です。解放済みの話や「場面から練習する」で会話を重ねましょう。
+        </p>
+        <button class="button secondary" disabled="{pending}" on:click="{randomScene}"
+          >好感度を深める場面を選ぶ ↻</button
+        >
+      {:else if access === 'purchase'}<a
+          class="button primary"
+          href="/pricing?character={characterId}">{character.name}の本編へ</a
         >
         <p class="small muted">ルートパック 1,480円・24枠付き。月額への加入は任意です。</p>
       {:else if access === 'plus'}<a
@@ -317,7 +370,7 @@
           {access === 'locked'
             ? mode === 'revisit'
               ? 'この話をクリアすると、ここに戻って練習できます。'
-              : '前の話を終えると開きます。'
+              : '前の話をクリアすると開きます。'
             : access === 'unpublished'
               ? 'このイベントは公開前です。'
               : !affordable

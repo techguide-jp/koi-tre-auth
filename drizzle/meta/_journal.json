@@ -43,6 +43,13 @@
       "when": 1794149585335,
       "tag": "0005_reflective_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794153248129,
+      "tag": "0006_soft_talisman",
+      "breakpoints": true
     }
   ]
 }

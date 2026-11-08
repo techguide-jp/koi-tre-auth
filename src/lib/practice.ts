@@ -287,6 +287,7 @@ export interface PracticeTurn {
 }
 
 export interface PracticeSession {
+  evaluation?: import('./adventure-progression').PracticeEvaluation | null
   id: string
   sceneId: SceneId
   customScene: CustomSceneInput | null
