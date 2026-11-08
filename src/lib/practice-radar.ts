@@ -25,14 +25,21 @@ export function createRadarGeometry(values: (number | null)[]) {
   )
   const axes = values.map((_, index) => point(index, 3))
   const rings = [1, 2, 3].map((level) => coordinates(values.map((_, index) => point(index, level))))
-  // 欠測した軸を中心へ落としたり、その前後を結んだりすると架空の形になる。
-  const segments = vertices.flatMap((vertex, index) => {
-    const nextIndex = (index + 1) % AXES
-    const next = vertices[nextIndex]
-    return vertex && next
-      ? [{ from: index, to: nextIndex, points: coordinates([vertex, next]) }]
-      : []
-  })
+  const evaluated = vertices.flatMap((vertex, index) => (vertex ? [{ vertex, index }] : []))
+  // 欠測値は補完せず、実在する点を結ぶ。欠測軸をまたぐ接続は画面で点線にする。
+  const segments =
+    evaluated.length < 2
+      ? []
+      : evaluated.slice(0, evaluated.length === 2 ? 1 : undefined).map(({ vertex, index }, i) => {
+          const next = evaluated[(i + 1) % evaluated.length]
+          const distance = Math.abs(next.index - index)
+          return {
+            from: index,
+            to: next.index,
+            gap: distance !== 1 && distance !== AXES - 1,
+            points: coordinates([vertex, next.vertex])
+          }
+        })
   const polygon = vertices.every((vertex) => vertex !== null)
     ? coordinates(vertices as Point[])
     : null

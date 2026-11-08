@@ -16,14 +16,34 @@ describe('5観点のレーダーチャート', () => {
     expect(chart.vertices[0]).toEqual(chart.center)
     expect(chart.segments).toHaveLength(5)
   })
-  it('判断保留の軸を飛び越えて線を引かない', () => {
+  it('評価済みの点を一周して結び、欠測軸をまたぐ線を区別する', () => {
     const chart = createRadarGeometry([3, null, 2, 1, 1])
     expect(chart.polygon).toBeNull()
-    expect(chart.segments.map(({ from, to }) => [from, to])).toEqual([
-      [2, 3],
-      [3, 4],
-      [4, 0]
+    expect(chart.segments.map(({ from, to, gap }) => [from, to, gap])).toEqual([
+      [0, 2, true],
+      [2, 3, false],
+      [3, 4, false],
+      [4, 0, false]
     ])
+  })
+  it('3項目だけでも孤立した点を作らず、面を塗らずに輪郭を閉じる', () => {
+    const chart = createRadarGeometry([null, 1.97, null, 2.19, 2.01])
+    expect(chart.vertices.filter(Boolean)).toHaveLength(3)
+    expect(chart.segments.map(({ from, to, gap }) => [from, to, gap])).toEqual([
+      [1, 3, true],
+      [3, 4, false],
+      [4, 1, true]
+    ])
+    expect(chart.polygon).toBeNull()
+  })
+  it('2点は線を重ねず1本で結び、時計回りの先頭と末尾も隣接として扱う', () => {
+    const sparse = createRadarGeometry([1, null, 2, null, null])
+    expect(sparse.segments).toHaveLength(1)
+    expect(sparse.segments[0].gap).toBe(true)
+    const adjacent = createRadarGeometry([1, null, null, null, 2])
+    expect(adjacent.segments).toHaveLength(1)
+    expect(adjacent.segments[0].gap).toBe(false)
+    expect(adjacent.polygon).toBeNull()
   })
   it('未評価・不正な値を中心や最大値で補完しない', () => {
     for (const values of [

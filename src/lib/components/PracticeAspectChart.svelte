@@ -22,7 +22,6 @@
     }
   })
   $: evaluated = rows.filter(({ score }) => score !== null).length
-  $: hasReferences = rows.some(({ mode }) => mode === 'reference')
   $: radar = createRadarGeometry(rows.map(({ score }) => score))
   const labelLines = [
     ['受け止め・共感'],
@@ -82,15 +81,10 @@
             ></line>
           {/each}
           {#if radar.polygon}
-            <polygon class="radar-area" class:reference="{hasReferences}" points="{radar.polygon}"
-            ></polygon>
+            <polygon class="radar-area" points="{radar.polygon}"></polygon>
           {:else}
             {#each radar.segments as segment}
-              <polyline
-                class="radar-line"
-                class:reference="{rows[segment.from].mode === 'reference' ||
-                  rows[segment.to].mode === 'reference'}"
-                points="{segment.points}"
+              <polyline class="radar-line" class:gap="{segment.gap}" points="{segment.points}"
               ></polyline>
             {/each}
           {/if}
@@ -157,7 +151,7 @@
   </div>
   <p class="chart-note">
     {analysis.assessment
-      ? '白抜きの点・破線のつなぎは参考値です。材料不足の観点や評価の幅が大きい観点は、点を表示しません。'
+      ? '白抜き点は参考値、点線は未評価の軸をまたぐ補助線です。未評価の項目に点は置きません。'
       : '今回は観点別の目安は未評価です。各観点を開くと、会話に基づく解説を読めます。'}
   </p>
   <p class="detail-hint">各観点をタップすると、解説と根拠の発言を確認できます。</p>
@@ -257,9 +251,8 @@
     fill: #fff;
     stroke: #60764f;
   }
-  .radar-area.reference,
-  .radar-line.reference {
-    stroke-dasharray: 5 4;
+  .radar-line.gap {
+    stroke-dasharray: 2 4;
   }
   .reference-badge {
     border: 1px solid #8a997c;
