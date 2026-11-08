@@ -21,6 +21,7 @@
   export let session: PracticeSession
   export let enabled = true
   export let starting = false
+  export let animateAffinity = false
   const dispatch = createEventDispatcher<{ update: PracticeSession; next: Adventure }>()
   let progress: AdventureProgress | null = null
   let progressLoading = false
@@ -239,6 +240,12 @@
       value="{progress.progression.relationships.find((r) => r.characterId === character.id)
         ?.affinity ?? 0}"
       required="{nextRule?.requiredAffinity ?? 0}"
+      previous="{session.evaluation &&
+      progress.progression.relationships.find((r) => r.characterId === character.id)?.affinity ===
+        session.evaluation.affinityAfter
+        ? session.evaluation.affinityBefore
+        : null}"
+      animate="{animateAffinity}"
     />{/if}
   <div class="reward" role="status">
     <div>
