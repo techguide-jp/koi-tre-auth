@@ -49,8 +49,11 @@ describe('Jevの補助評価', () => {
     ).toEqual([1, 2, 3])
     expect(Object.keys(jevRequest.questions)).toHaveLength(10)
     const difyRequest = JSON.parse(fetch.mock.calls[1][1].body)
-    expect(JSON.parse(difyRequest.inputs.scene).assessment).toEqual(
-      parseAssessment(exampleJevResponse())
+    expect(JSON.parse(difyRequest.inputs.scene).assessment.aspects).toEqual(
+      parseAssessment(exampleJevResponse()).aspects.map((aspect) => ({
+        ...aspect,
+        status: 'rated'
+      }))
     )
     expect(result.feedback?.analysis?.assessment).toEqual(parseAssessment(exampleJevResponse()))
   })
@@ -96,5 +99,17 @@ describe('Jevの補助評価', () => {
       expect(() => parseAssessment(value)).toThrow()
     }
     expect(() => parseAssessment({ model: 'test', answers: {} })).toThrow()
+  })
+  it('段階別の分布を保存し、旧形式の分布なしとも互換性を保つ', () => {
+    const value = exampleJevResponse()
+    Object.assign(value.answers.acknowledgment, {
+      probabilities: { '0': 0, '1': 0, '2': 0.8, '3': 0.2 }
+    })
+    expect(parseAssessment(value).aspects[0].probabilities).toEqual([0, 0, 0.8, 0.2])
+    expect(parseAssessment(exampleJevResponse()).aspects[0]).not.toHaveProperty('probabilities')
+    for (const probabilities of [{ '0': 0.5 }, { '0': 0, '1': -1, '2': 1, '3': 1 }]) {
+      Object.assign(value.answers.acknowledgment, { probabilities })
+      expect(() => parseAssessment(value)).toThrow('distribution')
+    }
   })
 })

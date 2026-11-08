@@ -2,6 +2,7 @@
   import {
     analysisAspects,
     assessmentLabel,
+    assessmentStatus,
     assessmentValue,
     type PracticeAnalysis
   } from '$lib/practice'
@@ -15,11 +16,13 @@
       id,
       label,
       score,
+      mode: assessmentStatus(assessment),
       status: assessment ? assessmentLabel(assessment) : '未評価',
       detail: analysis.aspects.find((item) => item.id === id)
     }
   })
   $: evaluated = rows.filter(({ score }) => score !== null).length
+  $: hasReferences = rows.some(({ mode }) => mode === 'reference')
   $: radar = createRadarGeometry(rows.map(({ score }) => score))
   const labelLines = [
     ['受け止め・共感'],
@@ -43,7 +46,7 @@
       <p class="eyebrow">今回の会話の傾向</p>
       <h3 id="analysis-aspects">5つの観点をひと目で</h3>
     </div>
-    <span class="coverage">目安あり <strong>{evaluated}</strong><span> / 5</span></span>
+    <span class="coverage">今回の目安 <strong>{evaluated}</strong><span> / 5</span></span>
   </div>
 
   <div class="radar-layout">
@@ -57,7 +60,13 @@
           role="img"
           aria-label="{`5観点のレーダーチャート。${evaluated}項目の目安を表示。外側ほど、その観点がよくできています。`}"
         >
-          <desc>{rows.map((row) => `${row.label}：${row.status}`).join('。')}</desc>
+          <desc
+            >{rows
+              .map(
+                (row) => `${row.label}：${row.status}${row.mode === 'reference' ? '（参考）' : ''}`
+              )
+              .join('。')}</desc
+          >
           <polygon class="radar-background" points="{radar.rings[2]}"></polygon>
           {#each radar.rings as ring}
             <polygon class="radar-grid" points="{ring}"></polygon>
@@ -73,14 +82,25 @@
             ></line>
           {/each}
           {#if radar.polygon}
-            <polygon class="radar-area" points="{radar.polygon}"></polygon>
+            <polygon class="radar-area" class:reference="{hasReferences}" points="{radar.polygon}"
+            ></polygon>
           {:else}
             {#each radar.segments as segment}
-              <polyline class="radar-line" points="{segment.points}"></polyline>
+              <polyline
+                class="radar-line"
+                class:reference="{rows[segment.from].mode === 'reference' ||
+                  rows[segment.to].mode === 'reference'}"
+                points="{segment.points}"
+              ></polyline>
             {/each}
           {/if}
-          {#each radar.vertices as vertex}
-            {#if vertex}<circle class="radar-point" cx="{vertex.x}" cy="{vertex.y}" r="4.5"
+          {#each radar.vertices as vertex, index}
+            {#if vertex}<circle
+                class="radar-point"
+                class:reference="{rows[index].mode === 'reference'}"
+                cx="{vertex.x}"
+                cy="{vertex.y}"
+                r="4.5"
               ></circle>{/if}
           {/each}
         </svg>
@@ -93,7 +113,8 @@
             aria-hidden="true"
           >
             {#each labelLines[index] as line}<span>{line}</span>{/each}
-            {#if row.score === null}<small>{row.status === '未評価' ? '未評価' : '保留'}</small
+            {#if row.score === null}<small
+                >{row.mode === 'insufficient' ? '材料不足' : row.status}</small
               >{/if}
           </span>
         {/each}
@@ -102,17 +123,28 @@
     </div>
     <div class="chart-rows">
       {#each rows as row}
-        <details
-          class="aspect-row"
-          data-assessment="{row.score === null ? 'unavailable' : 'rated'}"
-        >
+        <details class="aspect-row" data-assessment="{row.mode}">
           <summary>
             <span class="aspect-label">{row.label}</span>
-            <span class="assessment-label" class:muted="{row.score === null}">{row.status}</span>
+            <span class="assessment-label" class:muted="{row.score === null}">
+              {row.status}
+              {#if row.mode === 'reference'}<span class="reference-badge">参考</span>{/if}
+            </span>
             <span class="chevron" aria-hidden="true">⌄</span>
           </summary>
           {#if row.detail}
             <div class="aspect-detail">
+              {#if row.mode === 'reference'}
+                <p class="rating-note">評価する段階に幅があるため、参考値として表示しています。</p>
+              {:else if row.mode === 'insufficient'}
+                <p class="rating-note">
+                  この観点を判断する発言や機会が足りないため、点を表示していません。
+                </p>
+              {:else if row.mode === 'uncertain'}
+                <p class="rating-note">
+                  評価の幅が大きいため、平均の点は表示せず、会話の解説を確認できます。
+                </p>
+              {/if}
               <p>{row.detail.observation}</p>
               {#each row.detail.evidence as evidence}
                 <blockquote><span>{evidence.turn}回目の発言</span>「{evidence.quote}」</blockquote>
@@ -124,9 +156,8 @@
     </div>
   </div>
   <p class="chart-note">
-    <span class="pending-key" aria-hidden="true"></span>
     {analysis.assessment
-      ? '破線の軸は判断保留。評価できた点だけを表示し、5項目が揃うと面でつなぎます。'
+      ? '白抜きの点・破線のつなぎは参考値です。材料不足の観点や評価の幅が大きい観点は、点を表示しません。'
       : '今回は観点別の目安は未評価です。各観点を開くと、会話に基づく解説を読めます。'}
   </p>
   <p class="detail-hint">各観点をタップすると、解説と根拠の発言を確認できます。</p>
@@ -221,6 +252,27 @@
     stroke: #fff;
     stroke-width: 2;
     vector-effect: non-scaling-stroke;
+  }
+  .radar-point.reference {
+    fill: #fff;
+    stroke: #60764f;
+  }
+  .radar-area.reference,
+  .radar-line.reference {
+    stroke-dasharray: 5 4;
+  }
+  .reference-badge {
+    border: 1px solid #8a997c;
+    border-radius: 4px;
+    padding: 0.1rem 0.3rem;
+    color: #526746;
+    font-size: 0.65rem;
+    flex-shrink: 0;
+    margin-left: 0.3rem;
+  }
+  .rating-note {
+    color: #526746;
+    font-size: 0.75rem;
   }
   .radar-label {
     position: absolute;
@@ -326,12 +378,6 @@
     font-size: 0.75rem;
     color: var(--muted);
     line-height: 1.6;
-  }
-  .pending-key {
-    width: 15px;
-    height: 0;
-    border-top: 1px dashed var(--muted);
-    flex-shrink: 0;
   }
   .detail-hint {
     margin: 0.4rem 0 0;
