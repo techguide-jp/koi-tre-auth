@@ -46,8 +46,7 @@ export const scenes = [
     goal: 'あいさつに、自分のことや相手への質問を少し添える',
     opener:
       'はじめまして、はるです。お会いできてうれしいです。このカフェ、落ち着きますね。普段もカフェにはよく来ますか？',
-    hint: '自分のことをひと言伝えて、相手にも聞いてみましょう。',
-    followUp: '普段はどんなふうに過ごすのがお好きですか？'
+    hint: '自分のことをひと言伝えて、相手にも聞いてみましょう。'
   },
   {
     id: 'hobbies',
@@ -58,8 +57,7 @@ export const scenes = [
     goal: '相手の話に反応し、自分の経験も交えて話題を広げる',
     opener:
       'あおいです。最近、休日に少し遠くまで散歩するのにはまっているんです。お休みの日は、どんなふうに過ごすことが多いですか？',
-    hint: '相手の話への感想と、自分の話を組み合わせてみましょう。',
-    followUp: '最近、楽しみにしていることはありますか？'
+    hint: '相手の話への感想と、自分の話を組み合わせてみましょう。'
   },
   {
     id: 'silence',
@@ -70,8 +68,7 @@ export const scenes = [
     goal: '目の前のことをきっかけに、答えやすい話題を出す',
     opener:
       '（りんさんとの食事がひと段落して、少し静かな時間になりました。）ここの料理、おいしかったですね。',
-    hint: '料理やお店のことなど、今共有していることから話してみましょう。',
-    followUp: '最近、おいしいと思った料理はありますか？'
+    hint: '料理やお店のことなど、今共有していることから話してみましょう。'
   }
 ] as const
 
@@ -86,7 +83,6 @@ export interface PracticeScene {
   goal: string
   opener: string
   hint: string
-  followUp: string
   situation?: string
 }
 export function findScene(id: unknown) {
@@ -120,7 +116,6 @@ export function sceneWithPartner(
   }
 }
 
-export const CUSTOM_FOLLOW_UP = 'よかったら、もう少し聞かせてもらえますか？'
 export function resolveScene(
   id: SceneId,
   customScene: CustomSceneInput | null = null
@@ -138,9 +133,72 @@ export function resolveScene(
     opener:
       customScene.openingLine ||
       `（${customScene.partnerName}さんが、あなたの言葉を待っています。設定した場面に合わせて、最初のひと言から話してみましょう。）`,
-    hint: '設定した状況と、相手に伝えたいことを思い浮かべて返してみましょう。',
-    followUp: CUSTOM_FOLLOW_UP
+    hint: '設定した状況と、相手に伝えたいことを思い浮かべて返してみましょう。'
   }
+}
+
+export const analysisAspects = [
+  { id: 'acknowledgment', label: '受け止め・共感' },
+  { id: 'self_expression', label: '自分の伝え方' },
+  { id: 'questions', label: '質問の答えやすさ' },
+  { id: 'connection', label: '話題のつながり' },
+  { id: 'consideration', label: '距離感・配慮' }
+] as const
+export type AnalysisAspectId = (typeof analysisAspects)[number]['id']
+export interface PracticeEvidence {
+  turn: number
+  quote: string
+}
+export interface PracticeAssessment {
+  provider: 'jev'
+  model: string
+  aspects: {
+    id: AnalysisAspectId
+    score: number
+    confidence: number
+    observable: number
+  }[]
+}
+export interface PracticeAnalysis {
+  version: 2
+  summary: string
+  strengths: { title: string; observation: string; evidence: PracticeEvidence[] }[]
+  improvements: {
+    title: string
+    observation: string
+    suggestion: string
+    evidence: PracticeEvidence[]
+  }[]
+  aspects: { id: AnalysisAspectId; observation: string; evidence: PracticeEvidence[] }[]
+  turns: {
+    turn: number
+    observation: string
+    quote: string
+    rewrite: string
+    reason: string
+  }[]
+  nextPractice: { goal: string; example: string }
+  assessment?: PracticeAssessment
+}
+export function assessmentValue(value?: PracticeAssessment['aspects'][number]): number | null {
+  // 判断保留の値を0として描くと、評価材料の不足が低評価に見えてしまう。
+  if (
+    !value ||
+    !(value.observable >= 0.7 && value.observable <= 1) ||
+    !(value.confidence >= 0.7 && value.confidence <= 1) ||
+    !Number.isFinite(value.score) ||
+    value.score < 0 ||
+    value.score > 3
+  )
+    return null
+  return value.score
+}
+export function assessmentLabel(value: PracticeAssessment['aspects'][number]) {
+  const score = assessmentValue(value)
+  if (score === null) return '判断保留'
+  if (score >= 2.5) return 'よくできている'
+  if (score >= 1.5) return 'できている'
+  return '工夫の余地あり'
 }
 
 export interface PracticeFeedback {
@@ -148,6 +206,8 @@ export interface PracticeFeedback {
   improvement: string
   quote: string
   rewrite: string
+  // 過去の振り返りは4項目だけで保存されているため、拡充した分析は任意にする。
+  analysis?: PracticeAnalysis
 }
 
 export interface PracticeTurn {
