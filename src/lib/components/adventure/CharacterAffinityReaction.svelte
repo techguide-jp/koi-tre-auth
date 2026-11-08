@@ -206,6 +206,7 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .active .character-reaction,
+    .pensive.active .character-reaction,
     .active blockquote,
     .spark {
       animation: none;
