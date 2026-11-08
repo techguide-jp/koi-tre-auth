@@ -14,6 +14,7 @@ import type { Adventure, AdventureReward, Presentation, Rehearsal } from '$lib/a
 import type { StoryContext, StoryEnding } from '$lib/adventure'
 import type { CharacterId } from '$lib/adventure-catalog'
 import type { CreditKind } from '$lib/billing'
+import type Stripe from 'stripe'
 import { boolean } from 'drizzle-orm/pg-core'
 
 export const users = pgTable(
@@ -98,6 +99,7 @@ export const billingCheckouts = pgTable(
     product: varchar('product', { length: 40 }).notNull(),
     stripeSessionId: varchar('stripe_session_id', { length: 255 }).unique(),
     url: text('url'),
+    requestParams: jsonb('request_params').$type<Stripe.Checkout.SessionCreateParams>(),
     status: varchar('status', { length: 32 }).notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
@@ -177,6 +179,14 @@ export const billingEvents = pgTable('billing_events', {
   processedAt: timestamp('processed_at', { withTimezone: true, mode: 'date' })
     .notNull()
     .defaultNow()
+})
+export const billingPaymentStates = pgTable('billing_payment_states', {
+  paymentIntentId: varchar('payment_intent_id', { length: 255 }).primaryKey(),
+  uid: varchar('uid', { length: 255 })
+    .notNull()
+    .references(() => users.firebaseUid),
+  revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' }),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
 })
 export const characterEndings = pgTable(
   'character_endings',

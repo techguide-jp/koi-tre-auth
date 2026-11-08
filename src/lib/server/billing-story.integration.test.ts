@@ -35,6 +35,10 @@ const start = Math.floor(new Date('2026-11-08T00:00:00Z').getTime() / 1000),
   end = Math.floor(new Date('2026-12-08T00:00:00Z').getTime() / 1000)
 const customer = 'cus_fixture'
 const sessions = new Map<string, Record<string, unknown>>()
+const checkoutRequests = new Map<
+  string,
+  { params: Stripe.Checkout.SessionCreateParams; session: Record<string, unknown> }
+>()
 let subscription: Record<string, unknown>
 let invoice: Record<string, unknown>
 const sdk = {
@@ -61,7 +65,7 @@ const sdk = {
   },
   subscriptions: { retrieve: vi.fn(async () => subscription) },
   invoices: { retrieve: vi.fn(async () => invoice) },
-  invoicePayments: { list: vi.fn(async () => ({ data: [] })) },
+  invoicePayments: { list: vi.fn() },
   charges: { retrieve: vi.fn() },
   disputes: { retrieve: vi.fn() },
   billingPortal: {
@@ -129,6 +133,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   vi.clearAllMocks()
   sessions.clear()
+  checkoutRequests.clear()
   client = new PGlite()
   db = drizzle(client, { schema })
   for (const migration of migrations)
@@ -191,7 +196,26 @@ beforeEach(async () => {
       ]
     }
   }
-  sdk.checkout.sessions.create.mockImplementation(async (params) => {
+  sdk.invoicePayments.list.mockImplementation(async (params) => ({
+    data:
+      params.invoice || params.payment?.payment_intent === 'pi_plus_fixture'
+        ? [
+            {
+              invoice: invoice.id,
+              status: 'paid',
+              payment: { type: 'payment_intent', payment_intent: 'pi_plus_fixture' }
+            }
+          ]
+        : [],
+    has_more: false
+  }))
+  sdk.checkout.sessions.create.mockImplementation(async (params, options) => {
+    const key = options.idempotencyKey,
+      prior = checkoutRequests.get(key)
+    if (prior) {
+      expect(params, 'Stripeは同じ冪等キーで異なるパラメーターを拒否する').toEqual(prior.params)
+      return prior.session
+    }
     const id = `cs_${params.metadata.checkout_id}`
     const result = {
       id,
@@ -204,11 +228,12 @@ beforeEach(async () => {
       amount_total: params.mode === 'payment' ? 1480 : 980,
       currency: 'jpy',
       created: Math.floor(Date.now() / 1000),
-      expires_at: Math.floor(Date.now() / 1000) + 1800,
+      expires_at: params.expires_at,
       url: `https://checkout.stripe.com/c/pay/${id}`,
       line_items: { data: [{ price: { id: params.line_items[0].price }, quantity: 1 }] }
     }
     sessions.set(id, result)
+    checkoutRequests.set(key, { params: structuredClone(params), session: result })
     return result
   })
 })
@@ -225,7 +250,7 @@ const event = (type: string, object: Record<string, unknown>, id = randomUUID())
     data: { object },
     created: Math.floor(Date.now() / 1000)
   }) as unknown as Stripe.Event
-async function routePurchase(characterId: 'aoi' | 'yu' | 'rin' = 'aoi') {
+async function routePurchase(characterId: 'aoi' | 'yu' | 'rin' = 'aoi', fulfill = true) {
   const order = randomUUID()
   await beginCheckout(uid, order, { kind: 'route', characterId })
   const session = [...sessions.values()].find(
@@ -237,7 +262,7 @@ async function routePurchase(characterId: 'aoi' | 'yu' | 'rin' = 'aoi') {
     payment_intent: `pi_${order}`
   })
   const notification = event('checkout.session.completed', session)
-  await handleStripeEvent(notification)
+  if (fulfill) await handleStripeEvent(notification)
   return { order, session, notification }
 }
 async function seedStory(characterId: 'aoi' | 'yu' = 'aoi', through = 12) {
@@ -326,6 +351,99 @@ describe('Stripeの購入・契約・通知', () => {
     await expect(
       beginCheckout(other, first.id, { kind: 'route', characterId: 'aoi' })
     ).rejects.toMatchObject({ status: 409 })
+  })
+  it.each(['応答喪失', 'DB保存失敗'] as const)(
+    '%s後も同じパラメーターで元のCheckoutを回復する',
+    async (failure) => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(now)
+      const order = randomUUID(),
+        create = sdk.checkout.sessions.create.getMockImplementation()!
+      if (failure === '応答喪失')
+        sdk.checkout.sessions.create.mockImplementationOnce(async (params, options) => {
+          const saved = await db.query.billingCheckouts.findFirst({
+            where: eq(schema.billingCheckouts.id, order)
+          })
+          expect(saved?.requestParams).toEqual(params)
+          await create(params, options)
+          throw Error('Response lost after Stripe created the session')
+        })
+      else
+        await client.exec(`
+          CREATE FUNCTION fail_checkout_open() RETURNS trigger AS $$
+          BEGIN
+            IF NEW.status = 'open' THEN RAISE EXCEPTION 'simulated database failure'; END IF;
+            RETURN NEW;
+          END; $$ LANGUAGE plpgsql;
+          CREATE TRIGGER fail_checkout_open BEFORE UPDATE ON billing_checkouts
+          FOR EACH ROW EXECUTE FUNCTION fail_checkout_open();
+        `)
+      await expect(
+        beginCheckout(uid, order, { kind: 'route', characterId: 'aoi' })
+      ).rejects.toMatchObject({ status: 502 })
+      expect(sessions.size).toBe(1)
+      const failed = await db.query.billingCheckouts.findFirst({
+        where: eq(schema.billingCheckouts.id, order)
+      })
+      expect(failed?.status).toBe('failed')
+      expect(failed?.requestParams?.expires_at).toBeTruthy()
+      if (failure === 'DB保存失敗')
+        await client.exec('DROP TRIGGER fail_checkout_open ON billing_checkouts')
+      vi.setSystemTime(new Date(now.getTime() + 120_000))
+      vi.stubEnv('STRIPE_PRICE_ROUTE_AOI', 'price_route_new')
+      vi.stubEnv('VITE_APP_DOMAIN', 'http://127.0.0.1:5999')
+      const recovered = await beginCheckout(uid, order, { kind: 'route', characterId: 'aoi' })
+      expect(recovered).toEqual({ id: order, url: [...sessions.values()][0].url })
+      expect(sdk.checkout.sessions.create).toHaveBeenCalledTimes(2)
+      expect(sdk.checkout.sessions.create.mock.calls[1]).toEqual(
+        sdk.checkout.sessions.create.mock.calls[0]
+      )
+      expect(sessions.size).toBe(1)
+      expect(sdk.prices.retrieve).toHaveBeenCalledTimes(1)
+      expect((await getBillingOverview(uid)).ownedCharacters).toEqual([])
+      const session = [...sessions.values()][0]
+      Object.assign(session, {
+        status: 'complete',
+        payment_status: 'paid',
+        payment_intent: `pi_${order}`
+      })
+      await handleStripeEvent(event('checkout.session.completed', session))
+      const state = await getBillingOverview(uid)
+      expect(state.ownedCharacters).toEqual(['aoi'])
+      expect(state.credits.find((grant) => grant.kind === 'route')?.remaining).toBe(24)
+    }
+  )
+  it('期限切れの購入IDは再作成せず、再読み込みを案内する', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(now)
+    const order = randomUUID()
+    await beginCheckout(uid, order, { kind: 'route', characterId: 'aoi' })
+    vi.setSystemTime(new Date(now.getTime() + 25 * 60 * 60_000))
+    await expect(
+      beginCheckout(uid, order, { kind: 'route', characterId: 'aoi' })
+    ).rejects.toMatchObject({
+      status: 409,
+      body: { message: expect.stringContaining('再読み込み') }
+    })
+    expect(sdk.checkout.sessions.create).toHaveBeenCalledTimes(1)
+    expect(
+      await beginCheckout(uid, randomUUID(), { kind: 'route', characterId: 'aoi' })
+    ).toHaveProperty('url')
+    expect(sessions.size).toBe(2)
+  })
+  it('元のリクエストを保存していない旧方式の失敗予約には同じStripeキーを使わない', async () => {
+    const order = randomUUID()
+    await db.insert(schema.billingCheckouts).values({
+      id: order,
+      uid,
+      product: 'route:aoi',
+      status: 'failed',
+      expiresAt: new Date(0)
+    })
+    await expect(
+      beginCheckout(uid, order, { kind: 'route', characterId: 'aoi' })
+    ).rejects.toMatchObject({ status: 409 })
+    expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
   })
   it('購入完了通知と再送・再照合で、人物の権利と24枠を一度だけ付与する', async () => {
     const paid = await routePurchase()
@@ -464,6 +582,120 @@ describe('Stripeの購入・契約・通知', () => {
     const state = await getBillingOverview(uid, now)
     expect(state.ownedCharacters).toEqual([])
     expect(state.credits.some((g) => g.kind === 'route')).toBe(false)
+  })
+  it.each(['返金', '紛争'] as const)(
+    '%sが購入完了より先に届いても購入権と24枠を有効にしない',
+    async (kind) => {
+      const paid = await routePurchase('aoi', false)
+      sdk.charges.retrieve.mockResolvedValue({
+        id: 'ch_fixture',
+        livemode: false,
+        customer,
+        amount: 1480,
+        amount_refunded: kind === '返金' ? 1480 : 0,
+        payment_intent: paid.session.payment_intent,
+        disputed: kind === '紛争'
+      })
+      await handleStripeEvent(
+        kind === '返金'
+          ? event('charge.refunded', { id: 'ch_fixture', customer })
+          : event('charge.dispute.created', { id: 'dp_fixture', charge: 'ch_fixture' })
+      )
+      expect(await db.select().from(schema.routePurchases)).toHaveLength(0)
+      expect((await db.select().from(schema.billingPaymentStates))[0].revokedAt).toBeInstanceOf(
+        Date
+      )
+      await handleStripeEvent(paid.notification)
+      await handleStripeEvent(event('checkout.session.completed', paid.session))
+      await reconcileCheckout(uid, paid.order)
+      const state = await getBillingOverview(uid, now)
+      expect(state.ownedCharacters).toEqual([])
+      expect(state.credits.some((g) => g.kind === 'route')).toBe(false)
+      expect(await db.select().from(schema.routePurchases)).toHaveLength(1)
+      expect((await db.select().from(schema.routePurchases))[0].revokedAt).toBeInstanceOf(Date)
+      const grants = await db.select().from(schema.creditGrants)
+      expect(grants).toHaveLength(1)
+      expect(grants[0].revokedAt).toBeInstanceOf(Date)
+    }
+  )
+  it.each([0, 1480])(
+    '付与前の紛争に勝っても返金額%d円に合わせて失効状態を保持する',
+    async (refunded) => {
+      const paid = await routePurchase('aoi', false)
+      sdk.charges.retrieve.mockResolvedValue({
+        id: 'ch_fixture',
+        livemode: false,
+        customer,
+        amount: 1480,
+        amount_refunded: refunded,
+        payment_intent: paid.session.payment_intent,
+        disputed: true
+      })
+      await handleStripeEvent(
+        event('charge.dispute.created', { id: 'dp_fixture', charge: 'ch_fixture' })
+      )
+      sdk.disputes.retrieve.mockResolvedValue({ status: 'won', charge: 'ch_fixture' })
+      await handleStripeEvent(
+        event('charge.dispute.closed', { id: 'dp_fixture', charge: 'ch_fixture' })
+      )
+      await handleStripeEvent(paid.notification)
+      expect((await getBillingOverview(uid)).ownedCharacters).toEqual(refunded ? [] : ['aoi'])
+      expect((await getBillingOverview(uid)).credits.some((g) => g.kind === 'route')).toBe(
+        !refunded
+      )
+    }
+  )
+  it('Plusの返金が請求書通知より先に届いても60枠を復活させない', async () => {
+    sdk.charges.retrieve.mockResolvedValue({
+      id: 'ch_plus',
+      livemode: false,
+      customer,
+      amount: 980,
+      amount_refunded: 980,
+      payment_intent: 'pi_plus_fixture',
+      disputed: false
+    })
+    await handleStripeEvent(event('charge.refunded', { id: 'ch_plus', customer }))
+    await handleStripeEvent(event('invoice.paid', invoice))
+    await handleStripeEvent(event('customer.subscription.updated', subscription))
+    expect((await getBillingOverview(uid, now)).credits.some((g) => g.kind === 'plus')).toBe(false)
+    const grants = await db.select().from(schema.creditGrants)
+    expect(grants).toHaveLength(1)
+    expect(grants[0].revokedAt).toBeInstanceOf(Date)
+  })
+  it('Plus付与後の全額返金も止め、請求書の再送で枠を復活させない', async () => {
+    await handleStripeEvent(event('invoice.paid', invoice))
+    expect((await getBillingOverview(uid, now)).remaining).toBe(60)
+    sdk.charges.retrieve.mockResolvedValue({
+      id: 'ch_plus',
+      livemode: false,
+      customer,
+      amount: 980,
+      amount_refunded: 980,
+      payment_intent: 'pi_plus_fixture',
+      disputed: false
+    })
+    await handleStripeEvent(event('charge.refunded', { id: 'ch_plus', customer }))
+    await handleStripeEvent(event('invoice.paid', invoice))
+    expect((await getBillingOverview(uid, now)).credits.some((g) => g.kind === 'plus')).toBe(false)
+  })
+  it('一部返金だけでは購入権と24枠を失効させない', async () => {
+    const paid = await routePurchase('aoi', false)
+    sdk.charges.retrieve.mockResolvedValue({
+      id: 'ch_fixture',
+      livemode: false,
+      customer,
+      amount: 1480,
+      amount_refunded: 500,
+      payment_intent: paid.session.payment_intent,
+      disputed: false
+    })
+    await handleStripeEvent(event('charge.refunded', { id: 'ch_fixture', customer }))
+    await handleStripeEvent(paid.notification)
+    const state = await getBillingOverview(uid)
+    expect(state.ownedCharacters).toEqual(['aoi'])
+    expect(state.credits.find((g) => g.kind === 'route')?.remaining).toBe(24)
+    expect(await db.select().from(schema.billingPaymentStates)).toHaveLength(0)
   })
   it('契約管理は本人の顧客と固定の戻り先で開く', async () => {
     expect(await openBillingPortal(uid)).toHaveProperty('url')
