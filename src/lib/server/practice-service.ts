@@ -20,7 +20,12 @@ export async function submitPracticeMessage(input: MessageInput, context: Analyt
   const reservation = await reservePracticeTurn(input)
   if (reservation.status === 'not_found') throw error(404, '練習が見つかりません。')
   if (reservation.status === 'quota')
-    throw error(429, '今月の10回の練習枠を使い切りました。途中の練習は再開できます。')
+    throw error(
+      429,
+      'この練習に使える枠が足りません。3往復は1枠、6往復は2枠です。途中の練習は再開できます。'
+    )
+  if (reservation.status === 'access')
+    throw error(403, 'この場面の購入権・進行・Plusの利用期間を確認してください。')
   if (reservation.status === 'complete')
     throw error(409, 'この練習は完了しています。新しい練習を選んでください。')
   if (reservation.status === 'conflict')
@@ -37,6 +42,7 @@ export async function submitPracticeMessage(input: MessageInput, context: Analyt
       sceneId: reservation.sceneId,
       customScene: reservation.customScene,
       adventure: reservation.adventure,
+      storyContext: reservation.storyContext,
       turns: reservation.turns,
       text: input.text
     })
@@ -77,6 +83,7 @@ export async function submitRehearsal(input: RehearsalInput) {
       adventure: reservation.adventure,
       turns: reservation.turns,
       text: input.text,
+      storyContext: reservation.storyContext,
       rehearsal: true
     })
     if (!(await finishRehearsal(input, reservation.token, output)))

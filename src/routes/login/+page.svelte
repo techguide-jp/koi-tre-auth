@@ -29,7 +29,8 @@
   $: adventure = normalizeAdventure({
     characterId: $page.url.searchParams.get('character'),
     episodeId: $page.url.searchParams.get('episode'),
-    turns: Number($page.url.searchParams.get('turns'))
+    turns: Number($page.url.searchParams.get('turns')),
+    revisit: $page.url.searchParams.get('revisit') === '1'
   })
   $: scene = adventure
     ? resolveScene('adventure', null, adventure)
@@ -59,7 +60,14 @@
       else if (scene) {
         const session = await startPractice(scene.id, isCustom ? customScene : null, adventure)
         await goto(`/practice/${session.id}`)
-      } else await goto($page.url.searchParams.get('returnTo') === 'memories' ? '/memories' : '/')
+      } else {
+        const destination = $page.url.searchParams.get('returnTo')
+        if (destination === 'pricing') await goto(`/pricing${charactersForReturn()}`)
+        else
+          await goto(
+            destination === 'memories' ? '/memories' : destination === 'account' ? '/account' : '/'
+          )
+      }
     } catch (error) {
       const code = (error as { code?: string }).code
       message =
@@ -74,6 +82,12 @@
       pending = false
     }
   }
+  function charactersForReturn() {
+    const character = $page.url.searchParams.get('character')
+    return ['aoi', 'rin', 'shiori', 'yu', 'sota', 'ren'].includes(character ?? '')
+      ? `?character=${character}`
+      : ''
+  }
 </script>
 
 <svelte:head><title>Googleで始める | Koi-Tre</title></svelte:head>
@@ -84,7 +98,11 @@
   {#if scene}<div class="selection">
       <span class="small muted">選んだ場面</span><strong>{scene.title}</strong><span
         class="partner-name">お相手：{scene.partnerName}さん（AI）</span
-      ><span class="small">{adventure?.turns ?? 3}回返答して振り返り・月10回無料</span>
+      ><span class="small"
+        >{adventure?.turns ?? 3}回返答して振り返り・{adventure?.turns === 6
+          ? '2'
+          : '1'}枠使用・毎月10枠無料</span
+      >
       {#if isCustom && customScene}<p class="custom-summary">{customScene.situation}</p>
         {#if customScene.openingLine}<p class="small">
             最初のひと言：{customScene.openingLine}

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { and, desc, eq, isNotNull } from 'drizzle-orm'
+import { and, desc, eq, isNotNull, sql } from 'drizzle-orm'
 import {
   emptyAdventureProgress,
   episodeById,
@@ -10,20 +10,34 @@ import {
   type Presentation
 } from '$lib/adventure'
 import { getDb } from '../client'
-import { operations, practices, practiceTurns, users } from '../schema'
+import { characterEndings, operations, practices, practiceTurns, users } from '../schema'
+import { readCreditState } from './credits'
 import type { MessageInput } from './practices'
 
 export async function getAdventureProgress(uid: string): Promise<AdventureProgress> {
   const db = getDb()
-  const [completed, favorites] = await Promise.all([
+  const [completed, favorites, billing, chosenEndings] = await Promise.all([
     db
       .select({
         id: practices.id,
         adventure: practices.adventure,
         reward: practices.reward,
+        storyEnding: practices.storyEnding,
+        lastReply: practiceTurns.assistantText,
+        presentation: practiceTurns.presentation,
         completedAt: practices.completedAt
       })
       .from(practices)
+      .leftJoin(
+        practiceTurns,
+        and(
+          eq(practices.id, practiceTurns.practiceId),
+          eq(
+            practiceTurns.position,
+            sql`case when ${practices.adventure}->>'turns' = '6' then 6 else 3 end`
+          )
+        )
+      )
       .where(
         and(
           eq(practices.uid, uid),
@@ -54,14 +68,16 @@ export async function getAdventureProgress(uid: string): Promise<AdventureProgre
           isNotNull(practices.adventure)
         )
       )
-      .orderBy(desc(practices.updatedAt))
+      .orderBy(desc(practices.updatedAt)),
+    readCreditState(db, uid),
+    db.select().from(characterEndings).where(eq(characterEndings.uid, uid))
   ])
   const progress = emptyAdventureProgress()
   const valid = completed.filter(
     (row) =>
       normalizeAdventure(row.adventure) &&
       row.reward?.version === 1 &&
-      [20, 30].includes(row.reward.xp)
+      [20, 30, 50, 70].includes(row.reward.xp)
   )
   progress.xp = valid.reduce((sum, row) => sum + row.reward!.xp, 0)
   progress.level = Math.floor(progress.xp / 100) + 1
@@ -71,17 +87,23 @@ export async function getAdventureProgress(uid: string): Promise<AdventureProgre
     ...new Set(valid.map((row) => episodeKey(row.adventure!.characterId, row.adventure!.episodeId)))
   ]
   const seen = new Set<string>()
+  const albumSeen = new Set<string>()
   for (const row of valid) {
     const adventure = row.adventure!,
       key = episodeKey(adventure.characterId, adventure.episodeId)
-    if (seen.has(key)) continue
     seen.add(key)
+    const albumKey = `${key}:${adventure.turns}`
+    if (albumSeen.has(albumKey)) continue
+    albumSeen.add(albumKey)
     progress.memories.push({
       practiceId: row.id,
       characterId: adventure.characterId,
       episodeId: adventure.episodeId,
       title: episodeById(adventure.episodeId)!.title,
-      completedAt: row.completedAt!.toISOString()
+      completedAt: row.completedAt!.toISOString(),
+      variant: adventure.turns === 6 ? 'deep' : 'short',
+      quote: row.lastReply?.slice(0, 240),
+      emotion: row.presentation?.emotion ?? 'relieved'
     })
   }
   progress.favorites = favorites.flatMap((row) =>
@@ -106,7 +128,49 @@ export async function getAdventureProgress(uid: string): Promise<AdventureProgre
     encounters: encountered.size >= 3
   }
   progress.badges = progress.badges.map((badge) => ({ ...badge, earned: earned[badge.id] }))
+  progress.billing = billing
+  progress.endings = valid.flatMap((row) =>
+    row.storyEnding
+      ? [
+          {
+            practiceId: row.id,
+            characterId: row.adventure!.characterId,
+            kind: row.storyEnding.kind,
+            selected: chosenEndings.some((e) => e.practiceId === row.id)
+          }
+        ]
+      : []
+  )
   return progress
+}
+
+export async function selectStoryEnding(uid: string, id: string) {
+  return getDb().transaction(async (tx) => {
+    await tx.select().from(users).where(eq(users.firebaseUid, uid)).for('update')
+    const session = await tx.query.practices.findFirst({
+      where: and(eq(practices.id, id), eq(practices.uid, uid))
+    })
+    if (
+      !session?.completedAt ||
+      !session.adventure ||
+      !session.storyEnding ||
+      episodeById(session.adventure.episodeId)?.chapter !== 12
+    )
+      return false
+    await tx
+      .insert(characterEndings)
+      .values({
+        id: `${uid}:${session.adventure.characterId}`,
+        uid,
+        characterId: session.adventure.characterId,
+        practiceId: id
+      })
+      .onConflictDoUpdate({
+        target: characterEndings.id,
+        set: { practiceId: id, updatedAt: new Date() }
+      })
+    return true
+  })
 }
 
 export async function saveFavoriteTurn(uid: string, id: string, position: number | null) {
@@ -179,6 +243,7 @@ export async function reserveRehearsal(input: RehearsalInput, now = new Date()) 
       status: 'ready' as const,
       token,
       adventure: session.adventure,
+      storyContext: session.storyContext,
       sceneId: session.sceneId,
       customScene: session.customScene,
       turns: turns.slice(0, input.position - 1)

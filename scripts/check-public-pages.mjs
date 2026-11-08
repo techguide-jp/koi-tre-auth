@@ -15,6 +15,7 @@ assert.ok(urls.length >= 12, '公開入口がサイトマップにある')
 for (const path of [
   '/share',
   '/try',
+  '/pricing',
   '/guides/matching-app-phone-topics',
   '/guides/second-date-conversation'
 ]) {
@@ -49,6 +50,7 @@ for (const url of urls) {
 for (const path of [
   '/login?scene=cafe',
   '/memories',
+  '/account',
   '/practice/00000000-0000-0000-0000-000000000000',
   '/counter',
   '/sverdle',

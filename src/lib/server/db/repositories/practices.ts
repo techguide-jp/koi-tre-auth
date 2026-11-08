@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { and, count, desc, eq, gte, gt, isNull, isNotNull, lt, or } from 'drizzle-orm'
+import { and, desc, eq, isNull, isNotNull } from 'drizzle-orm'
 import {
-  PRACTICE_LIMIT,
   practiceTurnLimit,
   type CustomSceneInput,
   type PracticeFeedback,
@@ -11,28 +10,31 @@ import {
 } from '$lib/practice'
 import {
   episodeKey,
-  episodeUnlocked,
+  adventureAccess,
+  episodeById,
   normalizeAdventure,
   parseMission,
   parsePresentation,
+  parseStoryEnding,
   type Adventure,
   type MissionResult,
-  type Presentation
+  type Presentation,
+  type StoryEnding
 } from '$lib/adventure'
-import { getNextTokyoMonthStart, getTokyoMonthStart } from '$lib/utils/tokyo-month'
+import { practiceCreditCost } from '$lib/billing'
 import { getDb } from '../client'
-import { operations, practices, practiceTurns, users } from '../schema'
+import { characterEndings, operations, practices, practiceTurns, users } from '../schema'
+import {
+  commitCredits,
+  commonCreditLimit,
+  readCreditState,
+  releaseCredits,
+  reserveCredits
+} from './credits'
+import { buildStoryContext } from './story-context'
 
 // 生成中の枠も確保し、別タブから月上限を超えて開始できないようにする。
 const LEASE_MS = 75_000
-
-function chargedThisMonth(uid: string, now: Date) {
-  return and(
-    eq(practices.uid, uid),
-    gte(practices.chargedAt, getTokyoMonthStart(now)),
-    lt(practices.chargedAt, getNextTokyoMonthStart(now))
-  )
-}
 
 export async function getPractice(uid: string, id: string): Promise<PracticeSession | null> {
   // 保存と読み取りが交差して、完了状態と発言数が食い違わないようにする。
@@ -56,6 +58,9 @@ export async function getPractice(uid: string, id: string): Promise<PracticeSess
       reward: session.reward,
       favoriteTurn: session.favoriteTurn,
       rehearsal: session.rehearsal,
+      creditCost: session.creditCost,
+      storyContext: session.storyContext,
+      storyEnding: session.storyEnding,
       chargedAt: session.chargedAt?.toISOString() ?? null,
       completedAt: session.completedAt?.toISOString() ?? null,
       turns: turns.map(
@@ -90,14 +95,8 @@ export async function getPracticeOverview(
       .from(users)
       .where(eq(users.firebaseUid, uid))
       .for('share')
-    const [[used], [reserved], latest, active] = await Promise.all([
-      db.select({ count: count() }).from(practices).where(chargedThisMonth(uid, now)),
-      db
-        .select({ count: count() })
-        .from(practices)
-        .where(
-          and(eq(practices.uid, uid), isNull(practices.chargedAt), gt(practices.pendingUntil, now))
-        ),
+    const [billing, latest, active] = await Promise.all([
+      readCreditState(db, uid, now),
       db.query.practices.findFirst({
         where: eq(practices.uid, uid),
         orderBy: desc(practices.updatedAt)
@@ -108,12 +107,15 @@ export async function getPracticeOverview(
       })
     ])
     return {
-      remaining: Math.max(0, PRACTICE_LIMIT - Number(used.count) - Number(reserved.count)),
-      reserved: Number(reserved.count),
-      limit: PRACTICE_LIMIT,
+      remaining: billing.remaining,
+      reserved: billing.reserved,
+      limit:
+        commonCreditLimit(billing) +
+        billing.credits.filter((g) => g.kind === 'route').reduce((sum, g) => sum + g.units, 0),
       activePracticeId: active?.id ?? null,
       latestPracticeId: latest?.id ?? null,
-      resetsAt: getNextTokyoMonthStart(now).toISOString()
+      resetsAt: billing.resetsAt,
+      billing
     }
   })
 }
@@ -138,7 +140,11 @@ export async function createPractice(
         existing.customScene?.partnerName === customScene?.partnerName &&
         existing.customScene?.openingLine === customScene?.openingLine &&
         JSON.stringify(normalizeAdventure(existing.adventure)) ===
-          JSON.stringify(normalizeAdventure(adventure))
+          JSON.stringify(
+            normalizeAdventure(
+              adventure && existing.adventure?.revisit ? { ...adventure, revisit: true } : adventure
+            )
+          )
       )
     if (sceneId === 'adventure') {
       if (!normalizeAdventure(adventure)) return false
@@ -149,10 +155,31 @@ export async function createPractice(
       const keys = completed.flatMap((row) =>
         row.adventure ? [episodeKey(row.adventure.characterId, row.adventure.episodeId)] : []
       )
+      // 読了済みの本編は直接POSTや旧画面から始めても再練習として保存する。
+      if (
+        episodeById(adventure!.episodeId)?.chapter &&
+        keys.includes(episodeKey(adventure!.characterId, adventure!.episodeId))
+      )
+        adventure = { ...adventure!, revisit: true }
       // 解放を画面だけに任せると、直接POSTで先の話へ進めてしまう。
-      if (!episodeUnlocked(adventure!, keys)) return 'locked' as const
+      const billing = await readCreditState(tx, uid)
+      const access = adventureAccess(
+        adventure!,
+        keys,
+        billing.ownedCharacters,
+        !!billing.subscription?.active
+      )
+      if (access !== 'available') return access
     } else if (adventure) return false
-    await tx.insert(practices).values({ id, uid, sceneId, customScene, adventure })
+    await tx.insert(practices).values({
+      id,
+      uid,
+      sceneId,
+      customScene,
+      adventure,
+      creditCost: practiceCreditCost(practiceTurnLimit(adventure)),
+      storyContext: adventure ? await buildStoryContext(tx, uid, adventure) : null
+    })
     return true
   })
 }
@@ -188,21 +215,38 @@ export async function reservePracticeTurn(input: MessageInput, now = new Date())
     if (turns.length !== input.expectedTurn) return { status: 'conflict' as const }
     if (session.pendingRequestId === input.requestId && session.pendingText !== input.text)
       return { status: 'conflict' as const }
+    const until = new Date(now.getTime() + LEASE_MS)
     if (!session.chargedAt) {
-      const [used] = await tx
-        .select({ count: count() })
-        .from(practices)
-        .where(
-          or(
-            chargedThisMonth(input.uid, now),
-            and(
-              eq(practices.uid, input.uid),
-              isNull(practices.chargedAt),
-              gt(practices.pendingUntil, now)
-            )
-          )
+      // 作成後に返金・期限切れになった場合も、最初の生成前に購入権を確かめる。
+      if (session.adventure) {
+        const completed = await tx
+          .select({ adventure: practices.adventure })
+          .from(practices)
+          .where(and(eq(practices.uid, input.uid), isNotNull(practices.completedAt)))
+        const billing = await readCreditState(tx, input.uid, now)
+        const keys = completed.flatMap((row) =>
+          row.adventure ? [episodeKey(row.adventure.characterId, row.adventure.episodeId)] : []
         )
-      if (Number(used.count) >= PRACTICE_LIMIT) return { status: 'quota' as const }
+        const access = adventureAccess(
+          session.adventure,
+          keys,
+          billing.ownedCharacters,
+          !!billing.subscription?.active,
+          now
+        )
+        if (access !== 'available') return { status: 'access' as const, access }
+      }
+      const reserved = await reserveCredits(
+        tx,
+        input.uid,
+        input.id,
+        session.creditCost,
+        session.adventure?.characterId,
+        !!session.adventure && !!episodeById(session.adventure.episodeId)?.chapter,
+        until,
+        now
+      )
+      if (!reserved) return { status: 'quota' as const }
     }
     const token = randomUUID()
     await tx
@@ -211,7 +255,7 @@ export async function reservePracticeTurn(input: MessageInput, now = new Date())
         pendingRequestId: input.requestId,
         pendingText: input.text,
         pendingToken: token,
-        pendingUntil: new Date(now.getTime() + LEASE_MS),
+        pendingUntil: until,
         updatedAt: now
       })
       .where(eq(practices.id, input.id))
@@ -221,6 +265,7 @@ export async function reservePracticeTurn(input: MessageInput, now = new Date())
       sceneId: session.sceneId,
       customScene: session.customScene,
       adventure: session.adventure,
+      storyContext: session.storyContext,
       turns
     }
   })
@@ -228,16 +273,21 @@ export async function reservePracticeTurn(input: MessageInput, now = new Date())
 
 export async function releasePracticeTurn(input: MessageInput, token: string) {
   // 失敗した本文は残し、再読み込み後も同じ入力から再試行できるようにする。
-  await getDb()
-    .update(practices)
-    .set({ pendingUntil: null, pendingToken: null })
-    .where(
-      and(
-        eq(practices.id, input.id),
-        eq(practices.uid, input.uid),
-        eq(practices.pendingToken, token)
+  await getDb().transaction(async (tx) => {
+    await tx.select().from(users).where(eq(users.firebaseUid, input.uid)).for('update')
+    const changed = await tx
+      .update(practices)
+      .set({ pendingUntil: null, pendingToken: null })
+      .where(
+        and(
+          eq(practices.id, input.id),
+          eq(practices.uid, input.uid),
+          eq(practices.pendingToken, token)
+        )
       )
-    )
+      .returning({ id: practices.id })
+    if (changed.length) await releaseCredits(tx, input.id)
+  })
 }
 
 export async function finishPracticeTurn(
@@ -248,6 +298,7 @@ export async function finishPracticeTurn(
     feedback: PracticeFeedback | null
     presentation?: Presentation
     mission?: MissionResult | null
+    storyEnding?: StoryEnding | null
   },
   now = new Date()
 ) {
@@ -258,13 +309,19 @@ export async function finishPracticeTurn(
     })
     // 古い生成処理が、期限切れ後に始まった再試行の結果を上書きしない。
     if (!session || session.pendingToken !== token) return false
-    if (!session.chargedAt) {
-      const [used] = await tx
-        .select({ count: count() })
-        .from(practices)
-        .where(chargedThisMonth(input.uid, now))
-      if (Number(used.count) >= PRACTICE_LIMIT) return false
-    }
+    if (
+      !session.chargedAt &&
+      !(await commitCredits(
+        tx,
+        input.uid,
+        input.id,
+        session.creditCost,
+        session.adventure?.characterId,
+        !!session.adventure && !!episodeById(session.adventure.episodeId)?.chapter,
+        now
+      ))
+    )
+      return false
     const position = input.expectedTurn + 1
     await tx.insert(practiceTurns).values({
       id: randomUUID(),
@@ -287,6 +344,7 @@ export async function finishPracticeTurn(
     })
     const final = position === practiceTurnLimit(session.adventure)
     let reward = session.reward
+    let storyEnding = session.storyEnding
     if (final && session.adventure) {
       const prior = await tx
         .select({ text: practiceTurns.userText })
@@ -299,7 +357,29 @@ export async function finishPracticeTurn(
         prior.map((row) => row.text)
       )
       // 完了と報酬を同じトランザクションに保存し、再送で経験値を増やさない。
-      reward = { version: 1, xp: mission ? 30 : 20, mission }
+      reward = {
+        version: 1,
+        xp: practiceTurnLimit(session.adventure) === 6 ? (mission ? 70 : 50) : mission ? 30 : 20,
+        mission
+      }
+      storyEnding = parseStoryEnding(
+        output.storyEnding,
+        session.adventure,
+        prior.map((row) => row.text)
+      )
+      if (episodeById(session.adventure.episodeId)?.chapter === 12 && !storyEnding) {
+        throw Error('The story ending requires conversation evidence')
+      }
+      if (storyEnding && !session.adventure.revisit)
+        await tx
+          .insert(characterEndings)
+          .values({
+            id: `${input.uid}:${session.adventure.characterId}`,
+            uid: input.uid,
+            characterId: session.adventure.characterId,
+            practiceId: input.id
+          })
+          .onConflictDoNothing()
     }
     await tx
       .update(practices)
@@ -307,6 +387,7 @@ export async function finishPracticeTurn(
         chargedAt: session.chargedAt ?? now,
         completedAt: final ? now : null,
         reward,
+        storyEnding,
         pendingRequestId: null,
         pendingText: null,
         pendingToken: null,

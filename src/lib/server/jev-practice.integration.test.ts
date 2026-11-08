@@ -10,6 +10,40 @@ afterEach(() => {
 })
 const transcript = [{ role: 'user', content: exampleTexts[0], turn: 1 }]
 describe('Jevの補助評価', () => {
+  it.each(['root', 'feedback'])(
+    '結末が%sに置かれても、12話の本人の引用を検証して保存する',
+    async (location) => {
+      vi.stubEnv('TYPESAFE_API_KEY', '')
+      vi.stubEnv('DIFY_PRACTICE_API_KEY', 'test-dify-key')
+      const ending = {
+        kind: 'lovers',
+        reason: '互いの希望を確認しました。',
+        evidence: [{ turn: 1, quote: exampleTexts[0] }]
+      }
+      const raw = {
+        reply: '一緒に過ごせたらうれしいです。',
+        feedback: structuredClone(exampleFeedback)
+      }
+      Object.assign(location === 'root' ? raw : raw.feedback, { storyEnding: ending })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ data: { status: 'succeeded', outputs: { result: raw } } })
+        })
+      )
+      const result = await generatePracticeReply({
+        id: 'test-ending',
+        sceneId: 'adventure',
+        adventure: { version: 1, characterId: 'aoi', episodeId: 'aoi-12', turns: 3 },
+        turns: exampleTexts
+          .slice(0, 2)
+          .map((userText) => ({ userText, assistantText: 'あなたの希望を聞きたいです。' })),
+        text: exampleTexts[2]
+      })
+      expect(result).toHaveProperty('storyEnding', ending)
+    }
+  )
   it('最終回だけJevで評価し、実測した判定をDifyと保存結果へ引き継ぐ', async () => {
     vi.stubEnv('TYPESAFE_API_KEY', 'test-jev-key')
     vi.stubEnv('JEV_MODEL', 'jev-test')
@@ -50,14 +84,14 @@ describe('Jevの補助評価', () => {
     expect(Object.keys(jevRequest.questions)).toHaveLength(10)
     const difyRequest = JSON.parse(fetch.mock.calls[1][1].body)
     expect(JSON.parse(difyRequest.inputs.scene).assessment.aspects).toEqual(
-      parseAssessment(exampleJevResponse()).aspects.map((aspect) => ({
+      parseAssessment(exampleJevResponse(), 5).aspects.map((aspect) => ({
         ...aspect,
         status: 'rated'
       }))
     )
     expect(result.feedback?.analysis?.assessment).toEqual({
-      ...parseAssessment(exampleJevResponse()),
-      rubric: { version: 2, profile: 'first_meeting' }
+      ...parseAssessment(exampleJevResponse(), 5),
+      rubric: { version: 3, profile: 'first_meeting' }
     })
   })
   it('途中の返答ではJevを呼ばない', async () => {

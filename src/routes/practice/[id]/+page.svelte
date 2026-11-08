@@ -343,7 +343,7 @@
         </div>
         {#if message}<p class="error" role="alert">{message}</p>{/if}
         <p class="small muted">
-          新しい練習は別の1回分になります。今回の振り返りは、この画面で再確認できます。
+          新しい練習は3往復1枠・6往復2枠を使います。今回の振り返りは、この画面で再確認できます。
         </p>
       </section>
     {:else if !data.practiceEnabled}<p class="notice">
@@ -379,7 +379,7 @@
         <p class="small muted">
           {session.chargedAt
             ? 'この練習は残りの返答と振り返りまで追加消費なし。'
-            : '最初の返答が正常に届くと、月10回のうち1回分を使用します。'}<br
+            : `最初の返答の保存に成功すると、${session.creditCost ?? 1}枠を使用します。`}<br
           />会話はAIに送信し、再開・振り返りのために保存します。実名・連絡先は入力しないでください。
         </p>
       </form>{/if}

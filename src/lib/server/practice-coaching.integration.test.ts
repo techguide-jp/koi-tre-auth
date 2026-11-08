@@ -124,7 +124,7 @@ describe('場面に合う会話と評価', () => {
     expect(context.id).toBe('boundary')
     expect(context.replyStyle).toBe('close_naturally')
     expect(result.feedback?.analysis?.assessment?.rubric).toEqual({
-      version: 2,
+      version: 3,
       profile: 'boundary'
     })
   })

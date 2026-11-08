@@ -1,0 +1,352 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "reply": {
+      "type": "string"
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "emotion": {
+          "type": "string",
+          "enum": ["neutral", "smile", "shy", "thinking", "puzzled", "relieved"]
+        },
+        "gesture": {
+          "type": "string"
+        }
+      },
+      "required": ["emotion", "gesture"]
+    },
+    "mission": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "achieved": {
+              "type": "boolean"
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/evidence"
+              },
+              "minItems": 0,
+              "maxItems": 2
+            }
+          },
+          "required": ["id", "achieved", "evidence"]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "storyEnding": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": ["lovers", "slow"]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/evidence"
+              },
+              "minItems": 1,
+              "maxItems": 3
+            }
+          },
+          "required": ["kind", "reason", "evidence"]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "feedback": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/feedback"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": ["reply", "presentation", "mission", "storyEnding", "feedback"],
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "turn": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "quote": {
+          "type": "string"
+        }
+      },
+      "required": ["turn", "quote"]
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "observation": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 1,
+          "maxItems": 6
+        }
+      },
+      "required": ["title", "observation", "evidence"]
+    },
+    "improvement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "observation": {
+          "type": "string"
+        },
+        "suggestion": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 1,
+          "maxItems": 6
+        }
+      },
+      "required": ["title", "observation", "suggestion", "evidence"]
+    },
+    "aspect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["acknowledgment", "self_expression", "questions", "connection", "consideration"]
+        },
+        "observation": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 0,
+          "maxItems": 6
+        }
+      },
+      "required": ["id", "observation", "evidence"]
+    },
+    "alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "purpose": {
+          "type": "string"
+        },
+        "rewrite": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": ["purpose", "rewrite", "reason"]
+    },
+    "turn": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "turn": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "quote": {
+          "type": "string"
+        },
+        "observation": {
+          "type": "string"
+        },
+        "rewritePurpose": {
+          "type": "string"
+        },
+        "rewrite": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "alternative": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/alternative"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "turn",
+        "quote",
+        "observation",
+        "rewritePurpose",
+        "rewrite",
+        "reason",
+        "alternative"
+      ]
+    },
+    "development": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "observation": {
+          "type": "string"
+        },
+        "before": {
+          "$ref": "#/$defs/evidence"
+        },
+        "after": {
+          "$ref": "#/$defs/evidence"
+        }
+      },
+      "required": ["observation", "before", "after"]
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "integer",
+          "enum": [3]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "strengths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point"
+          },
+          "minItems": 0,
+          "maxItems": 3
+        },
+        "improvements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/improvement"
+          },
+          "minItems": 0,
+          "maxItems": 3
+        },
+        "aspects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/aspect"
+          },
+          "minItems": 5,
+          "maxItems": 5
+        },
+        "turns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/turn"
+          },
+          "minItems": 3,
+          "maxItems": 6
+        },
+        "development": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/development"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "nextPractice": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "goal": {
+              "type": "string"
+            },
+            "example": {
+              "type": "string"
+            }
+          },
+          "required": ["goal", "example"]
+        }
+      },
+      "required": [
+        "version",
+        "summary",
+        "strengths",
+        "improvements",
+        "aspects",
+        "turns",
+        "development",
+        "nextPractice"
+      ]
+    },
+    "feedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "strength": {
+          "type": "string"
+        },
+        "improvement": {
+          "type": "string"
+        },
+        "quote": {
+          "type": "string"
+        },
+        "rewrite": {
+          "type": "string"
+        },
+        "analysis": {
+          "$ref": "#/$defs/analysis"
+        }
+      },
+      "required": ["strength", "improvement", "quote", "rewrite", "analysis"]
+    }
+  }
+}

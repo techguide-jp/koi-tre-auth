@@ -5,9 +5,11 @@
   import { type CustomSceneInput, type PracticeOverview, type SceneId } from '$lib/practice'
   import { type Adventure, type AdventureProgress } from '$lib/adventure'
   import { saveCustomSceneDraft } from '$lib/custom-scene-client'
+  import { availableCredits } from '$lib/billing'
   import { startPractice } from '$lib/practice-client'
   import AdventureLobby from '$lib/components/adventure/AdventureLobby.svelte'
   import AdventureProgressPanel from '$lib/components/adventure/AdventureProgress.svelte'
+  import BillingBalance from '$lib/components/billing/BillingBalance.svelte'
   import CustomSceneForm from '$lib/components/CustomSceneForm.svelte'
   import LegacyHome from '$lib/components/LegacyHome.svelte'
   import { guides } from '$lib/content/guides'
@@ -19,6 +21,9 @@
   let pendingScene: SceneId | null = null
   let loading = false
   let message = ''
+  $: customRemaining = progress?.billing
+    ? availableCredits(progress.billing.credits)
+    : overview?.remaining
   onMount(() => {
     mounted = true
     const refresh = () => {
@@ -76,7 +81,7 @@
     if (!$user) {
       if (adventure) {
         await goto(
-          `/login?character=${adventure.characterId}&episode=${adventure.episodeId}&turns=${adventure.turns}`
+          `/login?character=${adventure.characterId}&episode=${adventure.episodeId}&turns=${adventure.turns}${adventure.revisit ? '&revisit=1' : ''}`
         )
         return
       }
@@ -113,7 +118,7 @@
       <a class="button primary" href="#scenes"
         >お相手を選んで始める <span aria-hidden="true">→</span></a
       >
-      <p class="small muted hero-note">月10回無料 · 3往復／6往復 · スマホでそのまま</p>
+      <p class="small muted hero-note">毎月10枠無料 · 3往復1枠／6往復2枠 · スマホでそのまま</p>
     </div>
     <figure>
       <img
@@ -127,7 +132,7 @@
     </figure>
   </section>
   <div class="intro-strip" aria-label="練習の流れ">
-    <p>キャラクター6人。<br /><strong>24の場面から、今日のひとつを。</strong></p>
+    <p>キャラクター6人。<br /><strong>4つのパートで、少しずつ知り合う。</strong></p>
     <ol>
       <li><span>01</span>お相手を選ぶ</li>
       <li><span>02</span>自分の言葉で話す</li>
@@ -137,9 +142,9 @@
   {#if $user}<section class="account-strip" aria-label="今月の練習">
       <div>
         <p class="section-label">あなたの練習</p>
-        {#if overview}<p>
-            今月はあと <strong>{overview.remaining}回</strong> / {overview.limit}回{overview.reserved
-              ? `（ほかに${overview.reserved}回を処理中）`
+        {#if overview?.billing}<BillingBalance billing="{overview.billing}" />{:else if overview}<p>
+            今月はあと <strong>{overview.remaining}枠</strong> / {overview.limit}枠{overview.reserved
+              ? `（ほかに${overview.reserved}枠を処理中）`
               : ''}
           </p>
           <p class="small muted">
@@ -160,7 +165,8 @@
     {#if progress}<AdventureProgressPanel progress="{progress}" />{/if}{/if}
   <AdventureLobby
     progress="{progress}"
-    disabled="{!$authReady || !!pendingScene || overview?.remaining === 0}"
+    loading="{!$authReady || (!!$user && !progress)}"
+    disabled="{!$authReady || !!pendingScene}"
     pending="{pendingScene === 'adventure'}"
     on:start="{(event) => begin('adventure', undefined, event.detail)}"
   />
@@ -173,11 +179,11 @@
         >{/if}
     </div>{/if}
   {#if overview?.remaining === 0}<p class="notice">
-      今月の練習枠を使い切りました。途中の会話や振り返り、アルバムは引き続き楽しめます。
+      現在使える練習枠を使い切りました。途中の会話や振り返り、アルバムは引き続き楽しめます。
     </p>{/if}
   <section class="custom-section" aria-label="自分で場面を設定する">
     <CustomSceneForm
-      disabled="{!$authReady || !!pendingScene || overview?.remaining === 0}"
+      disabled="{!$authReady || !!pendingScene || customRemaining === 0}"
       pending="{pendingScene === 'custom'}"
       on:start="{(event) => begin('custom', event.detail)}"
     />
@@ -190,21 +196,21 @@
         <span aria-hidden="true">✦</span>
         <h3>小さなミッション</h3>
         <p>
-          「自分の気持ちをひと言」など、今回試すことはひとつ。会話を終えると20XP、ミッションを達成するとさらに10XP。
+          「自分の気持ちをひと言」など、今回試すことはひとつ。3往復は最大30XP、6往復は最大70XP。じっくり話すと、後半の展開や振り返りも広がります。
         </p>
       </article>
       <article>
         <span aria-hidden="true">↗</span>
         <h3>あなただけの振り返り</h3>
         <p>
-          5つの観点のグラフと、実際の発言をもとにした言い換え。完了した会話では、ひと言だけ言い直して反応を試せます。
+          5観点・合計25点の評価とグラフ、実際の発言をもとにした言い換え。クリア済みの本音編などに戻って、話す前の予行練習もできます。
         </p>
       </article>
       <article>
         <span aria-hidden="true">◇</span>
         <h3>思い出を集めよう</h3>
         <p>
-          エピソードを終えると次の話が開き、アルバムに一枚が増えます。気に入った自分の言葉も保存できます。
+          エピソードを終えると次の話が開き、アルバムに一枚が増えます。6往復では、その場面だけの専用イラストを獲得。大きく開いて、過ごした時間を振り返れます。
         </p>
       </article>
     </div>
@@ -221,7 +227,7 @@
       <details>
         <summary>無料でどこまで使えますか？</summary>
         <p>
-          月10回、選んだ3往復または6往復と振り返りまで練習できます。最初の返答を正常に保存した時点で1回分を使います。途中の会話の再開や、同じ練習で一度だけの言い直しには追加消費がありません。
+          毎月10枠の無料枠があります。3往復は1枠、6往復は2枠を、最初の返答を正常に保存した時点で使います。途中の会話の再開や、同じ練習で一度だけの言い直しには追加消費がありません。
         </p>
       </details>
       <details>

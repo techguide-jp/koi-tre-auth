@@ -22,15 +22,15 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 describe('キャラクター・物語・補助情報の検証', () => {
-  it('男女各3人と24場面を定義し、各人物に3話と6つの単発場面を用意する', () => {
+  it('男女各3人と78場面を定義し、各人物に12話と6つの単発場面を用意する', () => {
     expect(characters.filter((c) => c.gender === 'male')).toHaveLength(3)
     expect(characters.filter((c) => c.gender === 'female')).toHaveLength(3)
     expect(characters.every((c) => c.age >= 20)).toBe(true)
-    expect(episodes).toHaveLength(24)
-    expect(new Set(episodes.map((e) => e.id)).size).toBe(24)
+    expect(episodes).toHaveLength(78)
+    expect(new Set(episodes.map((e) => e.id)).size).toBe(78)
     for (const c of characters)
       expect(episodes.filter((e) => e.characterId === c.id).map((e) => e.chapter)).toEqual([
-        1, 2, 3
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
       ])
     expect(episodes.filter((e) => !e.characterId)).toHaveLength(6)
   })

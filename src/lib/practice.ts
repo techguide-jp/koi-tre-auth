@@ -5,6 +5,7 @@ import {
   type Presentation,
   type Rehearsal
 } from './adventure'
+import type { StoryContext, StoryEnding } from './adventure'
 export const PRACTICE_LIMIT = 10
 export const PRACTICE_TURNS = 3
 export const MAX_PRACTICE_TURNS = 6
@@ -155,7 +156,7 @@ export function resolveScene(
 export const analysisAspects = [
   { id: 'acknowledgment', label: '受け止め・共感' },
   { id: 'self_expression', label: '自分の伝え方' },
-  { id: 'questions', label: '質問の答えやすさ' },
+  { id: 'questions', label: 'キャッチボール' },
   { id: 'connection', label: '話題のつながり' },
   { id: 'consideration', label: '距離感・配慮' }
 ] as const
@@ -167,17 +168,18 @@ export interface PracticeEvidence {
 export interface PracticeAssessment {
   provider: 'jev'
   model: string
-  rubric?: { version: 2; profile: string }
+  rubric?: { version: 2 | 3; profile: string }
   aspects: {
     id: AnalysisAspectId
     score: number
     confidence: number
     observable: number
-    probabilities?: [number, number, number, number]
+    probabilities?: number[]
+    maxScore?: 5
   }[]
 }
 export interface PracticeAnalysis {
-  version: 2
+  version: 2 | 3
   summary: string
   strengths: { title: string; observation: string; evidence: PracticeEvidence[] }[]
   improvements: {
@@ -198,6 +200,7 @@ export interface PracticeAnalysis {
   }[]
   nextPractice: { goal: string; example: string }
   assessment?: PracticeAssessment
+  development?: { observation: string; before: PracticeEvidence; after: PracticeEvidence }
 }
 export type AssessmentStatus = 'rated' | 'reference' | 'insufficient' | 'uncertain' | 'unavailable'
 export function assessmentStatus(value?: PracticeAssessment['aspects'][number]): AssessmentStatus {
@@ -207,7 +210,7 @@ export function assessmentStatus(value?: PracticeAssessment['aspects'][number]):
     !(value.confidence >= 0 && value.confidence <= 1) ||
     !Number.isFinite(value.score) ||
     value.score < 0 ||
-    value.score > 3
+    value.score > (value.maxScore ?? 3)
   )
     return 'unavailable'
   if (value.observable < 0.7) return 'insufficient'
@@ -216,7 +219,7 @@ export function assessmentStatus(value?: PracticeAssessment['aspects'][number]):
     const p = value.probabilities
     const total = p.reduce((sum, probability) => sum + probability, 0)
     if (
-      p.length !== 4 ||
+      p.length !== (value.maxScore ?? 3) + 1 ||
       p.some((probability) => !(probability >= 0 && probability <= 1)) ||
       Math.abs(total - 1) > 0.02
     )
@@ -226,7 +229,7 @@ export function assessmentStatus(value?: PracticeAssessment['aspects'][number]):
       (sum, probability, level) => sum + (probability / total) * (level - mean) ** 2,
       0
     )
-    if (variance > 1) return 'uncertain'
+    if (variance * (3 / (value.maxScore ?? 3)) ** 2 > 1) return 'uncertain'
   }
   // 過去の評価には分布がないため、低確信の保存済みスコアも断定せず参考表示する。
   return value.confidence >= 0.7 ? 'rated' : 'reference'
@@ -241,9 +244,28 @@ export function assessmentLabel(value: PracticeAssessment['aspects'][number]) {
   if (status === 'uncertain') return '評価に幅あり'
   const score = assessmentValue(value)
   if (score === null) return '未評価'
-  if (score >= 2.5) return 'よくできている'
-  if (score >= 1.5) return 'できている'
+  const normalized = (score * 3) / (value.maxScore ?? 3)
+  if (normalized >= 2.5) return 'よくできている'
+  if (normalized >= 1.5) return 'できている'
   return '工夫の余地あり'
+}
+export function assessmentPoints(value?: PracticeAssessment['aspects'][number]) {
+  const score = assessmentValue(value)
+  return score === null ? null : Math.round(((score * 5) / (value?.maxScore ?? 3)) * 10) / 10
+}
+export function assessmentTotal(assessment?: PracticeAssessment) {
+  if (
+    !assessment ||
+    assessment.aspects.length !== analysisAspects.length ||
+    new Set(assessment.aspects.map((a) => a.id)).size !== analysisAspects.length
+  )
+    return null
+  const points = analysisAspects.map(({ id }) =>
+    assessmentPoints(assessment.aspects.find((a) => a.id === id))
+  )
+  return points.some((p) => p === null)
+    ? null
+    : Math.round(points.reduce<number>((sum, p) => sum + p!, 0) * 10) / 10
 }
 
 export interface PracticeFeedback {
@@ -276,6 +298,9 @@ export interface PracticeSession {
   reward?: AdventureReward | null
   favoriteTurn?: number | null
   rehearsal?: Rehearsal | null
+  creditCost?: number
+  storyContext?: StoryContext | null
+  storyEnding?: StoryEnding | null
 }
 
 export interface PracticeOverview {
@@ -285,4 +310,5 @@ export interface PracticeOverview {
   activePracticeId: string | null
   latestPracticeId: string | null
   resetsAt: string
+  billing?: import('./billing').BillingOverview
 }

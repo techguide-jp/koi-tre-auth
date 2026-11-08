@@ -7,12 +7,17 @@ Firebase 認証、Drizzle、PostgreSQL を使って Dify アプリ連携用の A
 
 - **SvelteKit** をベースにした最新のフロントエンド開発環境
 - Firebase を用いた認証機能
-- 3場面・3ターンの会話練習と、発言に合わせた振り返り
-- 月10回の練習枠、途中再開、二重送信防止
+- 全6人・各12話の本編、日常交流、季節イベント、パート別の再練習
+- 5観点・25点の星形グラフ、3/6往復の具体的な振り返り
+- 6往復で獲得する場面専用イラストと、拡大鑑賞・人物別収集状況のあるアルバム
+- 無料10枠、人物別24枠、Plus60枠と、3往復1枠・6往復2枠の消費管理
+- Stripeのテスト購入・月額契約・期間末解約・返金通知への対応
 - Drizzle + PostgreSQL を利用したデータベース連携
 - Dify アプリから利用する内部 API
 - Vercel の Git 連携による Preview・本番デプロイ
 - ESLint と Prettier によるコードフォーマットと静的解析
+
+本編・料金・進行の仕様と検証結果は [docs/routes-and-billing.md](docs/routes-and-billing.md) を参照してください。決済はテストモードだけに限定し、Stripe本番キーとVercel Productionでは有効になりません。
 
 ## Prerequisites
 

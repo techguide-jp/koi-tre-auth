@@ -1,5 +1,7 @@
 import { characters, episodes, missions, type CharacterId } from './adventure-catalog'
 import type { PracticeEvidence, PracticeScene } from './practice'
+import { dailyEpisodes, eventEpisode, eventPublished } from './adventure-life'
+import type { BillingOverview } from './billing'
 export { characters, episodes, missions } from './adventure-catalog'
 export type { Character, CharacterId, Episode, PartnerGender } from './adventure-catalog'
 
@@ -22,6 +24,7 @@ export interface Adventure {
   characterId: CharacterId
   episodeId: string
   turns: 3 | 6
+  revisit?: true
 }
 export interface MissionResult {
   id: string
@@ -29,7 +32,7 @@ export interface MissionResult {
 }
 export interface AdventureReward {
   version: 1
-  xp: 20 | 30
+  xp: 20 | 30 | 50 | 70
   mission: MissionResult | null
 }
 export interface Rehearsal {
@@ -52,11 +55,36 @@ export interface AdventureProgress {
     episodeId: string
     title: string
     completedAt: string
+    variant?: 'short' | 'deep'
+    quote?: string
+    emotion?: Emotion
   }[]
   favorites: { practiceId: string; characterId: CharacterId; position: number; text: string }[]
+  billing?: BillingOverview
+  endings?: {
+    practiceId: string
+    characterId: CharacterId
+    kind: StoryEndingKind
+    selected: boolean
+  }[]
+}
+export type StoryEndingKind = 'lovers' | 'slow'
+export interface StoryEnding {
+  kind: StoryEndingKind
+  reason: string
+  evidence: PracticeEvidence[]
+}
+export interface StoryContext {
+  version: 1
+  relationship: string
+  chapter: number | null
+  revisit: boolean
+  memories: { episodeId: string; userQuote: string; partnerReply: string }[]
 }
 export const characterById = (id: unknown) => characters.find((c) => c.id === id)
-export const episodeById = (id: unknown) => episodes.find((e) => e.id === id)
+export const episodeById = (id: unknown) =>
+  episodes.find((e) => e.id === id) ?? dailyEpisodes.find((e) => e.id === id) ?? eventEpisode(id)
+export const isLifeEpisode = (id: string) => id.startsWith('daily-') || id.startsWith('event-')
 export function normalizeAdventure(value: unknown): Adventure | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const input = value as Record<string, unknown>
@@ -74,7 +102,8 @@ export function normalizeAdventure(value: unknown): Adventure | null {
     version: 1,
     characterId: character.id,
     episodeId: episode.id,
-    turns: input.turns as 3 | 6
+    turns: input.turns as 3 | 6,
+    ...(input.revisit === true ? { revisit: true as const } : {})
   }
 }
 export const episodeKey = (characterId: string, episodeId: string) => `${characterId}:${episodeId}`
@@ -89,6 +118,65 @@ export function episodeUnlocked(adventure: Adventure, completed: string[]) {
       episodeKey(adventure.characterId, `${adventure.characterId}-${episode.chapter - 1}`)
     )
   )
+}
+export function adventureAccess(
+  adventure: Adventure,
+  completed: string[],
+  owned: CharacterId[],
+  plus: boolean,
+  now = new Date()
+): 'available' | 'locked' | 'purchase' | 'plus' | 'unpublished' {
+  const episode = episodeById(adventure.episodeId)
+  if (!episode || !episodeUnlocked(adventure, completed)) return 'locked'
+  if (
+    adventure.revisit &&
+    (!episode.chapter || !completed.includes(episodeKey(adventure.characterId, episode.id)))
+  )
+    return 'locked'
+  if (isLifeEpisode(episode.id)) {
+    if (!owned.includes(adventure.characterId)) return 'purchase'
+    if (!completed.includes(episodeKey(adventure.characterId, `${adventure.characterId}-12`)))
+      return 'locked'
+    if (episode.id.startsWith('event-') && !eventPublished(episode.id, now)) return 'unpublished'
+    return plus ? 'available' : 'plus'
+  }
+  return (episode.chapter ?? 0) > 3 && !owned.includes(adventure.characterId)
+    ? 'purchase'
+    : 'available'
+}
+export function parseStoryEnding(
+  value: unknown,
+  adventure: Adventure,
+  texts: string[]
+): StoryEnding | null {
+  if (episodeById(adventure.episodeId)?.chapter !== 12 || !value || typeof value !== 'object')
+    return null
+  const input = value as Record<string, unknown>
+  if (
+    !['lovers', 'slow'].includes(String(input.kind)) ||
+    typeof input.reason !== 'string' ||
+    !input.reason.trim() ||
+    input.reason.length > 600 ||
+    !Array.isArray(input.evidence) ||
+    input.evidence.length < 1 ||
+    input.evidence.length > 3
+  )
+    return null
+  const evidence: PracticeEvidence[] = []
+  for (const item of input.evidence) {
+    if (!item || typeof item !== 'object') return null
+    const { turn, quote } = item as Record<string, unknown>
+    if (
+      typeof turn !== 'number' ||
+      !Number.isInteger(turn) ||
+      typeof quote !== 'string' ||
+      !quote.trim() ||
+      !texts[turn - 1]?.includes(quote)
+    )
+      return null
+    evidence.push({ turn, quote })
+  }
+  return { kind: input.kind as StoryEndingKind, reason: input.reason.trim(), evidence }
 }
 export function nextEpisode(characterId: CharacterId, completed: string[]) {
   const own = episodes.filter((e) => e.characterId === characterId)
@@ -202,8 +290,8 @@ export function emptyAdventureProgress(): AdventureProgress {
       },
       {
         id: 'story',
-        label: 'ひとつの物語',
-        description: '一人のキャラクターの3話を終える',
+        label: '出会いの3話',
+        description: '一人のキャラクターの出会い編を終える',
         earned: false
       },
       {

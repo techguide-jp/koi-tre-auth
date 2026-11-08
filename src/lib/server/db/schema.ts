@@ -11,6 +11,11 @@ import {
 } from 'drizzle-orm/pg-core'
 import type { CustomSceneInput, PracticeFeedback, SceneId } from '$lib/practice'
 import type { Adventure, AdventureReward, Presentation, Rehearsal } from '$lib/adventure'
+import type { StoryContext, StoryEnding } from '$lib/adventure'
+import type { CharacterId } from '$lib/adventure-catalog'
+import type { CreditKind } from '$lib/billing'
+import type Stripe from 'stripe'
+import { boolean } from 'drizzle-orm/pg-core'
 
 export const users = pgTable(
   'users',
@@ -62,6 +67,9 @@ export const practices = pgTable(
     reward: jsonb('reward').$type<AdventureReward>(),
     favoriteTurn: integer('favorite_turn'),
     rehearsal: jsonb('rehearsal').$type<Rehearsal>(),
+    creditCost: integer('credit_cost').notNull().default(1),
+    storyContext: jsonb('story_context').$type<StoryContext>(),
+    storyEnding: jsonb('story_ending').$type<StoryEnding>(),
     chargedAt: timestamp('charged_at', { withTimezone: true, mode: 'date' }),
     completedAt: timestamp('completed_at', { withTimezone: true, mode: 'date' }),
     pendingRequestId: varchar('pending_request_id', { length: 36 }),
@@ -72,6 +80,128 @@ export const practices = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
   },
   (table) => [index('practices_uid_charged_at_idx').on(table.uid, table.chargedAt)]
+)
+
+export const billingCustomers = pgTable('billing_customers', {
+  uid: varchar('uid', { length: 255 })
+    .primaryKey()
+    .references(() => users.firebaseUid),
+  stripeCustomerId: varchar('stripe_customer_id', { length: 255 }).notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+})
+export const billingCheckouts = pgTable(
+  'billing_checkouts',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    uid: varchar('uid', { length: 255 })
+      .notNull()
+      .references(() => users.firebaseUid),
+    product: varchar('product', { length: 40 }).notNull(),
+    stripeSessionId: varchar('stripe_session_id', { length: 255 }).unique(),
+    url: text('url'),
+    requestParams: jsonb('request_params').$type<Stripe.Checkout.SessionCreateParams>(),
+    status: varchar('status', { length: 32 }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+  },
+  (table) => [index('billing_checkouts_uid_product_idx').on(table.uid, table.product)]
+)
+export const routePurchases = pgTable(
+  'route_purchases',
+  {
+    id: varchar('id', { length: 255 }).primaryKey(),
+    uid: varchar('uid', { length: 255 })
+      .notNull()
+      .references(() => users.firebaseUid),
+    characterId: varchar('character_id', { length: 32 }).$type<CharacterId>().notNull(),
+    paymentIntentId: varchar('payment_intent_id', { length: 255 }).unique(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' }),
+    paidAt: timestamp('paid_at', { withTimezone: true, mode: 'date' }).notNull()
+  },
+  (table) => [index('route_purchases_uid_character_idx').on(table.uid, table.characterId)]
+)
+export const billingSubscriptions = pgTable(
+  'billing_subscriptions',
+  {
+    id: varchar('id', { length: 255 }).primaryKey(),
+    uid: varchar('uid', { length: 255 })
+      .notNull()
+      .references(() => users.firebaseUid),
+    status: varchar('status', { length: 32 }).notNull(),
+    periodStart: timestamp('period_start', { withTimezone: true, mode: 'date' }).notNull(),
+    periodEnd: timestamp('period_end', { withTimezone: true, mode: 'date' }).notNull(),
+    cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+  },
+  (table) => [index('billing_subscriptions_uid_idx').on(table.uid)]
+)
+export const creditGrants = pgTable(
+  'credit_grants',
+  {
+    id: varchar('id', { length: 255 }).primaryKey(),
+    uid: varchar('uid', { length: 255 })
+      .notNull()
+      .references(() => users.firebaseUid),
+    kind: varchar('kind', { length: 16 }).$type<CreditKind>().notNull(),
+    characterId: varchar('character_id', { length: 32 }).$type<CharacterId>(),
+    units: integer('units').notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true, mode: 'date' }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' })
+  },
+  (table) => [index('credit_grants_uid_idx').on(table.uid)]
+)
+export const creditSpends = pgTable(
+  'credit_spends',
+  {
+    id: varchar('id', { length: 320 }).primaryKey(),
+    uid: varchar('uid', { length: 255 })
+      .notNull()
+      .references(() => users.firebaseUid),
+    practiceId: varchar('practice_id', { length: 36 })
+      .notNull()
+      .references(() => practices.id),
+    grantId: varchar('grant_id', { length: 255 })
+      .notNull()
+      .references(() => creditGrants.id),
+    units: integer('units').notNull(),
+    state: varchar('state', { length: 16 }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
+  },
+  (table) => [
+    index('credit_spends_uid_idx').on(table.uid),
+    unique('credit_spends_practice_grant_key').on(table.practiceId, table.grantId)
+  ]
+)
+export const billingEvents = pgTable('billing_events', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  type: varchar('type', { length: 100 }).notNull(),
+  processedAt: timestamp('processed_at', { withTimezone: true, mode: 'date' })
+    .notNull()
+    .defaultNow()
+})
+export const billingPaymentStates = pgTable('billing_payment_states', {
+  paymentIntentId: varchar('payment_intent_id', { length: 255 }).primaryKey(),
+  uid: varchar('uid', { length: 255 })
+    .notNull()
+    .references(() => users.firebaseUid),
+  revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' }),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+})
+export const characterEndings = pgTable(
+  'character_endings',
+  {
+    id: varchar('id', { length: 300 }).primaryKey(),
+    uid: varchar('uid', { length: 255 })
+      .notNull()
+      .references(() => users.firebaseUid),
+    characterId: varchar('character_id', { length: 32 }).$type<CharacterId>().notNull(),
+    practiceId: varchar('practice_id', { length: 36 })
+      .notNull()
+      .references(() => practices.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+  },
+  (table) => [unique('character_endings_uid_character_key').on(table.uid, table.characterId)]
 )
 
 export const practiceTurns = pgTable(
