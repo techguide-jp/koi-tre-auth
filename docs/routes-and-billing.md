@@ -2,7 +2,9 @@
 
 > 2026-11-09整理：PR #21で本編・料金表示・テスト決済・再練習・専用イラストを本番公開済み。0004・0005の適用も完了。本番販売は停止を維持する。現行の公開状況は[仕様・実装状況](README.md)、判断軸は[評価・アドバイスの基本方針](evaluation-principles.md)を参照。下記には公開前の設計・当時の検証記録も残している。
 
-## 承認範囲
+> 2026-11-09料金再設計：新しい決定仕様は[月額中心の料金・利用権・利用枠](billing-plans.md)。Plusだけで本編を攻略・再練習でき、550円・共通15枠の追加購入を導入する。以下の初期設計にある「Plusは購入・クリア後のみ」は検討履歴として残す。本番販売停止は継続。
+
+## 初期設計の承認範囲（履歴）
 
 無料は全6人の出会い編（1〜3話）と共通・カスタム練習、月10枠。人物別ルートパックは税込1,480円で4〜12話・結末と人物専用24枠を買い切り。Plusは税込月980円、契約期間ごと60共通枠（無料10枠と重複付与なし）。本編クリア済みの人物との日常・交際後の交流と、月2本の季節イベントを提供する。本編解放は人物別パックの購入で行い、Plusの加入は任意。
 
@@ -52,7 +54,7 @@ node --env-file=.env scripts/setup-stripe-test.mjs
 stripe listen --forward-to http://localhost:5173/api/webhooks/stripe
 ```
 
-セットアップスクリプトは固定のlookup keyで7商品・価格と、期間末解約用の専用Portal設定を再利用する。表示された公開IDを対応する `STRIPE_PRICE_*` と `STRIPE_PORTAL_CONFIGURATION_ID` に設定し、Stripe CLIが表示する署名シークレットを `STRIPE_WEBHOOK_SECRET` に設定する。秘密鍵・署名シークレットはGitやチャットへ載せない。CheckoutとPortalの戻り先には `VITE_APP_DOMAIN` のoriginだけを使用する。
+セットアップスクリプトは固定のlookup keyで8商品・価格と、期間末解約用の専用Portal設定を再利用する。表示された公開IDを対応する `STRIPE_PRICE_*` と `STRIPE_PORTAL_CONFIGURATION_ID` に設定し、Stripe CLIが表示する署名シークレットを `STRIPE_WEBHOOK_SECRET` に設定する。秘密鍵・署名シークレットはGitやチャットへ載せない。CheckoutとPortalの戻り先には `VITE_APP_DOMAIN` のoriginだけを使用する。
 
 Previewで検証するときも、テスト用DB・Firebase・Difyを分離し、そのPreviewの `/api/webhooks/stripe` へStripeテスト通知を送る。本番DBや本番ユーザーにテスト購入権を付けない。
 

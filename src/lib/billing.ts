@@ -5,7 +5,9 @@ export const PLUS_PRICE = 980
 export const FREE_CREDITS = 10
 export const ROUTE_CREDITS = 24
 export const PLUS_CREDITS = 60
-export type CreditKind = 'free' | 'plus' | 'route'
+export const TOPUP_PRICE = 550
+export const TOPUP_CREDITS = 15
+export type CreditKind = 'free' | 'plus' | 'route' | 'topup'
 export interface CreditAllocation {
   grantId: string
   units: number
@@ -34,16 +36,22 @@ export interface BillingOverview {
   reserved: number
   resetsAt: string
 }
-export type BillingProduct = { kind: 'route'; characterId: CharacterId } | { kind: 'plus' }
+export type BillingProduct =
+  | { kind: 'route'; characterId: CharacterId }
+  | { kind: 'plus' }
+  | { kind: 'topup' }
 export function billingProduct(value: unknown): BillingProduct | null {
   if (!value || typeof value !== 'object') return null
   const input = value as Record<string, unknown>
   if (input.kind === 'plus') return { kind: 'plus' }
+  if (input.kind === 'topup') return { kind: 'topup' }
   const person = characters.find((c) => c.id === input.characterId)
   return input.kind === 'route' && person ? { kind: 'route', characterId: person.id } : null
 }
 export const productKey = (product: BillingProduct) =>
-  product.kind === 'plus' ? 'plus' : `route:${product.characterId}`
+  product.kind === 'route' ? `route:${product.characterId}` : product.kind
+export const productPrice = (product: BillingProduct) =>
+  product.kind === 'route' ? ROUTE_PRICE : product.kind === 'topup' ? TOPUP_PRICE : PLUS_PRICE
 export const practiceCreditCost = (turns: number) => (turns === 6 ? 2 : 1)
 export function availableCredits(
   grants: CreditGrantView[],
@@ -66,8 +74,9 @@ export function allocateCredits(
         g.remaining > 0 && (g.kind !== 'route' || (routeEligible && g.characterId === characterId))
     )
     .sort((a, b) => {
-      if (a.kind === 'route' && b.kind !== 'route') return 1
-      if (b.kind === 'route' && a.kind !== 'route') return -1
+      // 期限のある枠と人物専用枠を先に使い、用途の広い購入枠を残す。
+      const priority = (g: CreditGrantView) => (g.kind === 'topup' ? 2 : g.kind === 'route' ? 1 : 0)
+      if (priority(a) !== priority(b)) return priority(a) - priority(b)
       return (
         (a.expiresAt ?? '9999').localeCompare(b.expiresAt ?? '9999') || a.id.localeCompare(b.id)
       )

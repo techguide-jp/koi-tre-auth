@@ -247,6 +247,7 @@ export async function releaseCredits(db: CreditDb, practiceId: string) {
     .where(and(eq(creditSpends.practiceId, practiceId), eq(creditSpends.state, 'reserved')))
 }
 export const commonCreditLimit = (overview: BillingOverview) =>
-  overview.subscription?.active ? PLUS_CREDITS : FREE_CREDITS
+  (overview.subscription?.active ? PLUS_CREDITS : FREE_CREDITS) +
+  overview.credits.filter((g) => g.kind === 'topup').reduce((sum, g) => sum + g.units, 0)
 export const getBillingOverview = (uid: string, now = new Date()) =>
   readCreditState(getDb(), uid, now)

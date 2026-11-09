@@ -86,7 +86,11 @@ export interface StageProgress {
   affinityGap: number
   lockedReasons: ('previous' | 'affinity' | 'purchase')[]
 }
-export function stageProgress(progression: ProgressionView, owned: CharacterId[]): StageProgress[] {
+export function stageProgress(
+  progression: ProgressionView,
+  owned: CharacterId[],
+  plus = false
+): StageProgress[] {
   return characters.flatMap((character) =>
     stageRules.map((rule) => {
       const episodeId = `${character.id}-${rule.chapter}`
@@ -106,7 +110,7 @@ export function stageProgress(progression: ProgressionView, owned: CharacterId[]
       )
         lockedReasons.push('previous')
       if (!cleared && affinity < rule.affinity) lockedReasons.push('affinity')
-      if (rule.chapter > 3 && !owned.includes(character.id)) lockedReasons.push('purchase')
+      if (rule.chapter > 3 && !plus && !owned.includes(character.id)) lockedReasons.push('purchase')
       return {
         characterId: character.id,
         episodeId,
@@ -204,13 +208,13 @@ export function adventureAccess(
   )
     return 'locked'
   if (isLifeEpisode(episode.id)) {
-    if (!owned.includes(adventure.characterId)) return 'purchase'
     if (!completed.includes(episodeKey(adventure.characterId, `${adventure.characterId}-12`)))
       return 'locked'
     if (episode.id.startsWith('event-') && !eventPublished(episode.id, now)) return 'unpublished'
     return plus ? 'available' : 'plus'
   }
-  return (episode.chapter ?? 0) > 3 && !owned.includes(adventure.characterId)
+  // 会員権は購入権とは別。契約終了後も購入人物だけは本編を利用できる。
+  return (episode.chapter ?? 0) > 3 && !plus && !owned.includes(adventure.characterId)
     ? 'purchase'
     : 'available'
 }

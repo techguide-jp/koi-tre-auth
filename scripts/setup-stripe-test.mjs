@@ -12,6 +12,13 @@ const products = [
     amount: 1480,
     recurring: false
   })),
+  {
+    sku: 'topup',
+    variable: 'STRIPE_PRICE_TOPUP',
+    name: 'Koi-Tre 追加共通15枠',
+    amount: 550,
+    recurring: false
+  },
   { sku: 'plus', variable: 'STRIPE_PRICE_PLUS', name: 'Koi-Tre Plus', amount: 980, recurring: true }
 ]
 const config = {}

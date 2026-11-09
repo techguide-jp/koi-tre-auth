@@ -40,6 +40,9 @@
   let selectedCharacter: CharacterId = 'aoi'
   let timer: ReturnType<typeof setTimeout> | undefined
   let retries = 0
+  $: practiceCharacters = billing?.subscription?.active
+    ? characters.map((c) => c.id)
+    : (billing?.ownedCharacters ?? [])
   $: if (mounted && $user && $user.uid !== loadedUid && !pending) {
     loadedUid = $user.uid
     void load()
@@ -99,7 +102,10 @@
         progress = nextProgress
         history = nextHistory.history
         course = nextHistory.course
-        if (!nextBilling.ownedCharacters.includes(selectedCharacter))
+        if (
+          !nextBilling.subscription?.active &&
+          !nextBilling.ownedCharacters.includes(selectedCharacter)
+        )
           selectedCharacter = nextBilling.ownedCharacters[0] ?? 'aoi'
       }
     } catch (e) {
@@ -175,8 +181,9 @@
               ? '契約管理を開いています…'
               : '契約・解約・支払い方法を管理する'}</button
           >{:else}<p class="small muted">
-            気になる人の本編は買い切り。クリア後の交流は任意のPlusで楽しめます。
+            Plusで全員の本編を攻略・再練習。人物パックなら、購入した本編を月額なしでも練習できます。
           </p>{/if}<a href="/pricing">料金と遊べる範囲 →</a>
+        <p><a href="/pricing#topup">追加の共通15枠 · 550円 →</a></p>
       </section>
     </div>
     <section class="owned">
@@ -192,13 +199,13 @@
         </div>{:else}<p>購入済みのルートパックはありません。</p>
         <a href="/pricing#route-packs">気になる人の本編を見る →</a>{/if}
     </section>
-    {#if billing.ownedCharacters.length}<section class="part-practice card">
+    {#if practiceCharacters.length}<section class="part-practice card">
         <p class="section-label">リアルで話す、その前に。</p>
         <h2>必要なパートへ戻って練習</h2>
         <label for="practice-person">練習するお相手</label><select
           id="practice-person"
           bind:value="{selectedCharacter}"
-          >{#each billing.ownedCharacters as id}<option value="{id}"
+          >{#each practiceCharacters as id}<option value="{id}"
               >{characters.find((c) => c.id === id)?.name}</option
             >{/each}</select
         >
@@ -228,7 +235,9 @@
           >このパートで練習する →</a
         ><a class="small" href="/practice/{course.basedOnId}">もとの会話と根拠を見る</a>
       </section>{/if}
-    <p class="small muted">保存済みの会話・思い出・XPは、Plusの契約が終了しても残ります。</p>
+    <p class="small muted">
+      保存済みの会話・分析・思い出・好感度・クリア記録は、Plusの契約が終了しても残ります。人物パックの本編利用権と未使用の購入枠も保持します。
+    </p>
     <a href="/memories">思い出アルバムを開く →</a>
   {:else if pending}<p role="status">購入状況を読み込んでいます…</p>{/if}
 {/if}

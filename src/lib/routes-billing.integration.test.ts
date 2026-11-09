@@ -4,6 +4,7 @@ import {
   availableCredits,
   billingProduct,
   practiceCreditCost,
+  productPrice,
   type CreditGrantView
 } from './billing'
 import {
@@ -54,10 +55,10 @@ describe('ルート・月額・再練習の共通ルール', () => {
     ).toBe('available')
     expect(storyParts.map((p) => p.id)).toEqual(['meeting', 'date', 'honesty', 'feelings'])
   })
-  it('Plus・購入権・結末到達・イベント公開日のすべてを確認する', () => {
+  it('Plus・結末到達・イベント公開日を確認し、Plusに人物購入を要求しない', () => {
     const daily = { ...adventure, episodeId: 'daily-today' }
     expect(adventureAccess(daily, [], ['aoi'], true)).toBe('locked')
-    expect(adventureAccess(daily, ['aoi:aoi-12'], [], true)).toBe('purchase')
+    expect(adventureAccess(daily, ['aoi:aoi-12'], [], true)).toBe('available')
     expect(adventureAccess(daily, ['aoi:aoi-12'], ['aoi'], false)).toBe('plus')
     expect(adventureAccess(daily, ['aoi:aoi-12'], ['aoi'], true)).toBe('available')
     const event = { ...daily, episodeId: 'event-2026-11-2' }
@@ -81,6 +82,39 @@ describe('ルート・月額・再練習の共通ルール', () => {
       revisit: true
     })
   })
+  it('Plusだけで本編を攻略・再練習でき、契約終了後は購入権を必要とする', () => {
+    const cleared = ['aoi:aoi-3', 'aoi:aoi-4']
+    expect(adventureAccess(adventure, cleared, [], true)).toBe('available')
+    expect(adventureAccess({ ...adventure, revisit: true }, cleared, [], true)).toBe('available')
+    expect(adventureAccess({ ...adventure, revisit: true }, cleared, [], false)).toBe('purchase')
+    expect(adventureAccess(adventure, cleared, ['aoi'], false)).toBe('available')
+    expect(adventureAccess({ ...adventure, episodeId: 'aoi-6' }, cleared, [], true)).toBe('locked')
+  })
+  it('追加共通枠は人物を問わず使え、無料・人物専用・追加購入の順に合算する', () => {
+    const topup: CreditGrantView = {
+      id: 'topup',
+      kind: 'topup',
+      characterId: null,
+      units: 15,
+      remaining: 15,
+      expiresAt: null
+    }
+    const mixed = [topup, ...grants]
+    expect(allocateCredits(mixed, 2, 'aoi', true)).toEqual([
+      { grantId: 'free', units: 1 },
+      { grantId: 'route-aoi', units: 1 }
+    ])
+    expect(allocateCredits(mixed, 2, 'rin', true)).toEqual([
+      { grantId: 'free', units: 1 },
+      { grantId: 'topup', units: 1 }
+    ])
+    expect(availableCredits(mixed, 'rin', false)).toBe(16)
+    expect(billingProduct({ kind: 'topup', price: 1, credits: 999, characterId: 'aoi' })).toEqual({
+      kind: 'topup'
+    })
+    expect(productPrice({ kind: 'topup' })).toBe(550)
+    expect(adventureAccess(adventure, ['aoi:aoi-3'], [], false)).toBe('purchase')
+  })
   it('物語の結末には12話の実際の本人の引用が必要', () => {
     const ending = {
       kind: 'lovers',
@@ -101,6 +135,7 @@ describe('ルート・月額・再練習の共通ルール', () => {
     for (const id of ['AOI', 'RIN', 'SHIORI', 'YU', 'SOTA', 'REN'])
       vi.stubEnv(`STRIPE_PRICE_ROUTE_${id}`, `price_${id}`)
     vi.stubEnv('STRIPE_PRICE_PLUS', 'price_plus')
+    vi.stubEnv('STRIPE_PRICE_TOPUP', 'price_topup')
     vi.stubEnv('VERCEL_ENV', 'preview')
     expect(stripeReady()).toBe(true)
     vi.stubEnv('VERCEL_ENV', 'production')

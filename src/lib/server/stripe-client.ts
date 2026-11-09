@@ -13,7 +13,9 @@ export function stripePrice(product: BillingProduct) {
   const variable =
     product.kind === 'plus'
       ? 'STRIPE_PRICE_PLUS'
-      : `STRIPE_PRICE_ROUTE_${product.characterId.toUpperCase()}`
+      : product.kind === 'topup'
+        ? 'STRIPE_PRICE_TOPUP'
+        : `STRIPE_PRICE_ROUTE_${product.characterId.toUpperCase()}`
   const id = process.env[variable]
   if (!id?.startsWith('price_')) throw new Error('Stripe price is not configured')
   return id
@@ -27,6 +29,7 @@ export function stripeReady() {
     process.env.VERCEL_ENV !== 'production' &&
     [
       { kind: 'plus' } as const,
+      { kind: 'topup' } as const,
       ...characters.map((c) => ({ kind: 'route' as const, characterId: c.id }))
     ].every((p) => {
       try {

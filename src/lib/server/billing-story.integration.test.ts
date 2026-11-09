@@ -48,7 +48,7 @@ const sdk = {
       id,
       active: true,
       currency: 'jpy',
-      unit_amount: id === 'price_plus' ? 980 : 1480,
+      unit_amount: id === 'price_plus' ? 980 : id === 'price_topup' ? 550 : 1480,
       type: id === 'price_plus' ? 'recurring' : 'one_time',
       recurring: id === 'price_plus' ? { interval: 'month', interval_count: 1 } : null
     }))
@@ -150,6 +150,7 @@ beforeEach(async () => {
   vi.stubEnv('VERCEL_ENV', '')
   vi.stubEnv('VITE_APP_DOMAIN', 'http://127.0.0.1:5194')
   vi.stubEnv('STRIPE_PRICE_PLUS', 'price_plus')
+  vi.stubEnv('STRIPE_PRICE_TOPUP', 'price_topup')
   for (const id of ['aoi', 'rin', 'shiori', 'yu', 'sota', 'ren'])
     vi.stubEnv(`STRIPE_PRICE_ROUTE_${id.toUpperCase()}`, `price_route_${id}`)
   subscription = {
@@ -227,7 +228,8 @@ beforeEach(async () => {
       metadata: params.metadata,
       status: 'open',
       payment_status: 'unpaid',
-      amount_total: params.mode === 'payment' ? 1480 : 980,
+      amount_total:
+        params.metadata.product === 'topup' ? 550 : params.mode === 'payment' ? 1480 : 980,
       currency: 'jpy',
       created: Math.floor(Date.now() / 1000),
       expires_at: params.expires_at,
@@ -485,13 +487,9 @@ describe('Stripeの購入・契約・通知', () => {
       expect((await getBillingOverview(uid)).ownedCharacters).toEqual([])
     }
   )
-  it('本編クリア前のPlus購入を拒否し、購入済み人物のクリア後に開始できる', async () => {
-    await expect(beginCheckout(uid, randomUUID(), { kind: 'plus' })).rejects.toMatchObject({
-      status: 403
-    })
-    await routePurchase()
-    await seedStory()
+  it('本編クリア前・人物パック未購入でもPlusに加入できる', async () => {
     expect(await beginCheckout(uid, randomUUID(), { kind: 'plus' })).toHaveProperty('url')
+    expect((await getBillingOverview(uid)).ownedCharacters).toEqual([])
   })
   it('支払い済み請求の期間へ60枠を一度だけ付与し、無料10枠を重複付与しない', async () => {
     await handleStripeEvent(event('invoice.paid', invoice))
@@ -943,5 +941,240 @@ describe('決済APIの境界', () => {
       })
     } as never)
     expect(response.status).toBe(200)
+  })
+})
+
+async function topupPurchase(fulfill = true) {
+  const order = randomUUID()
+  await beginCheckout(uid, order, { kind: 'topup' })
+  const session = [...sessions.values()].find(
+    (s) => (s.metadata as { checkout_id: string }).checkout_id === order
+  )!
+  Object.assign(session, {
+    status: 'complete',
+    payment_status: 'paid',
+    payment_intent: `pi_${order}`
+  })
+  const notification = event('checkout.session.completed', session)
+  if (fulfill) await handleStripeEvent(notification)
+  return { order, session, notification }
+}
+
+describe('月額中心の本編アクセスと追加共通枠', () => {
+  it('非会員の追加枠は未払いでは増えず、支払い後の通知・再照合・並行再送でも一度だけ付く', async () => {
+    const paid = await topupPurchase(false)
+    expect(sdk.checkout.sessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'payment',
+        line_items: [{ price: 'price_topup', quantity: 1 }]
+      }),
+      expect.anything()
+    )
+    paid.session.payment_status = 'unpaid'
+    await handleStripeEvent(paid.notification)
+    expect((await getBillingOverview(uid)).remaining).toBe(10)
+    paid.session.payment_status = 'paid'
+    await Promise.all([
+      handleStripeEvent(event('checkout.session.completed', paid.session)),
+      reconcileCheckout(uid, paid.order)
+    ])
+    await handleStripeEvent(event('checkout.session.completed', paid.session))
+    const state = await getBillingOverview(uid)
+    expect(state.ownedCharacters).toEqual([])
+    expect(state.subscription).toBeNull()
+    expect(state.remaining).toBe(25)
+    expect(await getPracticeOverview(uid)).toMatchObject({ remaining: 25, limit: 25 })
+    expect(state.credits.filter((g) => g.kind === 'topup')).toMatchObject([
+      { units: 15, remaining: 15, characterId: null, expiresAt: null }
+    ])
+    await topupPurchase()
+    expect((await getBillingOverview(uid)).remaining).toBe(40)
+  })
+  it.each(['amount', 'price', 'quantity', 'currency', 'payment_intent'] as const)(
+    '追加枠の%sが不正なら付与しない',
+    async (field) => {
+      const paid = await topupPurchase(false)
+      if (field === 'amount') paid.session.amount_total = 1
+      if (field === 'price')
+        paid.session.line_items = { data: [{ price: { id: 'price_other' }, quantity: 1 }] }
+      if (field === 'quantity')
+        paid.session.line_items = { data: [{ price: { id: 'price_topup' }, quantity: 2 }] }
+      if (field === 'currency') paid.session.currency = 'usd'
+      if (field === 'payment_intent') paid.session.payment_intent = null
+      await expect(handleStripeEvent(paid.notification)).rejects.toThrow()
+      expect((await getBillingOverview(uid)).credits.some((g) => g.kind === 'topup')).toBe(false)
+    }
+  )
+  it.each([false, true])(
+    '追加枠の全額返金（先行付与=%s）を再送・再照合で復活させない',
+    async (fulfill) => {
+      const paid = await topupPurchase(fulfill)
+      sdk.charges.retrieve.mockResolvedValue({
+        id: 'ch_topup',
+        livemode: false,
+        customer,
+        payment_intent: paid.session.payment_intent,
+        amount: 550,
+        amount_refunded: 550,
+        disputed: false
+      })
+      await handleStripeEvent(event('charge.refunded', { id: 'ch_topup', customer }))
+      await handleStripeEvent(paid.notification)
+      await reconcileCheckout(uid, paid.order)
+      expect((await getBillingOverview(uid)).credits.some((g) => g.kind === 'topup')).toBe(false)
+      expect((await getBillingOverview(uid)).remaining).toBe(10)
+    }
+  )
+  it('追加枠の紛争中は停止し、勝訴時に元の残高へ戻す', async () => {
+    const paid = await topupPurchase()
+    const charge = {
+      id: 'ch_topup',
+      livemode: false,
+      customer,
+      payment_intent: paid.session.payment_intent,
+      amount: 550,
+      amount_refunded: 0,
+      disputed: true
+    }
+    sdk.charges.retrieve.mockResolvedValue(charge)
+    await handleStripeEvent(event('charge.dispute.created', { id: 'dp_topup', charge: 'ch_topup' }))
+    expect((await getBillingOverview(uid)).remaining).toBe(10)
+    sdk.disputes.retrieve.mockResolvedValue({ id: 'dp_topup', status: 'won', charge: 'ch_topup' })
+    await handleStripeEvent(event('charge.dispute.closed', { id: 'dp_topup', charge: 'ch_topup' }))
+    expect((await getBillingOverview(uid)).remaining).toBe(25)
+  })
+  it('追加枠だけでは本編を解放せず、Plusだけで直接開始・再練習できる', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(now)
+    await seedStory('aoi', 3)
+    await topupPurchase()
+    expect(await createPractice(uid, randomUUID(), 'adventure', null, adventure('aoi-4', 3))).toBe(
+      'purchase'
+    )
+    await handleStripeEvent(event('invoice.paid', invoice))
+    const id = randomUUID()
+    expect(await createPractice(uid, id, 'adventure', null, adventure('aoi-4', 3))).toBe(true)
+    for (let i = 0; i < 3; i++) await submitPracticeMessage(input(id, i), null)
+    const replay = randomUUID()
+    expect(await createPractice(uid, replay, 'adventure', null, adventure('aoi-4', 3))).toBe(true)
+    expect((await getPractice(uid, replay))?.adventure?.revisit).toBe(true)
+    const progress = await getAdventureProgress(uid)
+    expect(progress.billing?.ownedCharacters).toEqual([])
+    expect(progress.stages?.find((s) => s.episodeId === 'aoi-4')?.lockedReasons).toEqual([])
+    expect(await createPractice(uid, randomUUID(), 'adventure', null, adventure('aoi-7', 3))).toBe(
+      'locked'
+    )
+  })
+  it('開始APIへの直接POSTでも、追加枠の権利境界とPlusだけの本編開始を確認する', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(now)
+    vi.stubEnv('PRACTICE_ENABLED', 'true')
+    vi.stubEnv('DIFY_PRACTICE_API_KEY', 'fixture-local-key')
+    await seedStory('aoi', 3)
+    await topupPurchase()
+    const { POST } = await import('../../routes/api/me/practices/+server')
+    const request = () => ({
+      request: new Request('https://example.test/api/me/practices', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer fixture-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: randomUUID(),
+          sceneId: 'adventure',
+          adventure: adventure('aoi-4', 6)
+        })
+      })
+    })
+    await expect(POST(request() as never)).rejects.toMatchObject({ status: 403 })
+    await handleStripeEvent(event('invoice.paid', invoice))
+    const response = await POST(request() as never)
+    expect(response.status).toBe(200)
+    expect((await response.json()).adventure.episodeId).toBe('aoi-4')
+  })
+  it('6往復に不足する1枠や他人の人物専用枠を、開始APIで使用可能と扱わない', async () => {
+    vi.stubEnv('PRACTICE_ENABLED', 'true')
+    vi.stubEnv('DIFY_PRACTICE_API_KEY', 'fixture-local-key')
+    await routePurchase('yu')
+    await db.insert(schema.practices).values(
+      Array.from({ length: 9 }, () => ({
+        id: randomUUID(),
+        uid,
+        sceneId: 'cafe' as const,
+        chargedAt: new Date()
+      }))
+    )
+    const { POST } = await import('../../routes/api/me/practices/+server')
+    const request = (turns: 3 | 6) => ({
+      request: new Request('https://example.test/api/me/practices', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer fixture-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: randomUUID(),
+          sceneId: 'adventure',
+          adventure: adventure('aoi-1', turns)
+        })
+      })
+    })
+    await expect(POST(request(6) as never)).rejects.toMatchObject({ status: 429 })
+    expect((await POST(request(3) as never)).status).toBe(200)
+  })
+  it('Plus残高0でも会員権が続き、追加枠で練習できる', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(now)
+    const [prior] = await seedStory('aoi', 3)
+    await handleStripeEvent(event('invoice.paid', invoice))
+    const state = await getBillingOverview(uid)
+    await db.insert(schema.creditSpends).values({
+      id: randomUUID(),
+      uid,
+      practiceId: prior,
+      grantId: state.credits[0].id,
+      state: 'spent',
+      units: 60
+    })
+    expect((await getBillingOverview(uid)).remaining).toBe(0)
+    expect((await getBillingOverview(uid)).subscription?.active).toBe(true)
+    const id = randomUUID()
+    expect(await createPractice(uid, id, 'adventure', null, adventure('aoi-4', 6))).toBe(true)
+    expect((await reservePracticeTurn(input(id))).status).toBe('quota')
+    await topupPurchase()
+    await submitPracticeMessage(input(id), null)
+    expect((await getBillingOverview(uid)).remaining).toBe(13)
+  })
+  it('人物パックがなくても、本編クリアとPlusで日常交流へ進める', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(now)
+    await seedStory()
+    expect(
+      await createPractice(uid, randomUUID(), 'adventure', null, adventure('daily-today', 3))
+    ).toBe('plus')
+    await handleStripeEvent(event('invoice.paid', invoice))
+    expect(
+      await createPractice(uid, randomUUID(), 'adventure', null, adventure('daily-today', 3))
+    ).toBe(true)
+    expect((await getBillingOverview(uid)).ownedCharacters).toEqual([])
+  })
+  it('解約後は新しい未購入本編を拒否し、消費済み会話・追加枠・保存記録を保持する', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(now)
+    await seedStory('aoi', 3)
+    await topupPurchase()
+    await handleStripeEvent(event('invoice.paid', invoice))
+    const id = randomUUID()
+    expect(await createPractice(uid, id, 'adventure', null, adventure('aoi-4', 6))).toBe(true)
+    await submitPracticeMessage(input(id), null)
+    expect((await getBillingOverview(uid)).credits.find((g) => g.kind === 'plus')?.remaining).toBe(
+      58
+    )
+    vi.setSystemTime(new Date('2026-12-08T00:00:01Z'))
+    expect(await createPractice(uid, randomUUID(), 'adventure', null, adventure('aoi-4', 3))).toBe(
+      'purchase'
+    )
+    for (let i = 1; i < 6; i++) await submitPracticeMessage(input(id, i), null)
+    expect((await getPractice(uid, id))?.completedAt).toBeTruthy()
+    const state = await getBillingOverview(uid)
+    expect(state.subscription?.active).toBe(false)
+    expect(state.credits.find((g) => g.kind === 'topup')?.remaining).toBe(15)
+    expect(state.remaining).toBe(25)
+    expect((await getAdventureProgress(uid)).progression?.clearedEpisodes).toContain('aoi:aoi-4')
   })
 })

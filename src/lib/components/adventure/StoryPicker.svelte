@@ -349,7 +349,10 @@
           class="button primary"
           href="/pricing?character={characterId}">{character.name}の本編へ</a
         >
-        <p class="small muted">ルートパック 1,480円・24枠付き。月額への加入は任意です。</p>
+        <p class="small muted">
+          Plus
+          月980円で全員の本編へ。購入した本編を月額なしで遊べるルートパックは1,480円・専用24枠付き。
+        </p>
       {:else if access === 'plus'}<a
           class="button primary"
           href="/pricing?character={characterId}#plus">クリア後の交流へ</a
