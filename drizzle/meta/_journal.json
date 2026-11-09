@@ -64,6 +64,13 @@
       "when": 1794191229703,
       "tag": "0008_woozy_human_fly",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794200540845,
+      "tag": "0009_silky_sandman",
+      "breakpoints": true
     }
   ]
 }

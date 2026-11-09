@@ -7,6 +7,8 @@
   import { saveCustomSceneDraft } from '$lib/custom-scene-client'
   import { availableCredits } from '$lib/billing'
   import { startPractice } from '$lib/practice-client'
+  import { startGuestPractice } from '$lib/guest-practice-client'
+  import { guestAdventure } from '$lib/guest-practice'
   import AdventureLobby from '$lib/components/adventure/AdventureLobby.svelte'
   import AdventureProgressPanel from '$lib/components/adventure/AdventureProgress.svelte'
   import BillingBalance from '$lib/components/billing/BillingBalance.svelte'
@@ -78,7 +80,8 @@
   }
   async function begin(sceneId: SceneId, customScene?: CustomSceneInput, adventure?: Adventure) {
     if (pendingScene || !$authReady) return
-    if (!$user) {
+    const guest = !$user && !!guestAdventure(adventure)
+    if (!$user && !guest) {
       if (adventure) {
         await goto(
           `/login?character=${adventure.characterId}&episode=${adventure.episodeId}&turns=${adventure.turns}${adventure.revisit ? '&revisit=1' : ''}`
@@ -96,8 +99,10 @@
     pendingScene = sceneId
     message = ''
     try {
-      const session = await startPractice(sceneId, customScene, adventure)
-      await goto(`/practice/${session.id}`)
+      const session = guest
+        ? await startGuestPractice(adventure!)
+        : await startPractice(sceneId, customScene, adventure)
+      await goto(`/practice/${session.id}${guest ? '?guest=1' : ''}`)
     } catch (error) {
       message = error instanceof Error ? error.message : '練習を開始できませんでした。'
     } finally {
@@ -118,7 +123,9 @@
       <a class="button primary" href="#scenes"
         >お相手を選んで始める <span aria-hidden="true">→</span></a
       >
-      <p class="small muted hero-note">毎月10枠無料 · 3往復1枠／6往復2枠 · スマホでそのまま</p>
+      <p class="small muted hero-note">
+        第1話はログイン不要 · 登録後は毎月10枠無料 · スマホでそのまま
+      </p>
     </div>
     <figure>
       <img
@@ -164,6 +171,7 @@
     </section>
     {#if progress}<AdventureProgressPanel progress="{progress}" />{/if}{/if}
   <AdventureLobby
+    guest="{!$user}"
     progress="{progress}"
     loading="{!$authReady || (!!$user && !progress)}"
     disabled="{!$authReady || !!pendingScene}"

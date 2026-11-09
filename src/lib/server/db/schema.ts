@@ -19,6 +19,39 @@ import type { PracticeEvaluation } from '$lib/adventure-progression'
 import { boolean } from 'drizzle-orm/pg-core'
 import type { KnowledgeContent, KnowledgePreview, KnowledgeTrace } from '$lib/knowledge-policy'
 import type { CharacterContent, CharacterPreview, CharacterSnapshot } from '$lib/character-policy'
+import type { GuestPracticeState } from '$lib/guest-practice'
+
+export const guestSessions = pgTable('guest_sessions', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+})
+export const guestPractices = pgTable(
+  'guest_practices',
+  {
+    id: varchar('id', { length: 36 }).primaryKey(),
+    sessionId: varchar('session_id', { length: 64 })
+      .notNull()
+      .references(() => guestSessions.id, { onDelete: 'cascade' }),
+    characterId: varchar('character_id', { length: 32 }).$type<CharacterId>().notNull(),
+    characterContext: jsonb('character_context').$type<CharacterSnapshot>().notNull(),
+    policyReleaseId: varchar('policy_release_id', { length: 36 }),
+    storyContext: jsonb('story_context').$type<StoryContext>().notNull(),
+    state: jsonb('state').$type<GuestPracticeState>().notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    pendingToken: varchar('pending_token', { length: 36 }),
+    claimedUid: varchar('claimed_uid', { length: 255 }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+  },
+  (table) => [
+    unique('guest_practices_session_character_key').on(table.sessionId, table.characterId)
+  ]
+)
+export const guestRateLimits = pgTable('guest_rate_limits', {
+  key: varchar('key', { length: 128 }).primaryKey(),
+  used: integer('used').notNull().default(0),
+  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull()
+})
 
 export const characterPolicyReleases = pgTable('character_policy_releases', {
   id: varchar('id', { length: 36 }).primaryKey(),

@@ -9,10 +9,12 @@
   } from '$lib/adventure'
   import CharacterPortrait from './CharacterPortrait.svelte'
   import StoryPicker from './StoryPicker.svelte'
+  import GuestStoryIntro from './GuestStoryIntro.svelte'
   export let progress: AdventureProgress | null = null
   export let disabled = false
   export let pending = false
   export let loading = false
+  export let guest = false
   const dispatch = createEventDispatcher<{ start: Adventure }>()
   let gender: PartnerGender | null = null
   let characterId: CharacterId = 'aoi'
@@ -102,7 +104,14 @@
         >{/each}
     </div>
     <p class="character-detail">{character.detail}</p>
-    {#if loading}<p role="status">物語と練習枠を読み込んでいます…</p>{:else}<StoryPicker
+    {#if loading}<p role="status">物語と練習枠を読み込んでいます…</p>
+    {:else if guest}<GuestStoryIntro
+        characterId="{characterId}"
+        disabled="{disabled}"
+        pending="{pending}"
+        on:start="{(event) => dispatch('start', event.detail)}"
+      />
+    {:else}<StoryPicker
         characterId="{characterId}"
         progress="{progress}"
         disabled="{disabled}"
