@@ -9,6 +9,7 @@
   } from '$lib/knowledge-policy'
   import type { KnowledgePreviewResult } from '$lib/server/knowledge-service'
   import PracticeAnalysis from '$lib/components/PracticeAnalysis.svelte'
+  import AdminNavigation from '$lib/components/AdminNavigation.svelte'
   type View = KnowledgeOverview & { cases: { id: string; title: string; check: string }[] }
   const labels: Record<KnowledgeProfile, string> = {
     first_meeting: '初対面',
@@ -201,6 +202,7 @@
   <a class="back" href="/account">← マイページ</a>
   <p class="eyebrow">Koi-Tre 運営管理</p>
   <h1>評価方針と知識</h1>
+  <AdminNavigation current="knowledge" />
   <p class="intro">
     大切にする考え方を整え、場面に合う知識を増やす。下書きで確かめてから、新しい練習に公開します。
   </p>

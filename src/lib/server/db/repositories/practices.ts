@@ -41,6 +41,7 @@ import {
   reserveCredits
 } from './credits'
 import { buildStoryContext } from './story-context'
+import { snapshotCharacter } from './character-policy'
 
 // 生成中の枠も確保し、別タブから月上限を超えて開始できないようにする。
 const LEASE_MS = 75_000
@@ -79,6 +80,7 @@ export async function getPractice(uid: string, id: string): Promise<PracticeSess
       rehearsal: session.rehearsal,
       creditCost: session.creditCost,
       storyContext: session.storyContext,
+      characterReactions: session.characterContext?.content.reactions ?? null,
       storyEnding: session.storyEnding,
       chargedAt: session.chargedAt?.toISOString() ?? null,
       completedAt: session.completedAt?.toISOString() ?? null,
@@ -194,6 +196,7 @@ export async function createPractice(
       sceneId,
       customScene,
       adventure,
+      characterContext: adventure ? await snapshotCharacter(tx, adventure.characterId) : null,
       // 開始済みの会話へ、後から公開した価値観を混ぜない。
       policyReleaseId:
         process.env.KNOWLEDGE_POLICY_ENABLED === 'true'
@@ -290,6 +293,7 @@ export async function reservePracticeTurn(input: MessageInput, now = new Date())
       adventure: session.adventure,
       storyContext: session.storyContext,
       policyReleaseId: session.policyReleaseId,
+      characterContext: session.characterContext,
       turns
     }
   })

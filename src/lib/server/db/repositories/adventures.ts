@@ -270,6 +270,7 @@ export async function reserveRehearsal(input: RehearsalInput, now = new Date()) 
       adventure: session.adventure,
       storyContext: session.storyContext,
       policyReleaseId: session.policyReleaseId,
+      characterContext: session.characterContext,
       sceneId: session.sceneId,
       customScene: session.customScene,
       turns: turns.slice(0, input.position - 1)

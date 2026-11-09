@@ -4,6 +4,7 @@ import { characters } from './adventure'
 import { gradeConversation } from './adventure-progression'
 import type { PracticeSession } from './practice'
 import { assessedFeedback, progressionAssessment } from './server/fixtures/progression-assessment'
+import { defaultCharacterReactions } from './affinity-reaction'
 
 function session(delta = 10, consideration = 4): PracticeSession {
   const text =
@@ -57,6 +58,14 @@ function session(delta = 10, consideration = 4): PracticeSession {
 }
 
 describe('好感度の変化へのキャラクターの反応', () => {
+  it('開始時に固定した人物の結果セリフを使う', () => {
+    const value = session(-8, 1)
+    value.characterReactions = {
+      ...defaultCharacterReactions('aoi'),
+      negative: '少しゆっくり話したいな。'
+    }
+    expect(affinityReaction(value)?.speech).toBe('少しゆっくり話したいな。')
+  })
   it('実際の上昇に笑顔で反応し、本人の発言を根拠として添える', () => {
     const value = session()
     expect(affinityReaction(value)).toMatchObject({

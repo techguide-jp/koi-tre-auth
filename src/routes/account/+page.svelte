@@ -129,9 +129,7 @@
   <p class="section-label">話した時間を、次の一歩へ。</p>
   <h1>マイページ</h1>
   <p>利用枠、購入した物語、あなたの練習の記録。</p>
-  {#if knowledgeAdmin}<a class="small" href="/admin/knowledge"
-      >運営管理：評価方針と知識を編集する →</a
-    >{/if}
+  {#if knowledgeAdmin}<a class="small" href="/admin">運営管理：評価方針・知識・人物設定 →</a>{/if}
 </section>
 {#if !$authReady}<p role="status">ログイン状態を確認しています…</p>{:else if !$user}<div
     class="card"
