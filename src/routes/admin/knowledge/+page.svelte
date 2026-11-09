@@ -197,7 +197,7 @@
     content="noindex,nofollow"
   /></svelte:head
 >
-<main class="knowledge-admin">
+<div class="knowledge-admin">
   <a class="back" href="/account">← マイページ</a>
   <p class="eyebrow">Koi-Tre 運営管理</p>
   <h1>評価方針と知識</h1>
@@ -424,7 +424,7 @@
       </section>
     {/if}
   {/if}
-</main>
+</div>
 
 <style>
   .knowledge-admin {
