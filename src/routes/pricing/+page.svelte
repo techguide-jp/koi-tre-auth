@@ -205,7 +205,7 @@
       {#each roster as person}{@const key = `route:${person.id}`}
         <article class="pack {person.color}">
           <div class="portrait-wrap">
-            <CharacterPortrait characterId="{person.id}" emotion="shy" />
+            <CharacterPortrait characterId="{person.id}" variant="introduction" />
           </div>
           <div class="pack-copy">
             <p class="eyebrow">{person.age}歳 · {person.subtitle}</p>
@@ -270,8 +270,8 @@
     padding: 64px 0 40px;
   }
   .pricing-intro h1 {
-    font-family: Georgia, serif;
-    font-size: clamp(2rem, 4vw, 3rem);
+    font-family: var(--font-editorial);
+    font-size: var(--heading-lg);
     line-height: 1.45;
     margin: 18px 0;
   }
@@ -283,7 +283,7 @@
     padding: 12px 18px;
     background: var(--olive-soft);
     border-radius: 10px;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   .plan-grid {
     display: grid;
@@ -305,7 +305,7 @@
     background: var(--surface);
   }
   .eyebrow {
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     color: var(--accent);
     margin: 0;
   }
@@ -315,18 +315,18 @@
   }
   .price {
     font-size: 2.3rem;
-    font-family: Georgia, serif;
+    font-family: var(--font-editorial);
     margin: 8px 0 20px;
   }
   .price span {
     font-family: var(--font-body);
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     margin-left: 5px;
   }
   .plan ul {
     padding-left: 18px;
-    font-size: 0.82rem;
+    font-size: var(--text-sm);
     line-height: 1.85;
     margin: 0 0 25px;
     flex: 1;
@@ -336,7 +336,7 @@
   }
   .button {
     text-align: center;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
   }
   .plan > .small {
     margin-bottom: 0;
@@ -386,13 +386,13 @@
     border: 1px solid var(--border);
     border-radius: 18px;
     overflow: hidden;
-    background: #e9ecdf;
+    background: #e8eee8;
   }
   .pack.clay {
-    background: #f1e4d8;
+    background: #f4e6e1;
   }
   .pack.night {
-    background: #e8e7ef;
+    background: #eeebf1;
   }
   .portrait-wrap {
     height: 300px;
@@ -414,7 +414,7 @@
     font-size: 1.35rem;
   }
   .pack-copy > p:not(.eyebrow) {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     line-height: 1.8;
   }
   .pack-copy > .button {
@@ -434,15 +434,15 @@
   .rules summary {
     cursor: pointer;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     line-height: 1.7;
   }
   .rules details p {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     line-height: 1.9;
   }
   .error {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     line-height: 1.8;
   }
   button:disabled {
@@ -466,7 +466,7 @@
       margin-bottom: 18px;
     }
     .gender-tabs button {
-      font-size: 0.8rem;
+      font-size: var(--text-sm);
       padding: 12px 14px;
     }
     .portrait-wrap {

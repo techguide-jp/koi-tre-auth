@@ -195,7 +195,7 @@
     flex-wrap: wrap;
     justify-content: flex-end;
     max-width: 150px;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
   }
   .total-score > span:first-child {
     width: 100%;
@@ -205,7 +205,7 @@
     font-size: 2.4rem;
     line-height: 1.1;
     color: var(--accent);
-    font-family: Georgia, serif;
+    font-family: var(--font-editorial);
   }
   .aspect-score {
     display: block;
@@ -214,7 +214,7 @@
     color: var(--ink);
   }
   .aspect-score small {
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     font-weight: 400;
   }
@@ -232,9 +232,9 @@
   }
   .eyebrow {
     margin: 0 0 0.35rem;
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     letter-spacing: 0.1em;
-    color: #526746;
+    color: var(--olive);
     font-weight: 600;
   }
   h3 {
@@ -261,7 +261,7 @@
     vector-effect: non-scaling-stroke;
   }
   .radar-background {
-    fill: #f8faf5;
+    fill: var(--olive-soft);
   }
   .radar-layout {
     display: grid;
@@ -279,27 +279,27 @@
     stroke-dasharray: 4 4;
   }
   .radar-area {
-    fill: #718562;
+    fill: var(--olive);
     fill-opacity: 0.2;
-    stroke: #718562;
+    stroke: var(--olive);
     stroke-width: 2.5;
     vector-effect: non-scaling-stroke;
   }
   .radar-line {
     fill: none;
-    stroke: #718562;
+    stroke: var(--olive);
     stroke-width: 2.5;
     vector-effect: non-scaling-stroke;
   }
   .radar-point {
-    fill: #60764f;
+    fill: var(--olive);
     stroke: #fff;
     stroke-width: 2;
     vector-effect: non-scaling-stroke;
   }
   .radar-point.reference {
     fill: #fff;
-    stroke: #60764f;
+    stroke: var(--olive);
   }
   .radar-line.gap {
     stroke-dasharray: 2 4;
@@ -308,14 +308,14 @@
     border: 1px solid #8a997c;
     border-radius: 4px;
     padding: 0.1rem 0.3rem;
-    color: #526746;
-    font-size: 0.65rem;
+    color: var(--olive);
+    font-size: var(--text-xs);
     flex-shrink: 0;
     margin-left: 0.3rem;
   }
   .rating-note {
-    color: #526746;
-    font-size: 0.75rem;
+    color: var(--olive);
+    font-size: var(--text-sm);
   }
   .radar-label {
     position: absolute;
@@ -323,10 +323,10 @@
     width: max-content;
     max-width: 100px;
     text-align: center;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     font-weight: 600;
     line-height: 1.5;
-    color: #435b37;
+    color: var(--olive);
   }
   .radar-label > span {
     display: block;
@@ -337,12 +337,12 @@
   .radar-label small {
     display: block;
     margin-top: 0.2rem;
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     font-weight: 400;
   }
   .radar-guide {
     text-align: center;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     margin: 0.3rem 0 1rem;
   }
@@ -367,13 +367,13 @@
     outline-offset: 4px;
   }
   .aspect-label {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     font-weight: 600;
   }
   .assessment-label {
     text-align: right;
-    font-size: 0.7rem;
-    color: #435b37;
+    font-size: var(--text-sm);
+    color: var(--olive);
     font-weight: 600;
   }
   .assessment-label.muted {
@@ -392,7 +392,7 @@
   }
   .aspect-detail p {
     margin: 0.2rem 0 0.7rem;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     line-height: 1.85;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -402,14 +402,14 @@
     padding: 0.8rem;
     border-radius: 5px;
     background: #f7f5f0;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     line-height: 1.8;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
   blockquote span {
     display: block;
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     margin-bottom: 0.25rem;
   }
@@ -418,13 +418,13 @@
     align-items: baseline;
     gap: 0.4rem;
     margin: 0.75rem 0 0;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     line-height: 1.6;
   }
   .detail-hint {
     margin: 0.4rem 0 0;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   @media (max-width: 550px) {
@@ -437,14 +437,24 @@
       padding: 1rem;
     }
     .chart-heading {
-      gap: 0.5rem;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+    }
+    .total-score {
+      max-width: none;
+      justify-content: flex-start;
+    }
+    .total-score > span:first-child {
+      width: auto;
+      text-align: left;
     }
     h3 {
       font-size: 1rem;
     }
     .radar-label {
-      font-size: 0.75rem;
-      max-width: 88px;
+      font-size: var(--text-sm);
+      max-width: 110px;
     }
     summary {
       grid-template-columns: minmax(0, 1fr) auto 0.6rem;
@@ -454,12 +464,12 @@
     .aspect-label {
       grid-column: 1;
       grid-row: 1;
-      font-size: 0.85rem;
+      font-size: var(--text-sm);
     }
     .assessment-label {
       grid-column: 2;
       grid-row: 1;
-      font-size: 0.75rem;
+      font-size: var(--text-sm);
     }
     .chevron {
       grid-column: 3;

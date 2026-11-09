@@ -104,7 +104,7 @@
     font-size: 1.25rem;
   }
   .empty p {
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     color: var(--muted);
   }
   .favorites {
@@ -124,11 +124,11 @@
     margin-bottom: 14px;
   }
   .favorites span {
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   .favorites blockquote {
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     line-height: 1.9;
     margin: 12px 0 0;
     white-space: pre-wrap;

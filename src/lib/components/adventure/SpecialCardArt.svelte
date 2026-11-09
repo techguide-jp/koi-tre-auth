@@ -70,7 +70,7 @@
     border-radius: 99px;
     color: white;
     background: #20251bc7;
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     line-height: 1.4;
     backdrop-filter: blur(6px);
   }
@@ -111,7 +111,7 @@
     text-align: center;
   }
   .viewer-caption p {
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     letter-spacing: 0.12em;
     color: #897447;
     margin: 0 0 10px;
@@ -123,7 +123,7 @@
     margin: 0 0 10px;
   }
   .viewer-caption span {
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   @media (max-width: 580px) {

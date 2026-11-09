@@ -503,12 +503,12 @@
   }
   .stage-mood {
     padding: 10px 16px 0;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     text-align: center;
   }
   .stage-mood > span {
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
   }
   .stage-mood p {
     margin: 4px 0 0;
@@ -522,7 +522,7 @@
     border-radius: 12px;
   }
   .stage-dialogue p {
-    font-size: 0.95rem;
+    font-size: var(--text-base);
     line-height: 1.9;
     margin: 0;
     white-space: pre-wrap;
@@ -533,16 +533,16 @@
     display: flex;
     gap: 16px;
     align-items: center;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     padding: 10px 0;
     margin-bottom: 16px;
   }
   .conversation-log > summary > span {
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
   }
   .scene-setting {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     margin-bottom: 24px;
   }
@@ -559,7 +559,7 @@
       margin-top: 40px;
     }
     .stage-caption {
-      font-size: 0.9rem;
+      font-size: var(--text-base);
       left: 16px;
       top: 14px;
     }
@@ -582,7 +582,7 @@
     margin: 0.6rem 0;
   }
   .practice-heading p {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   .custom-context {
     margin: 1.5rem 0;
@@ -594,7 +594,7 @@
   .custom-context > p:last-child {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     margin: 0.5rem 0 0;
   }
   .partner-profile {
@@ -618,21 +618,21 @@
     font-size: 1.3rem;
   }
   .partner-profile p {
-    font-size: 0.74rem;
+    font-size: var(--text-sm);
     margin: 0;
     line-height: 1.9;
   }
   .partner-profile strong {
-    font-size: 0.92rem;
+    font-size: var(--text-base);
     font-weight: 600;
   }
   .ai-label {
-    font-size: 0.6rem;
+    font-size: var(--text-xs);
     margin-left: 0.7rem;
     color: var(--muted);
   }
   .partner-profile .partner-address {
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     color: #58694e;
     margin-top: 0.3rem;
   }
@@ -642,7 +642,7 @@
     background: white;
     border-radius: 4px;
     padding: 0.5rem 1rem;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
   }
   .progress-track {
     height: 4px;
@@ -669,7 +669,7 @@
     margin-left: auto;
   }
   .speaker {
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     display: block;
     margin-bottom: 0.35rem;
@@ -685,7 +685,7 @@
     border-radius: 1rem;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    font-size: 0.95rem;
+    font-size: var(--text-base);
   }
   .mine p {
     background: #f4e4d9;
@@ -697,7 +697,7 @@
   }
   .composer label {
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: var(--text-base);
   }
   .composer textarea {
     width: 100%;
@@ -730,7 +730,7 @@
     border-bottom: 1px solid var(--border);
   }
   .feedback h3 {
-    font-size: 0.95rem;
+    font-size: var(--text-base);
     margin: 0 0 0.6rem;
   }
   .feedback-item p {
@@ -781,7 +781,7 @@
       width: 100%;
     }
     .composer-actions .button {
-      font-size: 0.85rem;
+      font-size: var(--text-sm);
       padding: 0.7rem 1rem;
     }
   }

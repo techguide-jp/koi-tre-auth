@@ -204,7 +204,7 @@
     gap: 0.8rem;
     text-align: left;
     font: inherit;
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     line-height: 1.8;
     color: var(--ink);
     background: #fffefa;
@@ -214,7 +214,7 @@
     cursor: pointer;
   }
   .choices button span {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--accent);
   }
   .choices button:hover:not(:disabled),
@@ -238,7 +238,7 @@
     padding: 1rem 1.2rem;
     border-left: 3px solid var(--accent);
     background: #f0f1e8;
-    font-size: 0.95rem;
+    font-size: var(--text-base);
     line-height: 1.9;
   }
   .next-button {
@@ -257,7 +257,7 @@
   label {
     display: block;
     margin: 1rem 0 0.5rem;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
   }
   input {
     width: 100%;
@@ -265,7 +265,7 @@
     color: var(--ink);
     background: #fffefa;
     font: inherit;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     padding: 0.8rem;
     border: 1px solid var(--border);
     border-radius: 3px;
@@ -275,7 +275,7 @@
     gap: 0.75rem 1.5rem;
     flex-wrap: wrap;
     margin-top: 2rem;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   @media (max-width: 600px) {
     .try-panel {

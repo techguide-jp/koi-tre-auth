@@ -166,11 +166,11 @@
     font-variant-numeric: tabular-nums;
   }
   small {
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     font-weight: 400;
   }
   p {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     line-height: 1.9;
   }
   .criteria {
@@ -183,13 +183,13 @@
     padding-top: 16px;
     border-top: 1px solid #ded6c7;
     color: #99594e;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
   }
   .affinity-change strong {
     font-size: 1.5rem;
   }
   .small {
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   @media (max-width: 480px) {

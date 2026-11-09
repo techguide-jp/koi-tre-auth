@@ -99,7 +99,7 @@
   }
   .growth label {
     display: block;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     margin-bottom: 8px;
     color: var(--muted);
   }
@@ -111,7 +111,7 @@
     border-radius: 8px;
     color: var(--ink);
     background: var(--surface);
-    font-size: 0.85rem;
+    font-size: var(--text-base);
   }
   svg {
     display: block;
@@ -119,11 +119,11 @@
     margin: 24px 0 8px;
   }
   svg text {
-    font-size: 12px;
-    fill: #526746;
+    font-size: 13px;
+    fill: var(--olive);
   }
   .growth > p:not(.section-label) {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     line-height: 1.9;
   }
   @media (max-width: 600px) {

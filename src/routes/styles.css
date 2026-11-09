@@ -3,73 +3,116 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 恋愛小説のような温かさと、練習画面の読みやすさを共通の尺度でそろえる。 */
 :root {
-  --font-body:
-    Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
-    'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-body: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+  --font-editorial: 'Shippori Mincho', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
   --font-mono: 'Fira Mono', monospace;
-  --color-bg-0: rgb(202, 216, 228);
-  --color-bg-1: hsl(209, 36%, 86%);
-  --color-bg-2: hsl(224, 44%, 95%);
-  --color-theme-1: #ff3e00;
-  --color-theme-2: #4075a6;
-  --color-text: rgba(0, 0, 0, 0.7);
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lead: 1.0625rem;
+  --heading-sm: clamp(1.25rem, 2.4vw, 1.5rem);
+  --heading-md: clamp(1.5rem, 3.2vw, 2rem);
+  --heading-lg: clamp(1.875rem, 4vw, 2.75rem);
+  --ink: #42353e;
+  --muted: #74646c;
+  --accent: #964d65;
+  --accent-hover: #7d3e53;
+  --accent-soft: #f5e7eb;
+  --border: #e5dadd;
+  --surface: #fffdfa;
+  --surface-soft: #f3eeeb;
+  --olive: #526b60;
+  --olive-soft: #edf2ee;
+  --color-bg-0: #faf7f4;
+  --color-bg-1: #faf7f4;
+  --color-bg-2: #fffdfa;
+  --color-theme-1: var(--accent);
+  --color-theme-2: var(--olive);
+  --color-text: var(--ink);
   --column-width: 42rem;
   --column-margin-top: 4rem;
   font-family: var(--font-body);
-  color: var(--color-text);
+  font-size: 100%;
+  color: var(--ink);
+  font-synthesis: none;
 }
-
+* {
+  box-sizing: border-box;
+}
 body {
   min-height: 100vh;
   margin: 0;
-  background-attachment: fixed;
-  background-color: var(--color-bg-1);
-  background-size: 100vw 100vh;
-  background-image:
-    radial-gradient(50% 50% at 50% 50%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0) 100%),
-    linear-gradient(180deg, var(--color-bg-0) 0%, var(--color-bg-1) 15%, var(--color-bg-2) 50%);
+  background: var(--color-bg-0);
+  color: var(--ink);
 }
-
 h1,
 h2,
-p {
-  font-weight: 400;
+h3 {
+  font-family: var(--font-editorial);
+  font-weight: 600;
+  line-height: 1.6;
+  text-wrap: balance;
 }
-
-p {
-  line-height: 1.5;
+h1 {
+  font-size: var(--heading-lg);
 }
-
-a {
-  color: var(--color-theme-1);
+h2 {
+  font-size: var(--heading-md);
+}
+h3 {
+  font-size: var(--heading-sm);
+}
+p {
+  line-height: 1.85;
+}
+a,
+a:visited {
+  color: var(--accent);
   text-decoration: none;
 }
-
 a:hover {
   text-decoration: underline;
+  text-underline-offset: 4px;
 }
-
-h1 {
-  font-size: 2rem;
-  text-align: center;
+input,
+button,
+textarea,
+select {
+  font: inherit;
 }
-
-h2 {
-  font-size: 1rem;
+input,
+textarea,
+select {
+  font-size: var(--text-base);
 }
-
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus:not(:focus-visible) {
+  outline: none;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+:focus-visible {
+  outline: 3px solid #964d6580;
+  outline-offset: 4px;
+}
 pre {
-  font-size: 16px;
   font-family: var(--font-mono);
-  background-color: rgba(255, 255, 255, 0.45);
-  border-radius: 3px;
-  box-shadow: 2px 2px 6px rgb(255 255 255 / 25%);
-  padding: 0.5em;
+  font-size: var(--text-sm);
+  padding: 1rem;
   overflow-x: auto;
-  color: var(--color-text);
+  background: var(--surface-soft);
+  border-radius: 8px;
 }
-
 .text-column {
   display: flex;
   max-width: 48rem;
@@ -77,22 +120,6 @@ pre {
   flex-direction: column;
   justify-content: center;
   margin: 0 auto;
-}
-
-input,
-button {
-  font-size: inherit;
-  font-family: inherit;
-}
-
-button:focus:not(:focus-visible) {
-  outline: none;
-}
-
-@media (min-width: 720px) {
-  h1 {
-    font-size: 2.4rem;
-  }
 }
 
 .visually-hidden {
@@ -115,7 +142,7 @@ button:focus:not(:focus-visible) {
   background-color: #333;
   color: white;
   padding: 10px 20px;
-  border-radius: 5px;
+  border-radius: 10px;
   animation: fadeinout 3s;
 }
 
@@ -130,69 +157,20 @@ button:focus:not(:focus-visible) {
   }
 }
 
-/* 練習画面に共通する配色と操作部品。旧画面への切り戻しでも利用できる。 */
-:root {
-  --ink: #343e39;
-  --font-editorial: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
-  --muted: #69716a;
-  --accent: #ac4d39;
-  --border: #dfdfd4;
-  --surface: #fffdf9;
-  --surface-soft: #f1eee5;
-  --accent-soft: #f6e7df;
-  --olive: #596d46;
-  --olive-soft: #edf1e5;
-  --color-text: var(--ink);
-  --color-theme-1: var(--accent);
-  --font-body:
-    'Hiragino Kaku Gothic ProN', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
-  color: var(--ink);
-}
-body {
-  background: #faf8f3;
-  background-image: none;
-}
-* {
-  box-sizing: border-box;
-}
-h1,
-h2,
-h3 {
-  font-weight: 700;
-}
-p {
-  line-height: 1.8;
-}
-button,
-a,
-input,
-textarea,
-select {
-  -webkit-tap-highlight-color: transparent;
-}
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-:focus-visible {
-  outline: 3px solid #ac4d3980;
-  outline-offset: 4px;
-}
 .card {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 16px;
 }
 .eyebrow {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.12em;
   font-weight: 700;
   color: var(--accent);
   margin: 0;
 }
 .small {
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
 }
 .muted {
   color: var(--muted);
@@ -204,8 +182,8 @@ button:disabled {
   gap: 1rem;
   min-height: 48px;
   padding: 0.8rem 1.25rem;
-  border-radius: 5px;
-  font-size: 0.95rem;
+  border-radius: 10px;
+  font-size: var(--text-base);
   font-weight: 650;
   line-height: 1.5;
   text-decoration: none;
@@ -222,23 +200,23 @@ button:disabled {
   color: white;
 }
 .primary:hover:not(:disabled) {
-  background: #913d2d;
+  background: var(--accent-hover);
 }
 .button.secondary {
-  background: white;
+  background: var(--surface);
   color: var(--ink);
   border-color: var(--border);
 }
 .secondary:hover:not(:disabled) {
-  background: #f8f4f1;
-  border-color: #a1aa98;
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 .pill {
   padding: 0.25rem 0.6rem;
   border-radius: 2rem;
-  background: #f4eeea;
+  background: var(--surface-soft);
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 .error {
@@ -246,16 +224,16 @@ button:disabled {
   color: #9b263b;
   padding: 0.9rem 1rem;
   border-radius: 0.7rem;
-  font-size: 0.88rem;
+  font-size: var(--text-base);
   line-height: 1.7;
 }
 .notice {
-  background: #f1f3ef;
+  background: var(--olive-soft);
   padding: 1rem;
   border-radius: 0.7rem;
 }
 .text-link {
-  font-size: 0.88rem;
+  font-size: var(--text-base);
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -265,8 +243,8 @@ html {
   scroll-behavior: smooth;
 }
 ::selection {
-  background: #eed0b9;
-  color: #343e39;
+  background: #efd3dd;
+  color: var(--ink);
 }
 @media (prefers-reduced-motion: reduce) {
   html {

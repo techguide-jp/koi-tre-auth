@@ -276,11 +276,11 @@
   }
   .account-panels .card > a {
     display: block;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     margin-top: 18px;
   }
   .account-panels p {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     line-height: 1.9;
   }
   .owned {
@@ -301,12 +301,12 @@
   }
   .owned-grid p,
   .owned-grid a {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     line-height: 1.8;
   }
   .part-practice label {
     display: block;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     margin-bottom: 8px;
   }
   select {
@@ -333,11 +333,11 @@
   }
   .part-links strong {
     display: block;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   .part-links span {
     display: block;
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     margin-top: 8px;
   }
@@ -352,7 +352,7 @@
     padding: 18px;
     background: var(--olive-soft);
     border-radius: 10px;
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     line-height: 1.9;
   }
   .course > a {
@@ -362,14 +362,14 @@
     padding: 14px 20px;
     background: var(--olive-soft);
     border-radius: 10px;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   .error {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     line-height: 1.8;
   }
   .account-panels .button {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
   }
   button:disabled {
     opacity: 0.55;

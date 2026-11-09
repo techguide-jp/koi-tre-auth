@@ -105,7 +105,7 @@
     align-items: center;
   }
   .collection-heading .eyebrow {
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     margin: 0 0 8px;
   }
   h2 {
@@ -118,14 +118,14 @@
     flex-shrink: 0;
     color: #847047;
     margin: 0;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
   }
   .collected strong {
     font-family: var(--font-editorial);
     font-size: 2.5rem;
   }
   .collection-description {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     line-height: 1.9;
     margin: 16px 0;
@@ -139,7 +139,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     margin: 0 0 8px;
     gap: 12px;
   }
@@ -168,7 +168,7 @@
   }
   .filters button {
     font: inherit;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     border: 1px solid var(--border);
     padding: 10px 14px;
     border-radius: 99px;
@@ -228,7 +228,7 @@
   }
   .caption > span,
   .conversation-link {
-    font-size: 0.72rem;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   h3 {
@@ -242,11 +242,11 @@
   .caption .deep-label {
     display: inline-block;
     color: #806532;
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     margin: 6px 0;
   }
   .caption blockquote {
-    font-size: 0.78rem;
+    font-size: var(--text-sm);
     line-height: 1.8;
     margin: 12px 0;
     padding: 12px;
@@ -272,14 +272,14 @@
   }
   .empty-special span {
     display: block;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     line-height: 1.8;
     color: var(--muted);
   }
   .empty-special a {
     display: inline-block;
     margin-top: 18px;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   @media (max-width: 650px) {
     .memory-grid {
@@ -293,10 +293,10 @@
       padding: 12px;
     }
     h3 {
-      font-size: 0.9rem;
+      font-size: var(--text-base);
     }
     .caption > span {
-      font-size: 0.65rem;
+      font-size: var(--text-xs);
     }
     .collection {
       padding: 18px;

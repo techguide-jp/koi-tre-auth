@@ -39,12 +39,12 @@
 
 <style>
   .label {
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     color: var(--accent);
     margin: 0 0 5px;
   }
   .remaining {
-    font-size: 0.95rem;
+    font-size: var(--text-base);
     margin: 0;
   }
   .remaining strong {
@@ -52,7 +52,7 @@
     color: var(--ink);
   }
   .remaining span {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   .balance > .small {
@@ -68,7 +68,7 @@
     padding: 7px 10px;
     border: 1px solid var(--border);
     border-radius: 8px;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     background: white;
   }
 </style>
