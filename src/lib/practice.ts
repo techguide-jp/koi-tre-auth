@@ -169,6 +169,7 @@ export interface PracticeAssessment {
   provider: 'jev'
   model: string
   rubric?: { version: 2 | 3; profile: string }
+  policy?: import('./knowledge-policy').KnowledgeTrace
   aspects: {
     id: AnalysisAspectId
     score: number
@@ -180,6 +181,7 @@ export interface PracticeAssessment {
 }
 export interface PracticeAnalysis {
   version: 2 | 3
+  policy?: import('./knowledge-policy').KnowledgeTrace
   summary: string
   strengths: { title: string; observation: string; evidence: PracticeEvidence[] }[]
   improvements: {

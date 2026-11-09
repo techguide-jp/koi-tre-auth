@@ -269,6 +269,7 @@ export async function reserveRehearsal(input: RehearsalInput, now = new Date()) 
       token,
       adventure: session.adventure,
       storyContext: session.storyContext,
+      policyReleaseId: session.policyReleaseId,
       sceneId: session.sceneId,
       customScene: session.customScene,
       turns: turns.slice(0, input.position - 1)
@@ -278,7 +279,11 @@ export async function reserveRehearsal(input: RehearsalInput, now = new Date()) 
 export async function finishRehearsal(
   input: RehearsalInput,
   token: string,
-  output: { reply: string; presentation?: Presentation }
+  output: {
+    reply: string
+    presentation?: Presentation
+    policyContext?: import('$lib/knowledge-policy').KnowledgeTrace
+  }
 ) {
   return getDb().transaction(async (tx) => {
     await tx.select().from(users).where(eq(users.firebaseUid, input.uid)).for('update')
@@ -294,6 +299,7 @@ export async function finishRehearsal(
           requestId: input.requestId,
           text: input.text,
           reply: output.reply,
+          ...(output.policyContext ? { policyContext: output.policyContext } : {}),
           presentation: parsePresentation(output.presentation)
         },
         pendingRequestId: null,

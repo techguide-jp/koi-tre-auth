@@ -12,6 +12,8 @@ import {
 } from './db/repositories/progression'
 import { assessPractice } from './jev-practice'
 import { practiceCoaching } from './practice-coaching'
+import { getSavedPracticePolicy } from './db/repositories/knowledge'
+import { makeKnowledgeContext, restoreKnowledgeContext } from './knowledge-content'
 
 export async function reassessPractice(uid: string, id: string) {
   const session = await getPractice(uid, id)
@@ -50,8 +52,20 @@ export async function reassessPractice(uid: string, id: string) {
       { role: 'assistant', content: turn.assistantText }
     ])
   ]
-  const coaching = practiceCoaching(scene)
-  const measured = await assessPractice(scene, transcript, AbortSignal.timeout(8_000), coaching)
+  const savedPolicy = await getSavedPracticePolicy(uid, id)
+  const coaching = practiceCoaching(scene, savedPolicy?.trace?.profile)
+  const policy = savedPolicy
+    ? savedPolicy.trace
+      ? restoreKnowledgeContext(savedPolicy.release, savedPolicy.trace)
+      : makeKnowledgeContext(
+          savedPolicy.release,
+          coaching.id,
+          `${scene.title} ${scene.goal} ${session.turns.at(-1)?.userText ?? ''}`
+        )
+    : null
+  const measured = policy
+    ? await assessPractice(scene, transcript, AbortSignal.timeout(8_000), coaching, policy)
+    : await assessPractice(scene, transcript, AbortSignal.timeout(8_000), coaching)
   await getDb().transaction(async (tx) => {
     await tx.select().from(users).where(eq(users.firebaseUid, uid)).for('update')
     const evaluation = await tx.query.practiceEvaluations.findFirst({
@@ -62,6 +76,7 @@ export async function reassessPractice(uid: string, id: string) {
     if (measured) {
       await settleEvaluation(tx, uid, id, {
         ...measured,
+        ...(policy ? { policy: policy.trace } : {}),
         rubric: { version: 3, profile: coaching.id }
       })
       await clearEligibleStages(tx, uid)

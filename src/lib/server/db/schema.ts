@@ -17,6 +17,28 @@ import type { CreditKind } from '$lib/billing'
 import type Stripe from 'stripe'
 import type { PracticeEvaluation } from '$lib/adventure-progression'
 import { boolean } from 'drizzle-orm/pg-core'
+import type { KnowledgeContent, KnowledgePreview, KnowledgeTrace } from '$lib/knowledge-policy'
+
+export const knowledgeReleases = pgTable('knowledge_releases', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  version: integer('version').generatedAlwaysAsIdentity().notNull().unique(),
+  content: jsonb('content').$type<KnowledgeContent>().notNull(),
+  contentHash: varchar('content_hash', { length: 64 }).notNull(),
+  note: varchar('note', { length: 200 }).notNull(),
+  createdBy: varchar('created_by', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+})
+export const knowledgeSettings = pgTable('knowledge_settings', {
+  id: varchar('id', { length: 16 }).primaryKey(),
+  draft: jsonb('draft').$type<KnowledgeContent>().notNull(),
+  draftRevision: integer('draft_revision').notNull().default(0),
+  activeReleaseId: varchar('active_release_id', { length: 36 }).references(
+    () => knowledgeReleases.id
+  ),
+  preview: jsonb('preview').$type<KnowledgePreview>(),
+  updatedBy: varchar('updated_by', { length: 255 }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+})
 
 export const users = pgTable(
   'users',
@@ -71,6 +93,9 @@ export const practices = pgTable(
     creditCost: integer('credit_cost').notNull().default(1),
     storyContext: jsonb('story_context').$type<StoryContext>(),
     storyEnding: jsonb('story_ending').$type<StoryEnding>(),
+    policyReleaseId: varchar('policy_release_id', { length: 36 }).references(
+      () => knowledgeReleases.id
+    ),
     chargedAt: timestamp('charged_at', { withTimezone: true, mode: 'date' }),
     completedAt: timestamp('completed_at', { withTimezone: true, mode: 'date' }),
     pendingRequestId: varchar('pending_request_id', { length: 36 }),
@@ -278,6 +303,7 @@ export const practiceTurns = pgTable(
     assistantText: text('assistant_text').notNull(),
     feedback: jsonb('feedback').$type<PracticeFeedback>(),
     presentation: jsonb('presentation').$type<Presentation>(),
+    policyContext: jsonb('policy_context').$type<KnowledgeTrace>(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
   },
   (table) => [

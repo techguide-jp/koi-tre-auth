@@ -43,6 +43,7 @@ export async function submitPracticeMessage(input: MessageInput, context: Analyt
       customScene: reservation.customScene,
       adventure: reservation.adventure,
       storyContext: reservation.storyContext,
+      policyReleaseId: reservation.policyReleaseId,
       turns: reservation.turns,
       text: input.text
     })
@@ -84,6 +85,7 @@ export async function submitRehearsal(input: RehearsalInput) {
       turns: reservation.turns,
       text: input.text,
       storyContext: reservation.storyContext,
+      policyReleaseId: reservation.policyReleaseId,
       rehearsal: true
     })
     if (!(await finishRehearsal(input, reservation.token, output)))

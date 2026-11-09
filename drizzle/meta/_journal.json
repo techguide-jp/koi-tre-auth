@@ -50,6 +50,13 @@
       "when": 1794153248129,
       "tag": "0006_soft_talisman",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794184886682,
+      "tag": "0007_silly_war_machine",
+      "breakpoints": true
     }
   ]
 }

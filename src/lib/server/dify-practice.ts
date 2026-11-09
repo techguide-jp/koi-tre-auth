@@ -17,6 +17,9 @@ import {
 import { assessPractice, selectPracticeCoaching } from './jev-practice'
 import { practiceCoaching } from './practice-coaching'
 import { parsePracticeOutput } from './practice-feedback'
+import type { KnowledgeContent } from '$lib/knowledge-policy'
+import { getKnowledgeRelease } from './db/repositories/knowledge'
+import { makeKnowledgeContext } from './knowledge-content'
 export { parsePracticeOutput } from './practice-feedback'
 
 export interface GeneratePracticeInput {
@@ -28,6 +31,8 @@ export interface GeneratePracticeInput {
   adventure?: Adventure | null
   rehearsal?: boolean
   storyContext?: StoryContext | null
+  policyReleaseId?: string | null
+  policyOverride?: { content: KnowledgeContent; contentHash: string }
 }
 
 export async function generatePracticeReply(input: GeneratePracticeInput) {
@@ -49,14 +54,40 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
   ]
   // 場面の分類と補助評価を合わせて6秒以内にし、文章生成の時間を確保する。
   const assessmentSignal = AbortSignal.any([signal, AbortSignal.timeout(6000)])
+  const release = input.policyOverride
+    ? { ...input.policyOverride, id: null, version: null }
+    : input.policyReleaseId
+      ? await getKnowledgeRelease(input.policyReleaseId)
+      : null
   const coaching = final
-    ? await selectPracticeCoaching(scene, assessmentSignal)
+    ? release
+      ? await selectPracticeCoaching(scene, assessmentSignal, release.content.core)
+      : await selectPracticeCoaching(scene, assessmentSignal)
     : practiceCoaching(scene)
+  const policy = release
+    ? makeKnowledgeContext(
+        release,
+        coaching.id,
+        [
+          scene.title,
+          scene.goal,
+          scene.situation ?? '',
+          input.text,
+          ...input.turns.toReversed().map((turn) => turn.userText)
+        ].join(' ')
+      )
+    : null
   const measured = final
-    ? await assessPractice(scene, transcript, assessmentSignal, coaching)
+    ? policy
+      ? await assessPractice(scene, transcript, assessmentSignal, coaching, policy)
+      : await assessPractice(scene, transcript, assessmentSignal, coaching)
     : null
   const assessment = measured
-    ? { ...measured, rubric: { version: 3 as const, profile: coaching.id } }
+    ? {
+        ...measured,
+        ...(policy ? { policy: policy.trace } : {}),
+        rubric: { version: 3 as const, profile: coaching.id }
+      }
     : null
   const sceneData = {
     ...scene,
@@ -101,7 +132,10 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
         scene: JSON.stringify(sceneData),
         transcript: JSON.stringify(transcript),
         turn: input.turns.length + 1,
-        total_turns: input.rehearsal ? turnLimit + 1 : turnLimit
+        total_turns: input.rehearsal ? turnLimit + 1 : turnLimit,
+        ...(policy
+          ? { policy_context: JSON.stringify(policy), policy_hash: policy.trace.contextHash }
+          : {})
       }
     }),
     signal
@@ -109,15 +143,20 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
   if (!response.ok) throw new Error('Practice generation failed')
   const body = await response.json()
   if (body.data?.status !== 'succeeded') throw new Error('Practice workflow failed')
+  // 旧Workflowが新しい方針入力を無視した場合は、適用済みとして保存しない。
+  if (policy && body.data.outputs?.policy_hash !== policy.trace.contextHash)
+    throw Error('Practice policy acknowledgement mismatch')
   const raw =
     typeof body.data.outputs?.result === 'string'
       ? JSON.parse(body.data.outputs.result)
       : body.data.outputs?.result
   const userTexts = [...input.turns.map((turn) => turn.userText), input.text]
   const parsed = parsePracticeOutput(raw, userTexts, final, assessment)
-  if (!input.adventure) return parsed
+  if (policy && parsed.feedback?.analysis) parsed.feedback.analysis.policy = policy.trace
+  const result = { ...parsed, ...(policy ? { policyContext: policy.trace } : {}) }
+  if (!input.adventure) return result
   return {
-    ...parsed,
+    ...result,
     presentation: parsePresentation(raw?.presentation),
     mission: final ? parseMission(raw?.mission, input.adventure, userTexts) : null,
     storyEnding: final
