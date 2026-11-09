@@ -173,7 +173,7 @@
     content="noindex,nofollow"
   /></svelte:head
 >
-<main class="character-admin">
+<div class="character-admin">
   <a class="back" href="/account">← マイページ</a>
   <p class="eyebrow">Koi-Tre 運営管理</p>
   <h1>その人らしい会話を育てる</h1>
@@ -332,7 +332,7 @@
       </section>
     {:else if message}<p class="error" role="alert">{message}</p>{/if}
   {/if}
-</main>
+</div>
 
 <style>
   .character-admin {

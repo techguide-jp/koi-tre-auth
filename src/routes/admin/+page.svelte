@@ -5,7 +5,7 @@
 <svelte:head
   ><title>運営管理 | Koi-Tre</title><meta name="robots" content="noindex,nofollow" /></svelte:head
 >
-<main>
+<div class="admin-home">
   <a href="/account">← マイページ</a>
   <p>Koi-Tre 運営管理</p>
   <h1>会話と練習を育てる</h1>
@@ -24,16 +24,16 @@
       <strong>人物を選ぶ →</strong></a
     >
   </div>
-</main>
+</div>
 
 <style>
-  main {
+  .admin-home {
     max-width: 1000px;
     margin: auto;
     padding: 40px 20px 80px;
     color: #36432f;
   }
-  main > a {
+  .admin-home > a {
     color: #58694d;
     font-size: 0.8rem;
   }

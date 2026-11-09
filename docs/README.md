@@ -4,7 +4,7 @@
 
 価値観・方針の更新方法は [評価方針と知識の運用](knowledge-policy-admin.md)。基本方針と場面別の知識をKoi-Tre管理画面から保存・確認・公開し、新しく始まる練習に適用する。
 
-人物ごとのプロフィール・価値観・話し方・関係段階・反応例は、[人物設定の管理](character-settings-admin.md)に整理する。この追加機能の本番反映は未実施。
+人物ごとのプロフィール・価値観・話し方・関係段階・反応例は、[人物設定の管理](character-settings-admin.md)に整理する。追加公開は [PR #28](https://github.com/techguide-jp/koi-tre-auth/pull/28) と、そのマージ後のProductionデプロイで確認する。
 
 ## 現在の状態
 
