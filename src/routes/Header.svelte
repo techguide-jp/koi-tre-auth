@@ -89,7 +89,7 @@
     display: block;
     font-family: var(--font-body);
     font-weight: 400;
-    font-size: 0.5rem;
+    font-size: var(--text-xs);
     text-align: center;
     margin-top: 0.45rem;
     letter-spacing: 0.2em;
@@ -98,8 +98,8 @@
   nav {
     display: flex;
     align-items: center;
-    gap: 1.8rem;
-    font-size: 0.75rem;
+    gap: 1.3rem;
+    font-size: var(--text-sm);
   }
   nav a {
     color: var(--ink);
@@ -109,9 +109,9 @@
   .logout {
     border: 1px solid #b9beb1;
     padding: 0.65rem 1rem;
-    border-radius: 3px;
+    border-radius: 10px;
     background: transparent;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     cursor: pointer;
     color: var(--ink);
     white-space: nowrap;
@@ -122,7 +122,7 @@
     }
     nav {
       gap: 1rem;
-      font-size: 0.7rem;
+      font-size: var(--text-sm);
     }
     .brand-name {
       font-size: 1.4rem;
@@ -132,7 +132,7 @@
       height: 1.8rem;
     }
     .brand-kana {
-      font-size: 0.45rem;
+      font-size: var(--text-xs);
     }
     .contact-link {
       display: none;
@@ -145,7 +145,7 @@
     .login-link,
     .logout {
       padding: 0.6rem 0.7rem;
-      font-size: 0.7rem;
+      font-size: var(--text-sm);
     }
   }
   @media (max-width: 480px) {

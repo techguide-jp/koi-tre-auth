@@ -392,7 +392,7 @@
     border-radius: 10px;
     color: #75613b;
     background: #f8f2e3;
-    font-size: 0.78rem;
+    font-size: var(--text-sm);
     line-height: 1.9;
   }
   .picker-heading {
@@ -406,11 +406,11 @@
     margin: 0.4rem 0 1.5rem;
   }
   .picker-heading > a {
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     white-space: nowrap;
   }
   .eyebrow {
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--accent);
     margin: 0;
   }
@@ -425,7 +425,7 @@
     background: white;
     border-radius: 40px;
     padding: 12px 18px;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--ink);
     cursor: pointer;
   }
@@ -438,7 +438,7 @@
     padding: 16px 20px;
     border-radius: 12px;
     background: var(--olive-soft);
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     line-height: 1.9;
   }
   .part-tabs {
@@ -461,12 +461,12 @@
     background: var(--accent-soft);
   }
   .part-tabs strong {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     display: block;
   }
   .part-tabs span {
     display: block;
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     margin-top: 8px;
   }
@@ -482,13 +482,13 @@
     margin: 0;
   }
   .part-intro p {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     margin: 6px 0 0;
   }
   .part-intro > span {
     white-space: nowrap;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--accent);
   }
   .story-path {
@@ -512,19 +512,19 @@
     background: var(--accent-soft);
   }
   .story-path .chapter {
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     color: var(--accent);
   }
   .story-path strong,
   .life-scenes strong {
     display: block;
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     margin: 10px 0;
   }
   .story-path button > span:last-child,
   .life-scenes span {
     display: block;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     line-height: 1.7;
     color: var(--muted);
   }
@@ -539,12 +539,12 @@
   }
   .other-scenes summary {
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     font-weight: 600;
   }
   .other-scenes summary span {
     display: inline-block;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     font-weight: 400;
     margin-left: 12px;
@@ -570,7 +570,7 @@
     font-size: 1.3rem;
   }
   .episode-preview > div > p {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     line-height: 1.9;
   }
   .mission {
@@ -588,11 +588,11 @@
   }
   .mission p > span {
     display: block;
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   .mission strong {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   fieldset {
     border: 0;
@@ -600,13 +600,13 @@
     margin: 0 0 16px;
   }
   legend {
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     margin-bottom: 10px;
     color: var(--muted);
   }
   fieldset label {
     display: block;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     padding: 7px 0;
     cursor: pointer;
   }
@@ -618,7 +618,7 @@
     display: block;
     margin: 5px 0 0 22px;
     color: var(--muted);
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
   }
   .start-actions .button {
     width: 100%;
@@ -626,7 +626,7 @@
   }
   .start-actions > p {
     line-height: 1.8;
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
   }
   button:disabled {
     opacity: 0.5;
@@ -651,7 +651,7 @@
       gap: 7px;
     }
     .mode-tabs button {
-      font-size: 0.72rem;
+      font-size: var(--text-sm);
       padding: 10px 12px;
     }
     .story-path {

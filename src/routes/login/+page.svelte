@@ -170,7 +170,7 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     text-align: left;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     padding-top: 0.7rem;
     margin: 0.3rem 0 0;
     border-top: 1px solid var(--border);

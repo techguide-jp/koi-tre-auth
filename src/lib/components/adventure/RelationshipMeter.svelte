@@ -156,7 +156,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: #874d50;
   }
   .heading strong {
@@ -165,7 +165,7 @@
   }
   small {
     font-weight: 400;
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
   }
   .heart-meter {
     display: flex;
@@ -232,7 +232,7 @@
     position: absolute;
     left: 45%;
     top: 10%;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: #ce5e7a;
     pointer-events: none;
     opacity: 0;
@@ -240,7 +240,7 @@
   }
   .heart-spark.second {
     left: 65%;
-    font-size: 0.6rem;
+    font-size: var(--text-xs);
     animation-delay: 350ms;
   }
   .gain {
@@ -251,7 +251,7 @@
     border-radius: 20px;
     background: #a84762;
     color: #fff;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     font-weight: 700;
     box-shadow: 0 3px 12px #a8476220;
     pointer-events: none;
@@ -263,19 +263,19 @@
     align-items: baseline;
     flex-wrap: wrap;
     gap: 6px 12px;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: #8b5b60;
   }
   .relationship-label {
     font-weight: 600;
   }
   .scale {
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     color: #947b7a;
   }
   .next-condition {
     margin: 10px 0 0;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: #a34d3e;
   }
   .next-condition strong {

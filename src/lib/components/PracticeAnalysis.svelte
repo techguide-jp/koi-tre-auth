@@ -129,7 +129,7 @@
     display: flex;
     align-items: center;
     gap: 0.45rem;
-    font-size: 0.95rem;
+    font-size: var(--text-base);
     margin: 0 0 0.8rem;
   }
   p {
@@ -145,7 +145,7 @@
     cursor: pointer;
     list-style: none;
     min-height: 48px;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     font-weight: 600;
   }
   summary::-webkit-details-marker {
@@ -178,15 +178,15 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   .strength-icon {
-    color: #435b37;
-    background: #edf1e8;
+    color: var(--olive);
+    background: var(--olive-soft);
   }
   .improvement-icon {
-    color: #9a4b31;
-    background: #f6eae1;
+    color: var(--accent);
+    background: var(--accent-soft);
   }
   .point {
     border: 1px solid var(--border);
@@ -197,14 +197,14 @@
     padding: 0.7rem 0.85rem;
   }
   .strength {
-    border-left: 3px solid #809274;
+    border-left: 3px solid var(--olive);
   }
   .improvement {
-    border-left: 3px solid #bc7659;
+    border-left: 3px solid var(--accent);
   }
   .detail-body {
     padding: 0 0.85rem 0.85rem;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   .detail-body > p:first-child {
     margin-top: 0.2rem;
@@ -216,7 +216,7 @@
   blockquote {
     margin: 0.7rem 0 0;
     padding: 0.8rem;
-    background: #f7f4ef;
+    background: var(--surface-soft);
     border-radius: 6px;
     line-height: 1.85;
     white-space: pre-wrap;
@@ -225,7 +225,7 @@
   blockquote span {
     display: block;
     color: var(--muted);
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     margin-bottom: 0.3rem;
     font-weight: 400;
   }
@@ -236,7 +236,7 @@
   .reason,
   .section-note {
     color: var(--muted);
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
   }
   .section-note {
     margin: -0.2rem 0 0.8rem;
@@ -245,8 +245,8 @@
     padding: 0.85rem;
     margin: 0;
     border-radius: 8px;
-    background: #f1f4ec;
-    font-size: 0.8rem;
+    background: var(--olive-soft);
+    font-size: var(--text-sm);
   }
   .next-practice {
     display: grid;
@@ -255,7 +255,7 @@
     margin: 1rem 0 0;
     padding: 1rem;
     border-radius: 10px;
-    background: #f7eee5;
+    background: var(--accent-soft);
   }
   .next-icon {
     display: flex;
@@ -263,32 +263,32 @@
     justify-content: center;
     width: 30px;
     height: 30px;
-    border: 1px solid #d7bba3;
+    border: 1px solid var(--border);
     border-radius: 50%;
-    color: #9a4b31;
+    color: var(--accent);
     font-size: 1.2rem;
   }
   .next-practice h3 {
     margin: 0 0 0.3rem;
-    font-size: 0.75rem;
-    color: #9a4b31;
+    font-size: var(--text-sm);
+    color: var(--accent);
   }
   .next-practice p {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     font-weight: 600;
   }
   .example summary {
     justify-content: flex-start;
     min-height: 40px;
-    font-size: 0.75rem;
-    color: #7f533c;
+    font-size: var(--text-sm);
+    color: var(--accent);
     font-weight: 400;
   }
   .example blockquote {
-    background: #fffaf4;
+    background: var(--surface);
     margin: 0;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   .turn > summary {
     justify-content: flex-start;
@@ -301,8 +301,8 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    border: 1px solid #ddd9d0;
-    font-size: 0.75rem;
+    border: 1px solid var(--border);
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   .turn-heading {
@@ -320,22 +320,22 @@
     text-overflow: ellipsis;
     color: var(--muted);
     font-weight: 400;
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
   }
   .overview {
     margin-top: 1.2rem;
     border-top: 1px solid var(--border);
   }
   .overview summary {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     font-weight: 400;
   }
   .overview > p {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   .overview > .section-note {
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
   }
   @media (max-width: 550px) {
     .point-columns {
@@ -353,7 +353,7 @@
       font-size: 1rem;
     }
     .next-practice p {
-      font-size: 0.85rem;
+      font-size: var(--text-sm);
     }
   }
 </style>

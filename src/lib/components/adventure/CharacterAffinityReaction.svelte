@@ -69,12 +69,12 @@
     align-items: baseline;
     gap: 3px 8px;
     margin: 0 0 9px;
-    font-size: 0.78rem;
+    font-size: var(--text-sm);
     font-weight: 700;
     color: #884d58;
   }
   .mood span {
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     font-weight: 400;
   }
   blockquote {
@@ -85,7 +85,7 @@
     background: #fffaf8;
     color: #684c51;
     border: 1px solid #e6c9cc;
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     line-height: 1.85;
     overflow-wrap: anywhere;
   }
@@ -111,7 +111,7 @@
   }
   .evidence {
     margin: 10px 0 0;
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     line-height: 1.65;
     color: #866f72;
     overflow-wrap: anywhere;
@@ -200,7 +200,7 @@
     }
     blockquote {
       padding: 11px 12px;
-      font-size: 0.8rem;
+      font-size: var(--text-sm);
       line-height: 1.8;
     }
   }

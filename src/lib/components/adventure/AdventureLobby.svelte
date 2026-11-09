@@ -61,9 +61,15 @@
   </div>
   {#if !gender}<div class="gender-choices">
       <button disabled="{pending}" on:click="{() => chooseGender('male')}"
-        ><span aria-hidden="true">♂</span><strong>男性と話す</strong>→</button
+        ><span class="gender-icon" aria-hidden="true">♂</span><strong>男性と話す</strong><span
+          class="choice-arrow"
+          aria-hidden="true">→</span
+        ></button
       ><button disabled="{pending}" on:click="{() => chooseGender('female')}"
-        ><span aria-hidden="true">♀</span><strong>女性と話す</strong>→</button
+        ><span class="gender-icon" aria-hidden="true">♀</span><strong>女性と話す</strong><span
+          class="choice-arrow"
+          aria-hidden="true">→</span
+        ></button
       >
     </div>
     <p class="small muted">あとから変更できます。あなた自身のプロフィール入力は不要です。</p>
@@ -92,10 +98,7 @@
           disabled="{pending}"
           on:click="{() => chooseCharacter(person.id)}"
           ><div class="character-art">
-            <CharacterPortrait
-              characterId="{person.id}"
-              emotion="{characterId === person.id ? 'smile' : 'neutral'}"
-            />
+            <CharacterPortrait characterId="{person.id}" variant="introduction" />
           </div>
           <div class="character-copy">
             <p><strong>{person.name}</strong><span>{person.age}歳</span></p>
@@ -131,7 +134,7 @@
   }
   .lobby-heading h2 {
     margin: 12px 0;
-    font-size: clamp(1.7rem, 4vw, 2.6rem);
+    font-size: var(--heading-md);
   }
   .gender-choices {
     display: grid;
@@ -155,8 +158,12 @@
     font-size: 1.3rem;
     flex: 1;
   }
-  .gender-choices button > span {
+  .gender-icon {
     font-size: 2rem;
+    color: var(--accent);
+  }
+  .choice-arrow {
+    font-size: 1.25rem;
     color: var(--accent);
   }
   button:disabled {
@@ -167,7 +174,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     margin-bottom: 20px;
   }
   .roster {
@@ -183,7 +190,7 @@
     text-align: left;
     cursor: pointer;
     color: var(--ink);
-    background: #eeeee2;
+    background: #e8eee8;
     transition:
       transform 0.15s,
       border-color 0.15s;
@@ -193,10 +200,10 @@
     transform: translateY(-4px);
   }
   .character-card.clay {
-    background: #f2e4d6;
+    background: #f4e6e1;
   }
   .character-card.night {
-    background: #e5e6ed;
+    background: #eeebf1;
   }
   .character-art {
     height: 320px;
@@ -215,7 +222,7 @@
   }
   .character-copy p {
     margin: 0;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     line-height: 1.7;
   }
   .character-copy p:first-child {
@@ -231,7 +238,7 @@
     color: var(--muted);
   }
   .character-detail {
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     text-align: center;
     margin: 24px 0 36px;
     color: var(--olive);
@@ -247,15 +254,23 @@
       gap: 12px;
     }
     .gender-choices button {
+      position: relative;
       padding: 22px 16px;
       gap: 8px;
-      flex-wrap: wrap;
+      flex-direction: column;
+      align-items: flex-start;
     }
     .gender-choices strong {
       font-size: 1rem;
+      white-space: nowrap;
     }
-    .gender-choices button > span {
+    .gender-icon {
       font-size: 1.5rem;
+    }
+    .choice-arrow {
+      position: absolute;
+      top: 22px;
+      right: 16px;
     }
     .roster {
       display: block;

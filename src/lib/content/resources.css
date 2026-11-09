@@ -14,7 +14,7 @@
 }
 .resources h1 {
   font-family: var(--font-editorial);
-  font-size: clamp(1.8rem, 3.8vw, 2.8rem);
+  font-size: var(--heading-lg);
   line-height: 1.65;
   font-weight: 600;
   margin: 1rem 0;
@@ -32,11 +32,11 @@
 }
 .resources .eyebrow {
   color: var(--accent);
-  font-size: 0.75rem;
+  font-size: var(--text-sm);
   letter-spacing: 0.08em;
 }
 .breadcrumbs {
-  font-size: 0.7rem;
+  font-size: var(--text-sm);
   color: var(--muted);
   line-height: 1.8;
 }
@@ -64,7 +64,7 @@
   font-size: 1.2rem;
 }
 .resource-card > p:not(.eyebrow) {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 .resource-card:hover {
   text-decoration: none;
@@ -90,7 +90,7 @@
 }
 .article-credit {
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: var(--text-sm);
 }
 .guide-summary {
   border-left: 3px solid var(--accent);
@@ -112,7 +112,7 @@
 }
 .guide-toc li {
   margin: 0.6rem 0;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 .guide-section {
   margin: 3rem 0;
@@ -144,13 +144,13 @@
 }
 .conversation-example dt {
   color: var(--accent);
-  font-size: 0.7rem;
+  font-size: var(--text-sm);
   padding-top: 0.3rem;
 }
 .conversation-example dd {
   margin: 0;
   line-height: 1.9;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
 }
 .guide-checklist {
   border-top: 1px solid var(--border);

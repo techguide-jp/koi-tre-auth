@@ -55,7 +55,7 @@
     border-top: 1px solid var(--border);
     gap: 0.4rem;
     color: var(--muted);
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
   }
 
   footer p {

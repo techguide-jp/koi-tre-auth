@@ -82,7 +82,7 @@
     font-size: 1.8rem;
   }
   .image-state p {
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     line-height: 1.8;
     margin: 10px 0 0;
   }

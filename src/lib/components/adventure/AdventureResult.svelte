@@ -458,7 +458,7 @@
     font-size: 1.25rem;
   }
   .special-copy .collection-stamp {
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     letter-spacing: 0.1em;
     color: #7f652e;
     margin: 0 0 20px;
@@ -475,7 +475,7 @@
     margin: 12px 0;
   }
   .ending-card > p {
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     line-height: 1.9;
   }
   .adventure-result {
@@ -509,7 +509,7 @@
   }
   .memory-copy blockquote {
     margin: 12px 0;
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     line-height: 1.9;
   }
   .reward {
@@ -528,7 +528,7 @@
     font-size: 1rem;
   }
   .reward p {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     margin: 6px 0;
   }
   .reward .mission-label {
@@ -540,7 +540,7 @@
     font-weight: 700;
   }
   .reward details {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     margin-top: 10px;
   }
   .reward blockquote {
@@ -562,7 +562,7 @@
   .keepsake summary,
   .rehearsal summary {
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: var(--text-base);
     display: flex;
     justify-content: space-between;
     gap: 10px;
@@ -570,7 +570,7 @@
   .keepsake label,
   .rehearsal label {
     display: block;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     margin: 18px 0 8px;
   }
   select,
@@ -584,7 +584,7 @@
     color: var(--ink);
   }
   select {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   .inline-actions {
     margin-top: 14px;
@@ -594,7 +594,7 @@
     background: none;
     color: var(--accent);
     font: inherit;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     cursor: pointer;
   }
   .rehearsal form > .button {
@@ -611,7 +611,7 @@
     margin-top: 16px;
   }
   .rehearsal-result blockquote {
-    font-size: 0.88rem;
+    font-size: var(--text-base);
     line-height: 1.9;
     margin: 12px 0;
   }
@@ -641,10 +641,10 @@
       font-size: 1.05rem;
     }
     .memory-copy blockquote {
-      font-size: 0.8rem;
+      font-size: var(--text-sm);
     }
     .memory-copy .small {
-      font-size: 0.7rem;
+      font-size: var(--text-sm);
     }
     .reward {
       grid-template-columns: 1fr;

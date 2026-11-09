@@ -266,7 +266,7 @@
 
 <style>
   .section-label {
-    font-size: 0.72rem;
+    font-size: var(--text-sm);
     font-weight: 700;
     letter-spacing: 0.12em;
     color: var(--accent);
@@ -282,7 +282,7 @@
   .hero h1 {
     text-align: left;
     font-family: var(--font-editorial);
-    font-size: clamp(2.2rem, 4.7vw, 3.8rem);
+    font-size: var(--heading-lg);
     line-height: 1.45;
     letter-spacing: 0.02em;
     margin: 20px 0;
@@ -291,7 +291,7 @@
     color: var(--accent);
   }
   .hero-description {
-    font-size: 0.96rem;
+    font-size: var(--text-base);
     line-height: 2.1;
     margin-bottom: 24px;
   }
@@ -307,7 +307,7 @@
     border-radius: 24px;
   }
   .hero figcaption {
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     margin-top: 12px;
     text-align: right;
@@ -324,7 +324,7 @@
   }
   .intro-strip p {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   .intro-strip ol {
     display: flex;
@@ -333,14 +333,14 @@
     list-style: none;
   }
   .intro-strip li {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     display: flex;
     align-items: center;
     gap: 10px;
   }
   .intro-strip li span {
     color: var(--accent);
-    font-size: 0.7rem;
+    font-size: var(--text-sm);
   }
   .account-strip {
     display: flex;
@@ -360,7 +360,7 @@
     gap: 16px;
     flex-wrap: wrap;
     align-items: center;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   .custom-section {
     padding-bottom: 48px;
@@ -390,7 +390,7 @@
     font-size: 1rem;
   }
   .reason-grid p {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     line-height: 1.95;
   }
@@ -410,11 +410,11 @@
   }
   .faq-section summary {
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: var(--text-base);
   }
   .faq-section p {
     color: var(--muted);
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     margin: 16px 0 0;
     line-height: 1.95;
   }
@@ -433,7 +433,7 @@
     border-radius: 12px;
     background: var(--surface);
     color: var(--ink);
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     line-height: 1.8;
   }
   .guides-section a span {
@@ -447,13 +447,13 @@
       gap: 28px;
     }
     .hero h1 {
-      font-size: 2.35rem;
+      font-size: var(--heading-lg);
     }
     .hero figure {
       max-width: 480px;
     }
     .hero-description {
-      font-size: 0.9rem;
+      font-size: var(--text-base);
     }
     .intro-strip {
       align-items: flex-start;
@@ -464,7 +464,7 @@
       gap: 16px;
     }
     .intro-strip li {
-      font-size: 0.7rem;
+      font-size: var(--text-sm);
       gap: 6px;
     }
     .account-strip {

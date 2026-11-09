@@ -48,7 +48,7 @@
     margin: 12px 0;
   }
   a {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   @media (max-width: 600px) {
     .guest-intro {

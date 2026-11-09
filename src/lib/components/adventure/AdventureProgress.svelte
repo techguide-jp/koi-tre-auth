@@ -66,12 +66,12 @@
   }
   .progress-top span:not(.eyebrow),
   .xp-note {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   a {
     color: var(--accent);
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     text-decoration: none;
   }
   .xp-track {
@@ -92,14 +92,14 @@
   }
   summary {
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: var(--text-base);
     display: flex;
     gap: 14px;
     align-items: center;
   }
   summary span {
     color: var(--muted);
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
   }
   .badges {
     display: grid;
@@ -118,12 +118,12 @@
     background: var(--olive-soft);
   }
   .badges strong {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     display: block;
     margin: 4px 0;
   }
   .badges p {
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     margin: 0;
     line-height: 1.7;
   }

@@ -115,7 +115,7 @@
     border-radius: 2rem;
     padding: 0.7rem 1rem;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--ink);
   }
   .topic-filters button.active {
@@ -137,7 +137,7 @@
   }
   dt {
     color: var(--muted);
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     margin: 1.3rem 0 0.5rem;
   }
   dd {
@@ -156,7 +156,7 @@
     margin-top: 1.25rem;
   }
   .topic-actions a {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
   }
   .all-topics {
     max-width: 46rem;

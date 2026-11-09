@@ -131,13 +131,13 @@
   .custom-label,
   .custom-description {
     display: block;
-    font-size: 0.72rem;
+    font-size: var(--text-sm);
     color: var(--muted);
     line-height: 1.9;
   }
   .custom-label {
     color: var(--accent);
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     margin-bottom: 0.35rem;
   }
   strong {
@@ -158,12 +158,12 @@
   }
   label {
     display: block;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     font-weight: 600;
     margin: 0.9rem 0 0.6rem;
   }
   label > span {
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     font-weight: 400;
     color: var(--muted);
     margin-left: 0.7rem;
@@ -187,7 +187,7 @@
     display: block;
   }
   .field-note {
-    font-size: 0.67rem;
+    font-size: var(--text-xs);
     line-height: 1.8;
     color: var(--muted);
     margin: 0.5rem 0 0;
@@ -211,12 +211,12 @@
     gap: 1rem;
   }
   .custom-actions p {
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     margin: 0;
     color: var(--muted);
   }
   .custom-actions .button {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     flex-shrink: 0;
   }
   @media (max-width: 700px) {
@@ -224,7 +224,7 @@
       padding: 1.2rem;
     }
     strong {
-      font-size: 0.9rem;
+      font-size: var(--text-base);
     }
     form {
       padding: 0 1.2rem 1.2rem;

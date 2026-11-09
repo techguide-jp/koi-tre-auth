@@ -139,13 +139,13 @@
     border-radius: 3px;
     padding: 0.7rem;
     font: inherit;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     margin-left: 0.75rem;
     max-width: 100%;
   }
   label {
     display: block;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     margin: 1.25rem 0 0.5rem;
   }
   .channel-label {
@@ -160,7 +160,7 @@
     background: #fffefa;
     color: var(--ink);
     font: inherit;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     line-height: 1.8;
     resize: vertical;
   }
@@ -174,10 +174,10 @@
     border-radius: 3px;
   }
   .promo-card h3 {
-    font-size: 0.95rem;
+    font-size: var(--text-base);
   }
   .promo-card .button {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
   }
   .flyer-section {
     display: grid;
