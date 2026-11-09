@@ -11,6 +11,7 @@
   import PracticeGrowth from '$lib/components/adventure/PracticeGrowth.svelte'
   import { storyParts } from '$lib/adventure-story'
   let billing: BillingOverview | null = null
+  let knowledgeAdmin = false
   let progress: AdventureProgress | null = null
   let history: {
     id: string
@@ -46,6 +47,7 @@
   $: if (!$user) {
     loadedUid = ''
     billing = null
+    knowledgeAdmin = false
     progress = null
     history = []
     course = null
@@ -77,17 +79,22 @@
             ? 'お支払いの反映を確認しています。少し待ってから更新してください。'
             : '購入内容を反映しました。'
       }
-      const [b, p, h] = await Promise.all([
+      const [b, p, h, permissions] = await Promise.all([
         authenticatedFetch('/api/me/billing'),
         authenticatedFetch('/api/me/adventure'),
-        authenticatedFetch('/api/me/practice-history')
+        authenticatedFetch('/api/me/practice-history'),
+        authenticatedFetch('/api/me/permissions').catch(() => null)
       ])
-      const [nextBilling, nextProgress, nextHistory] = await Promise.all([
+      const [nextBilling, nextProgress, nextHistory, nextPermissions] = await Promise.all([
         b.json(),
         p.json(),
-        h.json()
+        h.json(),
+        permissions
+          ? permissions.json().catch(() => ({ knowledgeAdmin: false }))
+          : { knowledgeAdmin: false }
       ])
       if (alive && $user?.uid === uid) {
+        knowledgeAdmin = nextPermissions.knowledgeAdmin === true
         billing = nextBilling
         progress = nextProgress
         history = nextHistory.history
@@ -122,6 +129,9 @@
   <p class="section-label">話した時間を、次の一歩へ。</p>
   <h1>マイページ</h1>
   <p>利用枠、購入した物語、あなたの練習の記録。</p>
+  {#if knowledgeAdmin}<a class="small" href="/admin/knowledge"
+      >運営管理：評価方針と知識を編集する →</a
+    >{/if}
 </section>
 {#if !$authReady}<p role="status">ログイン状態を確認しています…</p>{:else if !$user}<div
     class="card"

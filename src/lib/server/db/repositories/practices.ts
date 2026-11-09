@@ -29,7 +29,8 @@ import {
   practices,
   practiceTurns,
   practiceEvaluations,
-  users
+  users,
+  knowledgeSettings
 } from '../schema'
 import { readProgression, settleProgression } from './progression'
 import {
@@ -193,6 +194,15 @@ export async function createPractice(
       sceneId,
       customScene,
       adventure,
+      // 開始済みの会話へ、後から公開した価値観を混ぜない。
+      policyReleaseId:
+        process.env.KNOWLEDGE_POLICY_ENABLED === 'true'
+          ? ((
+              await tx.query.knowledgeSettings.findFirst({
+                where: eq(knowledgeSettings.id, 'main')
+              })
+            )?.activeReleaseId ?? null)
+          : null,
       creditCost: practiceCreditCost(practiceTurnLimit(adventure)),
       storyContext: adventure ? await buildStoryContext(tx, uid, adventure) : null
     })
@@ -279,6 +289,7 @@ export async function reservePracticeTurn(input: MessageInput, now = new Date())
       customScene: session.customScene,
       adventure: session.adventure,
       storyContext: session.storyContext,
+      policyReleaseId: session.policyReleaseId,
       turns
     }
   })
@@ -312,6 +323,7 @@ export async function finishPracticeTurn(
     presentation?: Presentation
     mission?: MissionResult | null
     storyEnding?: StoryEnding | null
+    policyContext?: import('$lib/knowledge-policy').KnowledgeTrace | null
   },
   now = new Date()
 ) {
@@ -344,6 +356,7 @@ export async function finishPracticeTurn(
       userText: input.text,
       assistantText: output.reply,
       feedback: output.feedback,
+      policyContext: output.policyContext ?? null,
       presentation: session.adventure ? parsePresentation(output.presentation) : null,
       createdAt: now
     })

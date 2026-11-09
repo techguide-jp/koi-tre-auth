@@ -43,6 +43,7 @@ export interface Rehearsal {
   text: string
   reply?: string
   presentation?: Presentation
+  policyContext?: import('./knowledge-policy').KnowledgeTrace
 }
 export interface AdventureProgress {
   progression?: ProgressionView
