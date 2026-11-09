@@ -146,7 +146,12 @@ export async function createPractice(
   id: string,
   sceneId: SceneId,
   customScene: CustomSceneInput | null = null,
-  adventure: Adventure | null = null
+  adventure: Adventure | null = null,
+  initialContext?: {
+    characterContext: import('$lib/character-policy').CharacterSnapshot
+    policyReleaseId: string | null
+    storyContext: import('$lib/adventure').StoryContext
+  }
 ) {
   return getDb().transaction(async (tx) => {
     await tx.select().from(users).where(eq(users.firebaseUid, uid)).for('update')
@@ -196,10 +201,15 @@ export async function createPractice(
       sceneId,
       customScene,
       adventure,
-      characterContext: adventure ? await snapshotCharacter(tx, adventure.characterId) : null,
+      characterContext: initialContext
+        ? initialContext.characterContext
+        : adventure
+          ? await snapshotCharacter(tx, adventure.characterId)
+          : null,
       // 開始済みの会話へ、後から公開した価値観を混ぜない。
-      policyReleaseId:
-        process.env.KNOWLEDGE_POLICY_ENABLED === 'true'
+      policyReleaseId: initialContext
+        ? initialContext.policyReleaseId
+        : process.env.KNOWLEDGE_POLICY_ENABLED === 'true'
           ? ((
               await tx.query.knowledgeSettings.findFirst({
                 where: eq(knowledgeSettings.id, 'main')
@@ -207,7 +217,12 @@ export async function createPractice(
             )?.activeReleaseId ?? null)
           : null,
       creditCost: practiceCreditCost(practiceTurnLimit(adventure)),
-      storyContext: adventure ? await buildStoryContext(tx, uid, adventure) : null
+      // ゲスト体験の引き継ぎも、開始時の人物と方針で保存して採点し直さない。
+      storyContext: initialContext
+        ? initialContext.storyContext
+        : adventure
+          ? await buildStoryContext(tx, uid, adventure)
+          : null
     })
     return true
   })

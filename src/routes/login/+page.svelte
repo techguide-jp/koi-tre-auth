@@ -56,7 +56,10 @@
         if (getAdditionalUserInfo(result)?.isNewUser) trackSignup(provider.providerId)
       }
       await syncCurrentUserToApi(firebaseUser)
-      if (practiceId && /^[0-9a-f-]{36}$/i.test(practiceId)) await goto(`/practice/${practiceId}`)
+      if (practiceId && /^[0-9a-f-]{36}$/i.test(practiceId))
+        await goto(
+          `/practice/${practiceId}${$page.url.searchParams.get('guest') === '1' ? '?guest=1' : ''}`
+        )
       else if (scene) {
         const session = await startPractice(scene.id, isCustom ? customScene : null, adventure)
         await goto(`/practice/${session.id}`)
@@ -95,6 +98,9 @@
   <p class="eyebrow">会話の続きを、ここから</p>
   <h1>準備ができたら、始めよう。</h1>
   <p>Googleアカウントで登録すると、<br />途中の会話や振り返りを保存できます。</p>
+  {#if practiceId && $page.url.searchParams.get('guest') === '1'}<p class="notice">
+      第1話の体験を引き継ぎます。最初の返答の保存時に、毎月10枠のうち1枠を使用します。ログインをやり直しても二重に消費しません。
+    </p>{/if}
   {#if scene}<div class="selection">
       <span class="small muted">選んだ場面</span><strong>{scene.title}</strong><span
         class="partner-name">お相手：{scene.partnerName}さん（AI）</span

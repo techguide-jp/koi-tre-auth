@@ -11,6 +11,9 @@
   } from '$lib/practice'
   import { getAnalyticsContext } from '$lib/analytics'
   import { startPractice } from '$lib/practice-client'
+  import { guestFetch } from '$lib/guest-practice-client'
+  import { guestLoginUrl } from '$lib/guest-practice'
+  import GuestPracticeResult from '$lib/components/adventure/GuestPracticeResult.svelte'
   import PracticeAnalysis from '$lib/components/PracticeAnalysis.svelte'
   import PracticeAspectChart from '$lib/components/PracticeAspectChart.svelte'
   import CharacterPortrait from '$lib/components/adventure/CharacterPortrait.svelte'
@@ -23,6 +26,7 @@
   let requestText = ''
   let expectedTurn = 0
   let loading = false
+  let claiming = false
   let pending = false
   let restarting = false
   let animateAffinity = false
@@ -40,9 +44,11 @@
   $: episode = episodeById(session?.adventure?.episodeId)
   $: presentation = session?.turns.at(-1)?.presentation
   $: feedback = session?.turns.at(-1)?.feedback
-  $: sessionKey = `${$user?.uid}:${$page.params.id}`
+  $: guestRoute = $page.url.searchParams.get('guest') === '1'
+  $: guestMode = guestRoute && !$user
+  $: sessionKey = `${$user?.uid ?? (guestRoute ? 'guest' : 'none')}:${$page.params.id}`
   $: storageKey = `koi-practice-draft:${sessionKey}`
-  $: if (mounted && $authReady && $user && loadedKey !== sessionKey) {
+  $: if (mounted && $authReady && ($user || guestRoute) && loadedKey !== sessionKey) {
     loadedKey = sessionKey
     session = null
     animateAffinity = false
@@ -50,7 +56,7 @@
     message = ''
     void load(true)
   }
-  $: if (!$user) {
+  $: if (!$user && !guestRoute) {
     session = null
     loadedKey = ''
     text = ''
@@ -75,7 +81,9 @@
   }
   function readDraft() {
     try {
-      const raw = sessionStorage.getItem(storageKey)
+      const raw =
+        sessionStorage.getItem(storageKey) ??
+        (guestRoute ? sessionStorage.getItem(`koi-practice-draft:guest:${$page.params.id}`) : null)
       if (!raw) return
       const draft = JSON.parse(raw)
       if (typeof draft.text === 'string') text = draft.text.slice(0, MAX_MESSAGE_LENGTH)
@@ -139,12 +147,32 @@
     if (initial) loading = true
     const key = sessionKey
     try {
-      const response = await authenticatedFetch(`/api/me/practices/${$page.params.id}`)
+      const importing = guestRoute && !!$user
+      claiming = importing
+      const response = importing
+        ? await authenticatedFetch(`/api/guest/practices/${$page.params.id}/claim`, {
+            method: 'POST',
+            body: '{}'
+          })
+        : guestMode
+          ? await guestFetch(`/api/guest/practices/${$page.params.id}`)
+          : await authenticatedFetch(`/api/me/practices/${$page.params.id}`)
       const result = await response.json()
-      if (key === sessionKey && mounted) applySession(result, initial)
+      if (key === sessionKey && mounted) {
+        if (importing && response.status === 202) {
+          clearTimeout(pollTimer)
+          pollTimer = setTimeout(() => void load(initial), 2000)
+          return
+        }
+        claiming = false
+        applySession(result, initial)
+        if (importing)
+          await goto(`/practice/${$page.params.id}`, { replaceState: true, noScroll: true })
+      }
     } catch (error) {
       if (key === sessionKey) {
         pending = false
+        claiming = false
         message = error instanceof Error ? error.message : '会話を読み込めませんでした。'
       }
     } finally {
@@ -164,10 +192,13 @@
     const key = sessionKey
     try {
       const analyticsContext = await getAnalyticsContext()
-      const response = await authenticatedFetch(`/api/me/practices/${session.id}/messages`, {
-        method: 'POST',
-        body: JSON.stringify({ requestId, text: requestText, expectedTurn, analyticsContext })
-      })
+      const response = await (guestMode ? guestFetch : authenticatedFetch)(
+        `/api/${guestMode ? 'guest' : 'me'}/practices/${session.id}/messages`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ requestId, text: requestText, expectedTurn, analyticsContext })
+        }
+      )
       const result = await response.json()
       if (key === sessionKey && mounted) applySession(result)
     } catch (error) {
@@ -222,15 +253,16 @@
 <div class="practice-shell">
   <a class="text-link" href="/#scenes">← お相手・場面選択へ</a>
   {#if !$authReady}<p role="status" class="notice">ログイン状態を確認しています…</p>
-  {:else if !$user}<section class="card empty">
+  {:else if !$user && !guestRoute}<section class="card empty">
       <h1>ログインして続きを練習</h1>
       <p>練習したアカウントでログインすると、会話を再開できます。</p>
       <a class="button primary" href="{`/login?practice=${$page.params.id}`}">Googleでログイン</a>
     </section>
+  {:else if claiming}<p class="notice" role="status">体験の会話と評価を保存しています…</p>
   {:else if session && scene}
     <header class="practice-heading">
       <div>
-        <p class="eyebrow">会話の練習</p>
+        <p class="eyebrow">{guestMode ? 'ログインせず第1話を体験' : '会話の練習'}</p>
         <h1>{scene.title}</h1>
         <p class="muted">{scene.goal}</p>
       </div>
@@ -316,7 +348,8 @@
       </p>{/if}
     {#if message && !session.completedAt}<p class="error" role="alert">{message}</p>{/if}
     {#if session.completedAt && feedback}
-      {#if session.adventure}<AdventureResult
+      {#if guestMode}<GuestPracticeResult session="{session}" />
+      {:else if session.adventure}<AdventureResult
           session="{session}"
           enabled="{data.practiceEnabled}"
           starting="{restarting}"
@@ -354,16 +387,22 @@
           </div>
         {/if}
         <div class="result-actions">
-          <button
-            class="button primary"
-            disabled="{restarting || !data.practiceEnabled}"
-            aria-busy="{restarting}"
-            on:click="{restart}">{restarting ? '準備しています…' : '同じ場面でもう一度'}</button
-          ><a class="button secondary" href="/#scenes">別の場面を選ぶ</a>
+          {#if guestMode}<a class="button primary" href="{guestLoginUrl(session.id)}"
+              >ログインして、続きも練習する →</a
+            >{:else}<button
+              class="button primary"
+              disabled="{restarting || !data.practiceEnabled}"
+              aria-busy="{restarting}"
+              on:click="{restart}">{restarting ? '準備しています…' : '同じ場面でもう一度'}</button
+            >{/if}<a class="button secondary" href="/#scenes"
+            >{guestMode ? '別のお相手を選ぶ' : '別の場面を選ぶ'}</a
+          >
         </div>
         {#if message}<p class="error" role="alert">{message}</p>{/if}
         <p class="small muted">
-          新しい練習は3往復1枠・6往復2枠を使います。今回の振り返りは、この画面で再確認できます。
+          {guestMode
+            ? 'ログインして保存すると、通常のアルバムや再練習も使えます。'
+            : '新しい練習は3往復1枠・6往復2枠を使います。今回の振り返りは、この画面で再確認できます。'}
         </p>
       </section>
     {:else if !data.practiceEnabled}<p class="notice">
@@ -397,9 +436,11 @@
           >
         </div>
         <p class="small muted">
-          {session.chargedAt
-            ? 'この練習は残りの返答と振り返りまで追加消費なし。'
-            : `最初の返答の保存に成功すると、${session.creditCost ?? 1}枠を使用します。`}<br
+          {guestMode
+            ? '未ログインの体験は3往復まで。ログインして会話を保存すると、毎月10枠のうち1枠を使用します。'
+            : session.chargedAt
+              ? 'この練習は残りの返答と振り返りまで追加消費なし。'
+              : `最初の返答の保存に成功すると、${session.creditCost ?? 1}枠を使用します。`}<br
           />会話はAIに送信し、再開・振り返りのために保存します。実名・連絡先は入力しないでください。
         </p>
       </form>{/if}
