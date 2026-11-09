@@ -3,7 +3,10 @@
   import type { BillingOverview } from '$lib/billing'
   export let billing: BillingOverview
   $: common = billing.credits
-    .filter((g) => g.kind !== 'route')
+    .filter((g) => g.kind === 'free' || g.kind === 'plus')
+    .reduce((sum, g) => sum + g.remaining, 0)
+  $: topup = billing.credits
+    .filter((g) => g.kind === 'topup')
     .reduce((sum, g) => sum + g.remaining, 0)
   $: packs = billing.credits.filter((g) => g.kind === 'route')
 </script>
@@ -23,10 +26,13 @@
       timeZone: 'Asia/Tokyo'
     })}
   </p>
+  <p class="small">
+    追加購入の共通枠 <strong>{topup}枠</strong> · 期限なし <a href="/pricing#topup">追加する →</a>
+  </p>
   {#if packs.length}<div class="pack-balances">
       {#each packs as pack}<span
           >{characters.find((c) => c.id === pack.characterId)?.name}専用
-          <strong>{pack.remaining}枠</strong></span
+          <strong>{pack.remaining}枠</strong> · 期限なし</span
         >{/each}
     </div>{/if}<a class="small" href="/account">枠・購入・契約を確認 →</a>
 </div>

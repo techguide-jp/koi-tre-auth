@@ -1,7 +1,9 @@
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { findScene, normalizeCustomScene } from '$lib/practice'
-import { normalizeAdventure } from '$lib/adventure'
+import { episodeById, normalizeAdventure } from '$lib/adventure'
+import { availableCredits, practiceCreditCost } from '$lib/billing'
+import { getBillingOverview } from '$lib/server/db/repositories/credits'
 import { requireFirebaseUser } from '$lib/server/request-auth'
 import {
   createPractice,
@@ -38,11 +40,19 @@ export const POST: RequestHandler = async ({ request }) => {
       photoUrl: actor.picture ?? null
     })
   }
-  if (
-    !(await getPractice(actor.uid, body.id)) &&
-    (await getPracticeOverview(actor.uid)).remaining === 0
-  ) {
-    throw error(429, 'この練習に使える枠が足りません。途中の練習は再開できます。')
+  if (!(await getPractice(actor.uid, body.id))) {
+    const billing = await getBillingOverview(actor.uid)
+    const remaining = availableCredits(
+      billing.credits,
+      adventure?.characterId,
+      !!adventure && !!episodeById(adventure.episodeId)?.chapter
+    )
+    // 他の人物の専用枠や、6往復に足りない1枠だけでは開始しない。
+    if (remaining < practiceCreditCost(adventure?.turns ?? 3))
+      throw error(
+        429,
+        'この練習に使える枠が足りません。3往復は1枠、6往復は2枠です。途中の練習は再開できます。'
+      )
   }
   const created = await createPractice(
     actor.uid,
@@ -55,7 +65,7 @@ export const POST: RequestHandler = async ({ request }) => {
   if (created === 'affinity')
     throw error(403, 'この話の必要好感度に届いていません。解放済みの場面で会話を重ねましょう。')
   if (created === 'purchase')
-    throw error(403, 'この人物のルートパックを購入すると、本編を続けられます。')
+    throw error(403, 'Plusに加入するか、この人物のルートパックを購入すると、本編を続けられます。')
   if (created === 'plus') throw error(403, '本編クリア後の交流・イベントはPlusの対象です。')
   if (created === 'unpublished') throw error(403, 'このイベントは公開前です。')
   if (!created) throw error(409, '別の練習として開始してください。')

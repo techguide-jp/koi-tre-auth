@@ -4,7 +4,14 @@
   import { page } from '$app/stores'
   import { characters, type PartnerGender } from '$lib/adventure-catalog'
   import type { AdventureProgress } from '$lib/adventure'
-  import { ROUTE_PRICE, PLUS_PRICE, productKey, type BillingProduct } from '$lib/billing'
+  import {
+    ROUTE_PRICE,
+    PLUS_PRICE,
+    TOPUP_PRICE,
+    TOPUP_CREDITS,
+    productKey,
+    type BillingProduct
+  } from '$lib/billing'
   import { checkoutProduct } from '$lib/billing-client'
   import { authReady, authenticatedFetch, user } from '$lib/stores'
   import CharacterPortrait from '$lib/components/adventure/CharacterPortrait.svelte'
@@ -20,12 +27,6 @@
   let alive = false
   $: roster = characters.filter((c) => c.gender === gender)
   $: owned = progress?.billing?.ownedCharacters ?? []
-  $: eligible = !!progress?.endings?.some(
-    (e) =>
-      owned.includes(e.characterId) &&
-      (!progress?.progression ||
-        progress.progression.clearedEpisodes.includes(`${e.characterId}:${e.characterId}-12`))
-  )
   $: subscribed = !!progress?.billing?.subscription?.active
   $: if (mounted && $user && $user.uid !== loadedUid) {
     loadedUid = $user.uid
@@ -94,8 +95,8 @@
   <p class="section-label">話したい気持ちに、合わせて。</p>
   <h1>出会って、知り合って。<br />その先の物語へ。</h1>
   <p>
-    無料で好きなお相手を見つけて、気になる人の本編を。<br
-    />クリアした後も話したくなったら、Plusで続きを楽しめます。
+    無料で出会いを体験したら、Plusで全員の本編へ。<br
+    />好きな人の物語を残したい方には、買い切りのルートパックも。
   </p>
   {#if data.billingReady}<p class="notice">テスト環境です。実際の請求は発生しません。</p>{:else}<p
       class="notice"
@@ -115,57 +116,80 @@
       <li>毎月10枠</li>
       <li>共通場面・カスタム練習</li>
       <li>25点評価・星形グラフ・具体的な言い換え</li>
-      <li>クリア済み場面の再練習</li>
+      <li>無料対象のクリア済み場面の再練習</li>
     </ul>
     <a class="button secondary" href="/#scenes">無料でお相手を選ぶ →</a>
   </article>
-  <article class="plan featured">
-    <p class="eyebrow">この人と、結末まで</p>
-    <h2>ルートパック</h2>
-    <p class="price">{ROUTE_PRICE.toLocaleString()}<span>円／1人・買い切り</span></p>
-    <ul>
-      <li>選んだ人物の4〜12話・エンディング</li>
-      <li>人物専用24枠・期限なし</li>
-      <li>全9話を6往復で遊んでも18枠</li>
-      <li>6往復の完了で、場面専用イラストを獲得</li>
-      <li>デート編・本音編などへ戻って練習</li>
-      <li>本編・会話・獲得した思い出を保持</li>
-    </ul>
-    <a class="button primary" href="#route-packs">気になる人の本編を見る ↓</a>
-    <p class="small muted">月額への加入は任意です。</p>
-  </article>
-  <article class="plan" id="plus">
-    <p class="eyebrow">物語のあとも、話したい</p>
+  <article class="plan featured" id="plus">
+    <p class="eyebrow">全員の物語も、これからの会話も</p>
     <h2>Koi-Tre Plus</h2>
     <p class="price">{PLUS_PRICE.toLocaleString()}<span>円／月</span></p>
     <ul>
-      <li>本編クリア済みの人物との日常交流</li>
-      <li>契約更新ごと共通60枠</li>
+      <li>全キャラの通常本編を攻略・再練習</li>
+      <li>本編クリア後は、その人物との日常交流</li>
+      <li>契約更新ごと共通60枠・繰越なし</li>
+      <li>公開される通常の追加キャラ・ストーリーも対象</li>
       <li>毎月1日・16日の季節イベント</li>
       <li>過去の会話・選んだ結末を引き継ぐ</li>
       <li>成長の振り返りと自分向けの練習</li>
     </ul>
     {#if subscribed}<a class="button secondary" href="/account">契約を確認する</a>{:else}<button
         class="button secondary"
-        disabled="{!data.billingReady || !$authReady || !!pendingKey || !eligible}"
+        disabled="{!data.billingReady || !$authReady || !!pendingKey || (!!$user && !progress)}"
         aria-busy="{pendingKey === 'plus'}"
         on:click="{() => purchase({ kind: 'plus' })}"
         >{pendingKey === 'plus'
           ? '購入画面を準備中…'
           : !data.billingReady
             ? '準備中'
-            : eligible
-              ? 'Plusを始める'
-              : '本編クリア後に始められます'}</button
+            : 'Plusを始める'}</button
       >{/if}
-    <p class="small muted">本編の解放は人物別ルートパックの対象です。</p>
+    <p class="small muted">本編クリア前から加入できます。Plusだけで攻略・再練習が可能です。</p>
     {#if messageKey === 'plus' && message}<p class="error" role="status">{message}</p>{/if}
   </article>
+  <article class="plan">
+    <p class="eyebrow">この人と、結末まで</p>
+    <h2>ルートパック</h2>
+    <p class="price">{ROUTE_PRICE.toLocaleString()}<span>円／1人・買い切り</span></p>
+    <ul>
+      <li>選んだ人物の4〜12話・エンディング</li>
+      <li>人物専用24枠・期限なし</li>
+      <li>本編9話の会話分は6往復で18枠（再挑戦は別）</li>
+      <li>6往復の完了で、場面専用イラストを獲得</li>
+      <li>デート編・本音編などへ戻って練習</li>
+      <li>24枠を使い切っても、購入した本編の利用権は残る</li>
+    </ul>
+    <a class="button primary" href="#route-packs">気になる人の本編を見る ↓</a>
+    <p class="small muted">Plus解約後も購入章を練習できます。将来の追加シーズンは対象外です。</p>
+  </article>
 </div>
+<section class="topup plan" id="topup">
+  <p class="eyebrow">もう少し話したいときに</p>
+  <h2>追加の共通枠</h2>
+  <p class="price">{TOPUP_PRICE.toLocaleString()}<span>円／{TOPUP_CREDITS}枠・期限なし</span></p>
+  <p>全キャラ・共通場面・カスタム練習で共有。Plus未加入でも購入できます。</p>
+  <p class="small muted">
+    有料本編にはPlusか人物パックが必要です。自動購入・自動超過課金はありません。
+  </p>
+  <button
+    class="button secondary"
+    disabled="{!data.billingReady || !$authReady || !!pendingKey}"
+    aria-busy="{pendingKey === 'topup'}"
+    on:click="{() => purchase({ kind: 'topup' })}"
+    >{pendingKey === 'topup'
+      ? '購入画面を準備中…'
+      : data.billingReady
+        ? '追加15枠を購入する · 550円'
+        : '販売準備中'}</button
+  >
+  {#if messageKey === 'topup' && message}<p class="error" role="status">{message}</p>{/if}
+</section>
 <section class="route-packs" id="route-packs">
   <p class="section-label">気になる人の、その先へ。</p>
   <h2>誰の本編を、始めよう。</h2>
-  <p>出会い編の続きから、全12話の物語へ進みます。</p>
+  <p>
+    月額を使わず1人を攻略したいとき、Plus解約後もその人物の本編を練習したいときに。購入した章には無料枠・専用枠・追加購入枠を使えます。
+  </p>
   <div class="gender-tabs">
     <button
       class:active="{gender === 'male'}"
@@ -214,7 +238,7 @@
   <details>
     <summary>買い切りと月額は、両方必要ですか？</summary>
     <p>
-      ルートパックだけで、その人物の本編を最後まで楽しめます。Plusは本編クリア後の交流を楽しむための任意のプランです。Plusは1アカウント分で、クリア済みの人物全員が対象です。
+      Plusだけで全員の通常本編を攻略・再練習できます。ルートパックは、選んだ人物の本編を月額なしでも遊べる買い切りです。両方の購入は必要ありません。追加15枠は会話量を増やす商品で、本編の解放権は付きません。
     </p>
   </details>
   <details>
@@ -226,13 +250,13 @@
   <details>
     <summary>枠はいつ使われ、いつ更新されますか？</summary>
     <p>
-      最初のAI返答の生成・保存に成功したときに消費します。途中再開・再送・生成失敗で追加消費しません。無料枠は日本時間の月初、Plusは契約更新日に更新し、繰越はありません。パック枠には期限がなく、購入人物の出会い・本編・再挑戦に使えます。使用できる共通枠を先に、不足分を人物専用枠から使います。
+      最初のAI返答の生成・保存に成功したときに消費します。途中再開・再送・生成失敗で追加消費しません。無料枠は日本時間の月初、Plusは契約更新日に更新し、繰越はありません。パック枠には期限がなく、購入人物の出会い・本編・再挑戦に使えます。期限のある無料・Plus枠、対象人物の専用枠、追加購入の共通枠の順に使います。追加購入枠にも期限はありません。Plusの60枠と無料10枠は合算しません。
     </p>
   </details>
   <details>
     <summary>解約すると、物語や思い出は消えますか？</summary>
     <p>
-      解約は次回更新の停止です。支払い済み期間の終了までPlusを利用できます。その後も購入済み本編、保存済み会話、思い出、XPは残ります。Plus対象の日常交流やイベントの新しいプレイには、再加入が必要です。
+      解約は次回更新の停止です。支払い済み期間の終了までPlusを利用できます。その後も購入済み本編、未使用の人物専用・追加購入枠、保存済み会話・分析・思い出・進行記録は残ります。未購入の有料本編を新たに遊ぶには、再加入か人物パックが必要です。日常交流やイベントの新しいプレイには再加入が必要です。消費済みの途中会話は完了まで続けられます。
     </p>
   </details>
   <p class="small muted">
@@ -317,6 +341,16 @@
   .plan > .small {
     margin-bottom: 0;
     line-height: 1.8;
+  }
+  .topup {
+    margin-top: 24px;
+    max-width: 760px;
+  }
+  .topup > p {
+    line-height: 1.8;
+  }
+  .topup > button {
+    align-self: flex-start;
   }
   .route-packs {
     padding: 64px 0;

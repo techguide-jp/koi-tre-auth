@@ -6,8 +6,9 @@ import {
   PLUS_CREDITS,
   PLUS_PRICE,
   productKey,
+  productPrice,
   ROUTE_CREDITS,
-  ROUTE_PRICE,
+  TOPUP_CREDITS,
   type BillingProduct
 } from '$lib/billing'
 import { getDb } from './db/client'
@@ -17,13 +18,11 @@ import {
   billingEvents,
   billingPaymentStates,
   billingSubscriptions,
-  characterEndings,
   creditGrants,
   routePurchases,
   users
 } from './db/schema'
 import { readCreditState, type CreditDb } from './db/repositories/credits'
-import { readProgression, settleProgression } from './db/repositories/progression'
 import {
   billingBaseUrl,
   stripeClient,
@@ -48,17 +47,6 @@ export async function beginCheckout(uid: string, id: string, product: BillingPro
     if (product.kind === 'route' && state.ownedCharacters.includes(product.characterId))
       throw error(409, 'このルートパックは購入済みです。')
     if (product.kind === 'plus') {
-      await settleProgression(tx, uid, now)
-      const progression = await readProgression(tx, uid)
-      const endings = await tx.select().from(characterEndings).where(eq(characterEndings.uid, uid))
-      if (
-        !endings.some(
-          (e) =>
-            state.ownedCharacters.includes(e.characterId) &&
-            progression.clearedEpisodes.includes(`${e.characterId}:${e.characterId}-12`)
-        )
-      )
-        throw error(403, 'まずは1人の本編をクリアしてください。クリア後の交流をPlusで楽しめます。')
       const existing = await tx
         .select()
         .from(billingSubscriptions)
@@ -114,7 +102,7 @@ export async function beginCheckout(uid: string, id: string, product: BillingPro
       const price = await stripe.prices.retrieve(stripePrice(product))
       if (
         price.currency !== 'jpy' ||
-        price.unit_amount !== (product.kind === 'route' ? ROUTE_PRICE : PLUS_PRICE) ||
+        price.unit_amount !== productPrice(product) ||
         !price.active ||
         (product.kind === 'plus'
           ? price.recurring?.interval !== 'month' || price.recurring.interval_count !== 1
@@ -141,7 +129,7 @@ export async function beginCheckout(uid: string, id: string, product: BillingPro
       const metadata = stripeMetadata(uid, id, product),
         base = billingBaseUrl()
       const requestParams: Stripe.Checkout.SessionCreateParams = {
-        mode: product.kind === 'route' ? 'payment' : 'subscription',
+        mode: product.kind === 'plus' ? 'subscription' : 'payment',
         customer: account.stripeCustomerId,
         client_reference_id: uid,
         metadata,
@@ -234,7 +222,7 @@ async function paymentRevokedAt(db: CreditDb, uid: string, intents: string[]) {
   if (states.some((state) => state.uid !== uid)) throw Error('Payment owner mismatch')
   return states.find((state) => state.revokedAt)?.revokedAt ?? null
 }
-async function fulfillRoute(db: CreditDb, stripe: Stripe, sessionId: string) {
+async function fulfillPayment(db: CreditDb, stripe: Stripe, sessionId: string) {
   const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['line_items'] })
   assertTest(session)
   const uid = session.metadata?.uid,
@@ -250,24 +238,47 @@ async function fulfillRoute(db: CreditDb, stripe: Stripe, sessionId: string) {
     order.product !== session.metadata.product
   )
     throw Error('Checkout association mismatch')
-  const product = billingProduct({ kind: 'route', characterId: order.product.split(':')[1] })
-  if (!product || product.kind !== 'route') return
+  const product = billingProduct(
+    order.product === 'topup'
+      ? { kind: 'topup' }
+      : { kind: 'route', characterId: order.product.split(':')[1] }
+  )
+  if (!product || product.kind === 'plus') return
   if (session.status !== 'complete' || session.payment_status !== 'paid') return
   await verifyCustomer(db, uid, stripeReference(session.customer))
   const lines = session.line_items?.data ?? []
   if (
     session.mode !== 'payment' ||
     session.currency !== 'jpy' ||
-    session.amount_total !== ROUTE_PRICE ||
+    session.amount_total !== productPrice(product) ||
     lines.length !== 1 ||
     stripeReference(lines[0].price) !==
       (order.requestParams?.line_items?.[0]?.price ?? stripePrice(product)) ||
     lines[0].quantity !== 1
   )
-    throw Error('Route amount mismatch')
+    throw Error('Payment amount mismatch')
   // 返金通知が購入完了通知より先でも、支払い単位の失効を購入権と枠へ引き継ぐ。
   const paymentIntentId = stripeReference(session.payment_intent),
     revokedAt = await paymentRevokedAt(db, uid, paymentIntentId ? [paymentIntentId] : [])
+  if (product.kind === 'topup') {
+    // PaymentIntentに対応させ、再照合と通知の重複でも15枠を二重付与しない。
+    await db
+      .insert(creditGrants)
+      .values({
+        id: `topup:${paymentIntentId}`,
+        uid,
+        kind: 'topup',
+        units: TOPUP_CREDITS,
+        startsAt: new Date(session.created * 1000),
+        revokedAt
+      })
+      .onConflictDoNothing()
+    await db
+      .update(billingCheckouts)
+      .set({ status: 'completed' })
+      .where(eq(billingCheckouts.id, order.id))
+    return
+  }
   const prior = await db
     .select()
     .from(routePurchases)
@@ -423,6 +434,16 @@ async function revokeCharge(
       target: billingPaymentStates.paymentIntentId,
       set: { revokedAt, updatedAt: new Date() }
     })
+  await db
+    .update(creditGrants)
+    .set({ revokedAt })
+    .where(
+      and(
+        eq(creditGrants.uid, uid),
+        eq(creditGrants.kind, 'topup'),
+        eq(creditGrants.id, `topup:${intent}`)
+      )
+    )
   const routes = await db
     .select()
     .from(routePurchases)
@@ -479,7 +500,7 @@ export async function handleStripeEvent(event: Stripe.Event) {
       const session = await stripe.checkout.sessions.retrieve(
         (object as Stripe.Checkout.Session).id
       )
-      if (session.mode === 'payment') await fulfillRoute(tx, stripe, session.id)
+      if (session.mode === 'payment') await fulfillPayment(tx, stripe, session.id)
       else if (session.mode === 'subscription' && stripeReference(session.subscription)) {
         await syncSubscription(tx, stripe, stripeReference(session.subscription)!)
         if (session.metadata?.checkout_id)
@@ -543,7 +564,7 @@ export async function reconcileCheckout(uid: string, id: string) {
     throw error(403, '購入状態を確認できませんでした。')
   await getDb().transaction(async (tx) => {
     await lockUser(tx, uid)
-    if (session.mode === 'payment') await fulfillRoute(tx, stripeClient(), session.id)
+    if (session.mode === 'payment') await fulfillPayment(tx, stripeClient(), session.id)
     else if (session.mode === 'subscription' && stripeReference(session.subscription))
       await syncSubscription(tx, stripeClient(), stripeReference(session.subscription)!)
   })

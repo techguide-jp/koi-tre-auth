@@ -15,9 +15,9 @@ export const publicPages: Record<string, { title: string; description: string }>
       'Koi-TreのAI会話練習の使い方、毎月10枠の無料枠、会話・場面設定・アクセス解析のデータの扱いをご案内します。'
   },
   '/pricing': {
-    title: '料金・無料とルートパック・Plus | Koi-Tre',
+    title: '料金・無料とPlus・ルートパック・追加枠 | Koi-Tre',
     description:
-      '無料の出会い編、1人1,480円の買い切りルートパック、月980円のPlusをご案内。3往復1枠・6往復2枠。人物との物語と、クリア後の交流を楽しめます。有料プランは準備中。'
+      '無料の出会い編、月980円で全員の通常本編を攻略・再練習できるPlus、1人1,480円のルートパック、追加共通15枠550円をご案内。3往復1枠・6往復2枠。有料プランは準備中。'
   },
   '/contact': {
     title: 'お問い合わせ | Koi-Tre',

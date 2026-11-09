@@ -141,7 +141,11 @@ export async function getAdventureProgress(uid: string): Promise<AdventureProgre
   }
   progress.badges = progress.badges.map((badge) => ({ ...badge, earned: earned[badge.id] }))
   progress.billing = billing
-  progress.stages = stageProgress(progress.progression, billing.ownedCharacters)
+  progress.stages = stageProgress(
+    progress.progression,
+    billing.ownedCharacters,
+    !!billing.subscription?.active
+  )
   progress.endings = valid.flatMap((row) =>
     row.storyEnding
       ? [
