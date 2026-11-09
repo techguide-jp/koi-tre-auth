@@ -20,6 +20,8 @@ import { parsePracticeOutput } from './practice-feedback'
 import type { KnowledgeContent } from '$lib/knowledge-policy'
 import { getKnowledgeRelease } from './db/repositories/knowledge'
 import { makeKnowledgeContext } from './knowledge-content'
+import type { CharacterSnapshot } from '$lib/character-policy'
+import { characterContentHash, characterDescription } from './character-content'
 export { parsePracticeOutput } from './practice-feedback'
 
 export interface GeneratePracticeInput {
@@ -31,6 +33,7 @@ export interface GeneratePracticeInput {
   adventure?: Adventure | null
   rehearsal?: boolean
   storyContext?: StoryContext | null
+  characterContext?: CharacterSnapshot | null
   policyReleaseId?: string | null
   policyOverride?: { content: KnowledgeContent; contentHash: string }
 }
@@ -39,6 +42,14 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
   const scene = resolveScene(input.sceneId, input.customScene, input.adventure)
   const key = process.env.DIFY_PRACTICE_API_KEY
   if (!key || !scene) throw new Error('Practice is not configured')
+  const persona = input.characterContext
+  if (
+    persona &&
+    (!input.adventure ||
+      persona.characterId !== input.adventure.characterId ||
+      characterContentHash(persona.content) !== persona.contentHash)
+  )
+    throw Error('Practice character context mismatch')
   const base = process.env.DIFY_API_BASE_URL ?? 'https://api.dify.ai/v1'
   // Jevと生成で期限を共有し、保存予約・関数実行上限を超えないようにする。
   const signal = AbortSignal.timeout(55_000)
@@ -91,6 +102,10 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
     : null
   const sceneData = {
     ...scene,
+    // 人物像は相手役の返信だけへ渡し、上で呼ぶJevの採点条件には加えない。
+    ...(persona
+      ? { partnerDescription: characterDescription(persona, coaching.id, input.storyContext) }
+      : {}),
     ...(input.adventure
       ? {
           storyContext: input.storyContext ? structuredClone(input.storyContext) : null,
@@ -119,6 +134,13 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
   // Difyのscene入力上限を超えると会話自体が失敗するため、古い記憶から表示用文脈を縮める。
   while (JSON.stringify(sceneData).length > 4000 && sceneData.storyContext?.memories.length)
     sceneData.storyContext.memories.shift()
+  if (JSON.stringify(sceneData).length > 4000 && persona)
+    sceneData.partnerDescription = characterDescription(
+      persona,
+      coaching.id,
+      input.storyContext,
+      false
+    )
   if (JSON.stringify(sceneData).length > 4000)
     throw Error('Practice scene exceeds workflow input limit')
   const response = await fetch(`${base.replace(/\/$/, '')}/workflows/run`, {

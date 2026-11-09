@@ -18,6 +18,29 @@ import type Stripe from 'stripe'
 import type { PracticeEvaluation } from '$lib/adventure-progression'
 import { boolean } from 'drizzle-orm/pg-core'
 import type { KnowledgeContent, KnowledgePreview, KnowledgeTrace } from '$lib/knowledge-policy'
+import type { CharacterContent, CharacterPreview, CharacterSnapshot } from '$lib/character-policy'
+
+export const characterPolicyReleases = pgTable('character_policy_releases', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  characterId: varchar('character_id', { length: 32 }).$type<CharacterId>().notNull(),
+  version: integer('version').generatedAlwaysAsIdentity().notNull().unique(),
+  content: jsonb('content').$type<CharacterContent>().notNull(),
+  contentHash: varchar('content_hash', { length: 64 }).notNull(),
+  note: varchar('note', { length: 200 }).notNull(),
+  createdBy: varchar('created_by', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+})
+export const characterPolicySettings = pgTable('character_policy_settings', {
+  characterId: varchar('character_id', { length: 32 }).$type<CharacterId>().primaryKey(),
+  draft: jsonb('draft').$type<CharacterContent>().notNull(),
+  draftRevision: integer('draft_revision').notNull().default(0),
+  activeReleaseId: varchar('active_release_id', { length: 36 }).references(
+    () => characterPolicyReleases.id
+  ),
+  preview: jsonb('preview').$type<CharacterPreview>(),
+  updatedBy: varchar('updated_by', { length: 255 }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+})
 
 export const knowledgeReleases = pgTable('knowledge_releases', {
   id: varchar('id', { length: 36 }).primaryKey(),
@@ -92,6 +115,7 @@ export const practices = pgTable(
     rehearsal: jsonb('rehearsal').$type<Rehearsal>(),
     creditCost: integer('credit_cost').notNull().default(1),
     storyContext: jsonb('story_context').$type<StoryContext>(),
+    characterContext: jsonb('character_context').$type<CharacterSnapshot>(),
     storyEnding: jsonb('story_ending').$type<StoryEnding>(),
     policyReleaseId: varchar('policy_release_id', { length: 36 }).references(
       () => knowledgeReleases.id

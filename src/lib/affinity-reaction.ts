@@ -7,6 +7,7 @@ import {
   type PracticeSession
 } from './practice'
 import type { CharacterId, Emotion } from './adventure'
+import type { CharacterReactions } from './character-policy'
 
 export interface AffinityReaction {
   characterId: CharacterId
@@ -103,6 +104,10 @@ const negative: Record<CharacterId, string> = {
   sota: 'ちょっと戸惑っちゃったな。僕の気持ちやペースも、大事にしてもらえると話しやすいよ。',
   ren: '少し戸惑ったよ。今は急がず、僕のペースでも話せると安心する。'
 }
+export const defaultCharacterReactions = (id: CharacterId): CharacterReactions => ({
+  ...positive[id],
+  negative: negative[id]
+})
 const normalize = (text: string) => text.replace(/\s+/gu, ' ').trim()
 
 function evidenceFor(
@@ -146,7 +151,7 @@ export function affinityReaction(session: PracticeSession): AffinityReaction | n
       direction: 'negative',
       emotion: 'puzzled',
       mood: '少し戸惑っている',
-      speech: negative[characterId],
+      speech: session.characterReactions?.negative ?? negative[characterId],
       evidence: evidenceFor(session, 'consideration', 'negative')
     }
   }
@@ -172,7 +177,7 @@ export function affinityReaction(session: PracticeSession): AffinityReaction | n
         : delta >= 8
           ? 'うれしそうに、笑う'
           : '少し照れながら、ほほえむ',
-    speech: positive[characterId][kind],
+    speech: session.characterReactions?.[kind] ?? positive[characterId][kind],
     evidence: !caution && strongest ? evidenceFor(session, strongest.id, 'positive') : undefined
   }
 }
