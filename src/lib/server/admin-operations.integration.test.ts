@@ -562,18 +562,16 @@ describe('管理者の利用者・課金・利用状況', () => {
     await db
       .insert(schema.guestSessions)
       .values({ id: sessionId, expiresAt: end, createdAt: within })
-    await db
-      .insert(schema.guestPractices)
-      .values({
-        id,
-        sessionId,
-        characterId: 'aoi',
-        characterContext: {} as never,
-        storyContext: {} as never,
-        state: { turns: guestTurns, completedAt: within.toISOString(), pending: null },
-        claimedUid: customer,
-        createdAt: within
-      })
+    await db.insert(schema.guestPractices).values({
+      id,
+      sessionId,
+      characterId: 'aoi',
+      characterContext: {} as never,
+      storyContext: {} as never,
+      state: { turns: guestTurns, completedAt: within.toISOString(), pending: null },
+      claimedUid: customer,
+      createdAt: within
+    })
     expect((await getAdminUsage(30, now)).guest.claimed).toBe(0)
     await practice(customer, { id, start: null })
     expect((await getAdminUsage(30, now)).guest.claimed).toBe(0)
@@ -592,18 +590,16 @@ describe('管理者の利用者・課金・利用状況', () => {
     await db
       .insert(schema.guestSessions)
       .values({ id: sessionId, expiresAt: end, createdAt: within })
-    await db
-      .insert(schema.guestPractices)
-      .values({
-        id,
-        sessionId,
-        characterId: 'aoi',
-        characterContext: {} as never,
-        storyContext: {} as never,
-        state: { turns: [saved], completedAt: null, pending: null },
-        claimedUid: customer,
-        createdAt: within
-      })
+    await db.insert(schema.guestPractices).values({
+      id,
+      sessionId,
+      characterId: 'aoi',
+      characterContext: {} as never,
+      storyContext: {} as never,
+      state: { turns: [saved], completedAt: null, pending: null },
+      claimedUid: customer,
+      createdAt: within
+    })
     expect((await getAdminUsage(30, now)).guest.claimed).toBe(0)
     await db
       .update(schema.guestPractices)
@@ -617,18 +613,16 @@ describe('管理者の利用者・課金・利用状況', () => {
     await db
       .insert(schema.guestSessions)
       .values({ id: sessionId, expiresAt: end, createdAt: within })
-    await db
-      .insert(schema.guestPractices)
-      .values({
-        id,
-        sessionId,
-        characterId: 'aoi',
-        characterContext: {} as never,
-        storyContext: {} as never,
-        state: { turns: [], completedAt: null, pending: null },
-        claimedUid: customer,
-        createdAt: within
-      })
+    await db.insert(schema.guestPractices).values({
+      id,
+      sessionId,
+      characterId: 'aoi',
+      characterContext: {} as never,
+      storyContext: {} as never,
+      state: { turns: [], completedAt: null, pending: null },
+      claimedUid: customer,
+      createdAt: within
+    })
     expect((await getAdminUsage(30, now)).guest.claimed).toBe(0)
     await practice(customer, { id, start: null })
     const view = await getAdminUsage(30, now)
