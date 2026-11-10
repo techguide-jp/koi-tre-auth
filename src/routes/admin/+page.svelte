@@ -3,8 +3,26 @@
 >
 <div class="admin-home">
   <p>Koi-Tre 運営管理</p>
-  <h1>会話と練習を育てる</h1>
+  <h1>サービスの今を見渡す</h1>
   <div class="cards">
+    <a class="card" href="/admin/users"
+      ><span>アカウントと進行</span>
+      <h2>利用者情報</h2>
+      <p>利用者を探し、契約・残枠・練習や好感度の状態を確認する。</p>
+      <strong>利用者を確認する →</strong></a
+    >
+    <a class="card" href="/admin/billing"
+      ><span>契約と購入記録</span>
+      <h2>課金情報</h2>
+      <p>Plus・人物パック・追加枠の利用権と付与履歴を確認する。</p>
+      <strong>課金情報を見る →</strong></a
+    >
+    <a class="card" href="/admin/usage"
+      ><span>日別の利用と傾向</span>
+      <h2>利用状況</h2>
+      <p>練習の開始・完了、利用する人物や未ログイン体験を知る。</p>
+      <strong>利用状況を見る →</strong></a
+    >
     <a class="card" href="/admin/knowledge"
       ><span>評価とアドバイス</span>
       <h2>評価方針・知識</h2>

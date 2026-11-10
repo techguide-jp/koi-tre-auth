@@ -18,6 +18,7 @@ function pageUrl(value: string, includeCampaign = false) {
   if (!value) return ''
   try {
     const url = new URL(value, window.location.origin)
+    if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) return ''
     const campaign = includeCampaign ? readPromotionQuery(url.searchParams) : ''
     return `${url.origin}${url.pathname}${campaign ? `?${campaign}` : ''}`
   } catch {
@@ -26,6 +27,8 @@ function pageUrl(value: string, includeCampaign = false) {
 }
 
 export function trackPageView(url: URL, referrer: string) {
+  // 管理者の閲覧を利用者の回遊へ混ぜず、管理ページの情報も計測へ渡さない。
+  if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) return
   trackEvent('page_view', {
     page_location: pageUrl(url.href, true),
     page_path: url.pathname,
