@@ -136,9 +136,13 @@ describe('方針の検索と記録', () => {
   })
   it('重複ID・未知の場面・文字数超過を拒否し、余分な入力を保存しない', () => {
     const content = defaultKnowledgeContent()
-    expect(contentHash({ documents: content.documents, core: content.core })).toBe(
-      contentHash(content)
-    )
+    expect(
+      contentHash({
+        retrieval: content.retrieval,
+        documents: content.documents,
+        core: content.core
+      })
+    ).toBe(contentHash(content))
     expect(parseKnowledgeContent({ ...content, admin: true })).toEqual(content)
     expect(() => parseKnowledgeContent({ ...content, core: '短い' })).toThrow()
     expect(() =>

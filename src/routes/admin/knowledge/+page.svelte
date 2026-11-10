@@ -269,6 +269,18 @@
         <p class="hint">
           場面別のノウハウ、よい例・避けたい例、研究メモなど。場面と本文から関連箇所を選び、生成と評価に渡します。
         </p>
+        <label class="field"
+          >検索方法<select
+            bind:value="{content.retrieval}"
+            disabled="{!!pending}"
+            on:change="{changed}"
+            ><option value="scene-bm25-v2">関連する別文書を最大3件（推奨）</option>
+            <option value="{undefined}">従来方式（同じ文書を最大2件）</option></select
+          ></label
+        >
+        <p class="hint">
+          推奨方式は、場面を絞って話題の一致を確認します。助言と使う条件・注意点は、同じ段落にまとめてください。変更は下書き保存・動作確認・公開後に、新しい練習へ適用します。
+        </p>
         {#each content.documents as doc, index (doc.id)}
           <details class="document">
             <summary

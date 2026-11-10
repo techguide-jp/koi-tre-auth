@@ -6,7 +6,8 @@ import {
   type KnowledgeContent,
   type KnowledgeContext,
   type KnowledgeProfile,
-  type KnowledgeTrace
+  type KnowledgeTrace,
+  type KnowledgeRetriever
 } from '$lib/knowledge-policy'
 import { coachingProfiles } from './practice-coaching'
 
@@ -22,9 +23,10 @@ export const defaultKnowledgeContent = (): KnowledgeContent => ({
   documents: Object.entries(coachingProfiles).map(([id, profile]) => ({
     id: `scene-${id}`,
     title: profile.label,
-    content: `${profile.purpose}\n\n${profile.focus}\n\n${profile.avoid}\n\n${profile.expression}`,
+    content: [profile.purpose, profile.focus, profile.avoid, profile.expression].join(' '),
     profiles: [id as KnowledgeProfile]
-  }))
+  })),
+  retrieval: 'scene-bm25-v2'
 })
 export const contentHash = (content: KnowledgeContent) =>
   createHash('sha256')
@@ -34,12 +36,11 @@ function contextHash(
   core: string,
   passages: KnowledgeContext['passages'],
   profile: KnowledgeProfile,
-  hash: string
+  hash: string,
+  retriever: KnowledgeRetriever
 ) {
   return createHash('sha256')
-    .update(
-      JSON.stringify({ core, passages, profile, contentHash: hash, retriever: 'scene-bm25-v1' })
-    )
+    .update(JSON.stringify({ core, passages, profile, contentHash: hash, retriever }))
     .digest('hex')
 }
 export function makeKnowledgeContext(
@@ -48,6 +49,7 @@ export function makeKnowledgeContext(
   query: string
 ): KnowledgeContext {
   const passages = retrieveKnowledge(release.content, profile, query)
+  const retriever = release.content.retrieval ?? 'scene-bm25-v1'
   return {
     core: release.content.core,
     passages,
@@ -55,8 +57,14 @@ export function makeKnowledgeContext(
       releaseId: release.id,
       version: release.version,
       contentHash: release.contentHash,
-      contextHash: contextHash(release.content.core, passages, profile, release.contentHash),
-      retriever: 'scene-bm25-v1',
+      contextHash: contextHash(
+        release.content.core,
+        passages,
+        profile,
+        release.contentHash,
+        retriever
+      ),
+      retriever,
       profile,
       sources: passages.map(({ documentId, chunkIndex }) => ({ documentId, chunkIndex }))
     }
@@ -70,7 +78,7 @@ export function restoreKnowledgeContext(
     trace.releaseId !== release.id ||
     trace.version !== release.version ||
     trace.contentHash !== release.contentHash ||
-    trace.retriever !== 'scene-bm25-v1'
+    trace.retriever !== (release.content.retrieval ?? 'scene-bm25-v1')
   )
     throw Error('保存された評価方針の版が一致しません。')
   const chunks = release.content.documents.flatMap(knowledgeChunks)
@@ -82,8 +90,13 @@ export function restoreKnowledgeContext(
     return passage
   })
   if (
-    contextHash(release.content.core, passages, trace.profile, release.contentHash) !==
-    trace.contextHash
+    contextHash(
+      release.content.core,
+      passages,
+      trace.profile,
+      release.contentHash,
+      trace.retriever
+    ) !== trace.contextHash
   )
     throw Error('保存された評価方針の内容が一致しません。')
   return { core: release.content.core, passages, trace }
