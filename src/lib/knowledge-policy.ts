@@ -19,7 +19,10 @@ export interface KnowledgeDocument {
 export interface KnowledgeContent {
   core: string
   documents: KnowledgeDocument[]
+  // 未指定の公開版は従来方式に固定し、既存会話の検索とハッシュを変えない。
+  retrieval?: 'scene-bm25-v2'
 }
+export type KnowledgeRetriever = 'scene-bm25-v1' | 'scene-bm25-v2'
 export interface KnowledgeSource {
   documentId: string
   chunkIndex: number
@@ -29,7 +32,7 @@ export interface KnowledgeTrace {
   version: number | null
   contentHash: string
   contextHash: string
-  retriever: 'scene-bm25-v1'
+  retriever: KnowledgeRetriever
   profile: KnowledgeProfile
   sources: KnowledgeSource[]
 }
@@ -85,6 +88,8 @@ function text(value: unknown, min: number, max: number) {
 export function parseKnowledgeContent(value: unknown): KnowledgeContent {
   const input = record(value)
   const core = text(input.core, 20, 3000)
+  if (input.retrieval !== undefined && input.retrieval !== 'scene-bm25-v2')
+    throw Error('検索方式を確認してください。')
   if (!Array.isArray(input.documents) || input.documents.length > 40)
     throw Error('知識文書は40件までです。')
   const ids = new Set<string>()
@@ -107,7 +112,11 @@ export function parseKnowledgeContent(value: unknown): KnowledgeContent {
     return { id, title, content, profiles: [...new Set(doc.profiles)] as KnowledgeProfile[] }
   })
   if (size > 100000) throw Error('方針と知識文書は合計10万字までです。')
-  return { core, documents }
+  return {
+    core,
+    documents,
+    ...(input.retrieval === 'scene-bm25-v2' ? { retrieval: input.retrieval } : {})
+  }
 }
 
 export function knowledgeChunks(doc: KnowledgeDocument): KnowledgePassage[] {
@@ -146,6 +155,7 @@ export function retrieveKnowledge(
   profile: KnowledgeProfile,
   query: string
 ): KnowledgePassage[] {
+  const precise = content.retrieval === 'scene-bm25-v2'
   const docs = content.documents.filter(
     (doc) => !doc.profiles.length || doc.profiles.includes(profile)
   )
@@ -165,16 +175,18 @@ export function retrieveKnowledge(
   const ranked = chunks
     .map((chunk) => {
       let score = chunk.tagged ? 2 : 0
+      let matched = false
       for (const term of wanted) {
         const tf = chunk.words.filter((word) => word === term).length
         if (!tf) continue
+        matched = true
         const df = frequency.get(term) ?? 0
         const idf = Math.log(1 + (chunks.length - df + 0.5) / (df + 0.5))
         score += (idf * (tf * 2.2)) / (tf + 1.2 * (0.25 + (0.75 * chunk.words.length) / average))
       }
-      return { ...chunk, score }
+      return { ...chunk, score, matched }
     })
-    .filter((chunk) => chunk.score > 0)
+    .filter((chunk) => chunk.score > 0 && (!precise || chunk.matched))
     .sort(
       (a, b) =>
         b.score - a.score ||
@@ -185,7 +197,7 @@ export function retrieveKnowledge(
     counts = new Map<string, number>()
   for (const chunk of ranked) {
     const id = chunk.passage.documentId
-    if ((counts.get(id) ?? 0) >= 2) continue
+    if ((counts.get(id) ?? 0) >= (precise ? 1 : 2)) continue
     counts.set(id, (counts.get(id) ?? 0) + 1)
     result.push(chunk.passage)
     if (result.length === 3) break

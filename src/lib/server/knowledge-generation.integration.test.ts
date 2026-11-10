@@ -122,12 +122,18 @@ describe('同じ公開方針を生成と評価に適用する', () => {
     for (const [url, options] of fetch.mock.calls)
       if (url.includes('typesafe.ai')) expect(options.body).not.toContain('青い便箋')
   })
-  it.each([3, 6] as const)(
-    '%s往復の最終回に同じ文脈を送り、サーバー側の出典を記録する',
-    async (count) => {
+  it.each([
+    { count: 3, mode: 'scene-bm25-v1' },
+    { count: 6, mode: 'scene-bm25-v1' },
+    { count: 3, mode: 'scene-bm25-v2' },
+    { count: 6, mode: 'scene-bm25-v2' }
+  ] as const)(
+    '$count往復・$modeの最終回に同じ文脈を送り、サーバー側の出典を記録する',
+    async ({ count, mode }) => {
       vi.stubEnv('DIFY_PRACTICE_API_KEY', 'fixture')
       vi.stubEnv('TYPESAFE_API_KEY', 'fixture')
       const content = defaultKnowledgeContent()
+      if (mode === 'scene-bm25-v1') delete content.retrieval
       const texts = Array.from({ length: count }, (_, i) => exampleTexts[i % 3])
       const feedback = structuredClone(exampleFeedback)
       feedback.analysis!.version = 3
@@ -167,6 +173,7 @@ describe('同じ公開方針を生成と評価に適用する', () => {
         dify = JSON.parse(fetch.mock.calls[1][1].body as string)
       expect(JSON.parse(dify.inputs.policy_context)).toEqual(jev.state.policy)
       expect(jev.state.policy.core).toBe(content.core)
+      expect(jev.state.policy.trace.retriever).toBe(mode)
       expect(jev.state.policy.passages.length).toBeGreaterThan(0)
       expect(dify.inputs.scene.length).toBeLessThanOrEqual(4000)
       expect(result.policyContext).toEqual(jev.state.policy.trace)
