@@ -151,7 +151,20 @@ export async function getAdminUsage(days: AdminDays, now = new Date()): Promise<
           .select({
             created: count(),
             completed: sql<number>`count(*) filter (where ${guestPractices.state}->>'completedAt' is not null)::int`,
-            claimed: sql<number>`count(*) filter (where ${guestPractices.claimedUid} is not null)::int`
+            // claimed_uid は再開する本人の予約。全返答の保存まで終わったものだけを引き継ぎ済みにする。
+            claimed: sql<number>`count(*) filter (where ${guestPractices.claimedUid} is not null and exists (
+              select 1 from ${practices}
+              where ${practices.id} = ${guestPractices.id} and ${practices.uid} = ${guestPractices.claimedUid}
+              and not exists (
+                select 1 from jsonb_array_elements(${guestPractices.state}->'turns') as guest_turn
+                where not exists (
+                  select 1 from ${practiceTurns}
+                  where ${practiceTurns.practiceId} = ${guestPractices.id}
+                  and ${practiceTurns.requestId} = guest_turn->>'requestId'
+                  and ${practiceTurns.position}::text = guest_turn->>'position'
+                )
+              )
+            ))::int`
           })
           .from(guestPractices)
           .innerJoin(guestSessions, eq(guestSessions.id, guestPractices.sessionId))

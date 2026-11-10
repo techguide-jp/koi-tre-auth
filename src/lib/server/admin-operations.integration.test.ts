@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { readFile, readdir } from 'node:fs/promises'
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle } from 'drizzle-orm/pglite'
+import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from './db/schema'
 import { getAdminUsers, getAdminUserDetail } from './db/repositories/admin-users'
@@ -116,9 +117,10 @@ async function practice(
     created?: Date
     adventure?: boolean
     xp?: AdventureReward['xp']
+    id?: string
   } = {}
 ) {
-  const id = randomUUID(),
+  const id = options.id ?? randomUUID(),
     start = options.start === undefined ? within : options.start
   await db.insert(schema.practices).values({
     id,
@@ -143,7 +145,7 @@ async function practice(
   return id
 }
 async function turn(id: string, position: number, createdAt = within) {
-  await db.insert(schema.practiceTurns).values({
+  const row = {
     id: randomUUID(),
     practiceId: id,
     requestId: randomUUID(),
@@ -152,7 +154,9 @@ async function turn(id: string, position: number, createdAt = within) {
     assistantText: '__PRIVATE_ASSISTANT_TEXT__',
     feedback: assessedFeedback('__PRIVATE_ANALYSIS_QUOTE__'),
     createdAt
-  })
+  }
+  await db.insert(schema.practiceTurns).values(row)
+  return row
 }
 async function grant(
   uid: string,
@@ -522,27 +526,114 @@ describe('管理者の利用者・課金・利用状況', () => {
     expect(view.topUsers[0]).toMatchObject({ uid: customer, replies: 3 })
   })
   it('ゲストは期限内の保存分を別集計し、引き継ぎや削除済み相当を合算しない', async () => {
+    const imported = await practice(customer, { finish: within })
+    const importedTurns = []
+    for (let i = 1; i <= 3; i++) importedTurns.push(await turn(imported, i))
     for (const expired of [false, true]) {
       const sessionId = randomUUID()
       await db
         .insert(schema.guestSessions)
         .values({ id: sessionId, expiresAt: expired ? old : end, createdAt: within })
       await db.insert(schema.guestPractices).values({
-        id: randomUUID(),
+        id: expired ? randomUUID() : imported,
         sessionId,
         characterId: 'aoi',
         characterContext: {} as never,
         storyContext: {} as never,
-        state: { turns: [], completedAt: within.toISOString(), pending: null },
+        state: { turns: importedTurns, completedAt: within.toISOString(), pending: null },
         claimedUid: customer,
         createdAt: within
       })
     }
-    const imported = await practice(customer, { finish: within })
-    for (let i = 1; i <= 3; i++) await turn(imported, i)
     const view = await getAdminUsage(90, now)
     expect(view.guest).toEqual({ created: 1, completed: 1, claimed: 1, retentionDays: 30 })
     expect(view.totals).toMatchObject({ started: 1, completed: 1, replies: 3, activeUsers: 1 })
+  })
+  it('引き継ぎ予約・下書き・一部保存を成功へ数えず、全返答の保存後だけ数える', async () => {
+    const id = randomUUID(),
+      sessionId = randomUUID()
+    const guestTurns = Array.from({ length: 3 }, (_, i) => ({
+      requestId: randomUUID(),
+      position: i + 1,
+      userText: '架空の発言',
+      assistantText: '架空の返答',
+      feedback: null
+    }))
+    await db
+      .insert(schema.guestSessions)
+      .values({ id: sessionId, expiresAt: end, createdAt: within })
+    await db
+      .insert(schema.guestPractices)
+      .values({
+        id,
+        sessionId,
+        characterId: 'aoi',
+        characterContext: {} as never,
+        storyContext: {} as never,
+        state: { turns: guestTurns, completedAt: within.toISOString(), pending: null },
+        claimedUid: customer,
+        createdAt: within
+      })
+    expect((await getAdminUsage(30, now)).guest.claimed).toBe(0)
+    await practice(customer, { id, start: null })
+    expect((await getAdminUsage(30, now)).guest.claimed).toBe(0)
+    for (const item of guestTurns) {
+      await db
+        .insert(schema.practiceTurns)
+        .values({ id: randomUUID(), practiceId: id, ...item, createdAt: within })
+      expect((await getAdminUsage(30, now)).guest.claimed).toBe(item.position === 3 ? 1 : 0)
+    }
+    expect((await getAdminUsage(30, now)).guest.claimed).toBe(1)
+  })
+  it('同じIDに別利用者の返答があっても引き継ぎ済みへ数えない', async () => {
+    const id = await practice(other, { finish: within }),
+      sessionId = randomUUID(),
+      saved = await turn(id, 1)
+    await db
+      .insert(schema.guestSessions)
+      .values({ id: sessionId, expiresAt: end, createdAt: within })
+    await db
+      .insert(schema.guestPractices)
+      .values({
+        id,
+        sessionId,
+        characterId: 'aoi',
+        characterContext: {} as never,
+        storyContext: {} as never,
+        state: { turns: [saved], completedAt: null, pending: null },
+        claimedUid: customer,
+        createdAt: within
+      })
+    expect((await getAdminUsage(30, now)).guest.claimed).toBe(0)
+    await db
+      .update(schema.guestPractices)
+      .set({ claimedUid: other })
+      .where(eq(schema.guestPractices.id, id))
+    expect((await getAdminUsage(30, now)).guest.claimed).toBe(1)
+  })
+  it('未発言の体験は本人の下書きが保存されてから引き継ぎ済みにし、練習開始とは分ける', async () => {
+    const id = randomUUID(),
+      sessionId = randomUUID()
+    await db
+      .insert(schema.guestSessions)
+      .values({ id: sessionId, expiresAt: end, createdAt: within })
+    await db
+      .insert(schema.guestPractices)
+      .values({
+        id,
+        sessionId,
+        characterId: 'aoi',
+        characterContext: {} as never,
+        storyContext: {} as never,
+        state: { turns: [], completedAt: null, pending: null },
+        claimedUid: customer,
+        createdAt: within
+      })
+    expect((await getAdminUsage(30, now)).guest.claimed).toBe(0)
+    await practice(customer, { id, start: null })
+    const view = await getAdminUsage(30, now)
+    expect(view.guest).toMatchObject({ created: 1, completed: 0, claimed: 1 })
+    expect(view.totals).toMatchObject({ started: 0, completed: 0, replies: 0 })
   })
   it('契約状態・Checkout完了と支払確認後の付与を区別し、停止や期限終了も表示する', async () => {
     await grant(customer, 'plus:sub-active:1', 'plus')
