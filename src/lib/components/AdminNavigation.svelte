@@ -17,19 +17,19 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin: 20px 0 30px;
+    margin: 0;
   }
   a {
     padding: 10px 14px;
-    border: 1px solid #d9ddcf;
+    border: 1px solid var(--border);
     border-radius: 8px;
-    color: #46533d;
-    font-size: 0.85rem;
+    color: var(--ink);
+    font-size: var(--text-sm);
     text-decoration: none;
   }
   a[aria-current='page'] {
-    background: #58694d;
-    border-color: #58694d;
+    background: var(--accent);
+    border-color: var(--accent);
     color: white;
   }
 </style>

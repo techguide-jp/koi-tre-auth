@@ -1,15 +1,9 @@
-<script lang="ts">
-  import AdminNavigation from '$lib/components/AdminNavigation.svelte'
-</script>
-
 <svelte:head
   ><title>運営管理 | Koi-Tre</title><meta name="robots" content="noindex,nofollow" /></svelte:head
 >
 <div class="admin-home">
-  <a href="/account">← マイページ</a>
   <p>Koi-Tre 運営管理</p>
   <h1>会話と練習を育てる</h1>
-  <AdminNavigation />
   <div class="cards">
     <a class="card" href="/admin/knowledge"
       ><span>評価とアドバイス</span>
@@ -28,14 +22,11 @@
 
 <style>
   .admin-home {
+    width: 100%;
     max-width: 1000px;
-    margin: auto;
+    margin: 0 auto;
     padding: 40px 20px 80px;
-    color: #36432f;
-  }
-  .admin-home > a {
-    color: #58694d;
-    font-size: 0.8rem;
+    color: var(--ink);
   }
   h1 {
     font-size: clamp(1.6rem, 4vw, 2.2rem);
@@ -48,21 +39,22 @@
   .card {
     display: block;
     padding: 28px;
-    background: #f7f8f1;
-    border: 1px solid #d9ddcf;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 16px;
     color: inherit;
     text-decoration: none;
     line-height: 1.8;
   }
   .card span {
-    font-size: 0.8rem;
-    color: #6f7a64;
+    font-size: var(--text-sm);
+    color: var(--muted);
   }
   .card h2 {
+    font-size: var(--heading-sm);
     margin: 8px 0;
   }
   .card strong {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
 </style>

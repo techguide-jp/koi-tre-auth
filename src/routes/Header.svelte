@@ -2,6 +2,7 @@
   import { auth } from '$lib/firebaseConfig'
   import { signOut } from 'firebase/auth'
   import { user } from '$lib/stores'
+  export let canAdmin = false
   let pending = false
   let message = ''
   async function logout() {
@@ -34,6 +35,7 @@
     ><span class="brand-name">Koi-Tre<span class="brand-kana">コイトレ</span></span></a
   >
   <nav aria-label="メインメニュー">
+    {#if $user && canAdmin}<a class="admin-link" href="/admin">管理者モード</a>{/if}
     <a class="topics-link" href="/topics">会話ネタ帳</a>
     {#if $user}<a class="album-link" href="/memories">アルバム</a><a href="/account">マイページ</a
       >{:else}<a class="try-link" href="/try">30秒お試し</a>{/if}<a href="/pricing">料金</a><a
@@ -100,10 +102,17 @@
     align-items: center;
     gap: 1.3rem;
     font-size: var(--text-sm);
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
   nav a {
     color: var(--ink);
     white-space: nowrap;
+  }
+  .admin-link {
+    color: var(--accent);
+    font-weight: 600;
+    padding: 0.65rem 0;
   }
   .login-link,
   .logout {
@@ -123,6 +132,14 @@
     nav {
       gap: 1rem;
       font-size: var(--text-sm);
+    }
+    header:has(.admin-link) {
+      flex-wrap: wrap;
+    }
+    nav:has(.admin-link) {
+      width: 100%;
+      justify-content: flex-start;
+      gap: 0.75rem 1rem;
     }
     .brand-name {
       font-size: 1.4rem;
