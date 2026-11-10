@@ -9,7 +9,6 @@
     type CharacterOverview,
     type CharacterSection
   } from '$lib/character-policy'
-  import AdminNavigation from '$lib/components/AdminNavigation.svelte'
   import CharacterPolicyEditor from '$lib/components/CharacterPolicyEditor.svelte'
 
   let selected: CharacterId = 'aoi',
@@ -174,11 +173,9 @@
   /></svelte:head
 >
 <div class="character-admin">
-  <a class="back" href="/account">← マイページ</a>
   <p class="eyebrow">Koi-Tre 運営管理</p>
   <h1>その人らしい会話を育てる</h1>
   <p class="intro">価値観、話すリズム、心を開く瞬間。人物ごとに項目を分けて整えます。</p>
-  <AdminNavigation current="characters" />
   {#if !$authReady}<p role="status">ログイン状態を確認しています…</p>
   {:else if !$user}<section class="panel">
       <h2>管理者のログインが必要です</h2>
@@ -340,10 +337,6 @@
     margin: auto;
     padding: 38px 24px 80px;
     color: #36432f;
-  }
-  .back {
-    font-size: 0.8rem;
-    color: #58694d;
   }
   .eyebrow {
     font-size: 0.72rem;
