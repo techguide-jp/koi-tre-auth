@@ -92,6 +92,11 @@
 </script>
 
 <section class="pricing-intro">
+  {#if progress?.billing?.adminPlay}<p class="notice">
+      管理者は購入・Plus加入なしで、全モードを利用枠の消費なくプレイできます。合格点・好感度などの進行条件は通常どおりです。<a
+        href="/#scenes">お相手を選ぶ →</a
+      >
+    </p>{/if}
   <p class="section-label">話したい気持ちに、合わせて。</p>
   <h1>出会って、知り合って。<br />その先の物語へ。</h1>
   <p>

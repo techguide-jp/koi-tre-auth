@@ -3,7 +3,7 @@
   import { page } from '$app/stores'
   import { authReady, authenticatedFetch, user } from '$lib/stores'
   import { characters } from '$lib/adventure-catalog'
-  import type { BillingOverview } from '$lib/billing'
+  import { hasPaidPracticeAccess, type BillingOverview } from '$lib/billing'
   import type { AdventureProgress } from '$lib/adventure'
   import type { CharacterId } from '$lib/adventure-catalog'
   import { billingPortal } from '$lib/billing-client'
@@ -40,7 +40,7 @@
   let selectedCharacter: CharacterId = 'aoi'
   let timer: ReturnType<typeof setTimeout> | undefined
   let retries = 0
-  $: practiceCharacters = billing?.subscription?.active
+  $: practiceCharacters = hasPaidPracticeAccess(billing)
     ? characters.map((c) => c.id)
     : (billing?.ownedCharacters ?? [])
   $: if (mounted && $user && $user.uid !== loadedUid && !pending) {
@@ -103,7 +103,7 @@
         history = nextHistory.history
         course = nextHistory.course
         if (
-          !nextBilling.subscription?.active &&
+          !hasPaidPracticeAccess(nextBilling) &&
           !nextBilling.ownedCharacters.includes(selectedCharacter)
         )
           selectedCharacter = nextBilling.ownedCharacters[0] ?? 'aoi'
@@ -159,7 +159,13 @@
       <section class="card"><BillingBalance billing="{billing}" /></section>
       <section class="card">
         <p class="section-label">購入と契約</p>
-        <h2>{billing.subscription?.active ? 'Koi-Tre Plus' : '無料プラン'}</h2>
+        <h2>
+          {billing.adminPlay
+            ? '管理者のプレイ権'
+            : billing.subscription?.active
+              ? 'Koi-Tre Plus'
+              : '無料プラン'}
+        </h2>
         {#if billing.subscription}<p>
             状態：{billing.subscription.active
               ? billing.subscription.cancelAtPeriodEnd
@@ -181,9 +187,11 @@
               ? '契約管理を開いています…'
               : '契約・解約・支払い方法を管理する'}</button
           >{:else}<p class="small muted">
-            Plusで全員の本編を攻略・再練習。人物パックなら、購入した本編を月額なしでも練習できます。
+            {billing.adminPlay
+              ? '購入やPlus加入なしで、全員の本編・再練習・クリア後の交流を利用できます。進行条件は通常どおり必要です。'
+              : 'Plusで全員の本編を攻略・再練習。人物パックなら、購入した本編を月額なしでも練習できます。'}
           </p>{/if}<a href="/pricing">料金と遊べる範囲 →</a>
-        <p><a href="/pricing#topup">追加の共通15枠 · 550円 →</a></p>
+        {#if !billing.adminPlay}<p><a href="/pricing#topup">追加の共通15枠 · 550円 →</a></p>{/if}
       </section>
     </div>
     <section class="owned">
@@ -197,7 +205,9 @@
               <a href="/?character={id}#scenes">続き・パートの練習へ →</a>
             </article>{/each}
         </div>{:else}<p>購入済みのルートパックはありません。</p>
-        <a href="/pricing#route-packs">気になる人の本編を見る →</a>{/if}
+        {#if billing.adminPlay}<a href="/#scenes">管理者として本編をプレイする →</a>{:else}<a
+            href="/pricing#route-packs">気になる人の本編を見る →</a
+          >{/if}{/if}
     </section>
     {#if practiceCharacters.length}<section class="part-practice card">
         <p class="section-label">リアルで話す、その前に。</p>

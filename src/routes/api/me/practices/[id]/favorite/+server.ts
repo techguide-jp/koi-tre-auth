@@ -1,3 +1,4 @@
+import { practiceForActor } from '$lib/server/practice-access'
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { requireFirebaseUser } from '$lib/server/request-auth'
@@ -18,5 +19,5 @@ export const POST: RequestHandler = async ({ request, params }) => {
     throw error(400, '保存する発言を選んでください。')
   if (!(await saveFavoriteTurn(actor.uid, params.id, position)))
     throw error(404, '保存できる会話が見つかりません。')
-  return privateJson(await getPractice(actor.uid, params.id))
+  return privateJson(practiceForActor(await getPractice(actor.uid, params.id), actor))
 }

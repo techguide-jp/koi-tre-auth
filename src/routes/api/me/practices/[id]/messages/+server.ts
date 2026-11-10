@@ -1,3 +1,4 @@
+import { adminPracticeAccess, practiceForActor } from '$lib/server/practice-access'
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { readAnalyticsContext } from '$lib/analytics-context'
@@ -29,6 +30,7 @@ export const POST: RequestHandler = async ({ request, params }) => {
   const result = await submitPracticeMessage(
     {
       uid: actor.uid,
+      adminPlay: adminPracticeAccess(actor),
       id: params.id,
       requestId: body.requestId,
       text: body.text.trim(),
@@ -36,5 +38,5 @@ export const POST: RequestHandler = async ({ request, params }) => {
     },
     readAnalyticsContext(body.analyticsContext)
   )
-  return privateJson(result.session, result.pending ? 202 : 200)
+  return privateJson(practiceForActor(result.session, actor), result.pending ? 202 : 200)
 }

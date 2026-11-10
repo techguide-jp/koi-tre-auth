@@ -1,3 +1,4 @@
+import { practiceForActor } from '$lib/server/practice-access'
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { MAX_MESSAGE_LENGTH } from '$lib/practice'
@@ -33,5 +34,5 @@ export const POST: RequestHandler = async ({ request, params }) => {
     position: body.position,
     expectedTurn: body.position - 1
   })
-  return privateJson(result.session, result.pending ? 202 : 200)
+  return privateJson(practiceForActor(result.session, actor), result.pending ? 202 : 200)
 }

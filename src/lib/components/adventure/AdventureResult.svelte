@@ -11,6 +11,7 @@
     type Adventure,
     type AdventureProgress
   } from '$lib/adventure'
+  import { hasPaidPracticeAccess } from '$lib/billing'
   import { storyPart } from '$lib/adventure-story'
   import { authenticatedFetch } from '$lib/stores'
   import CharacterPortrait from './CharacterPortrait.svelte'
@@ -70,7 +71,7 @@
     nextSelection,
     progress?.completedEpisodes ?? [],
     progress?.billing?.ownedCharacters ?? [],
-    !!progress?.billing?.subscription?.active,
+    hasPaidPracticeAccess(progress?.billing),
     new Date(),
     progress?.progression
   )
@@ -343,7 +344,9 @@
       >{part.label}に戻って練習する →</a
     >{/if}
   <p class="small muted">
-    新しい練習は3往復1枠・6往復2枠を使います。今回の会話はいつでも読み返せます。
+    {session.adminPlay
+      ? '管理者の新しい練習は利用枠を消費しません。'
+      : '新しい練習は3往復1枠・6往復2枠を使います。'}今回の会話はいつでも読み返せます。
   </p>
   {#if progressError}
     <p class="small" role="status">{progressError}</p>

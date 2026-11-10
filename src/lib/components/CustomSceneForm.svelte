@@ -8,6 +8,7 @@
     type CustomSceneInput
   } from '$lib/practice'
   import { readCustomSceneDraft, saveCustomSceneDraft } from '$lib/custom-scene-client'
+  export let adminPlay = false
   export let disabled = false
   export let pending = false
   let situation = ''
@@ -95,8 +96,9 @@
     {#if message}<p class="error" role="alert">{message}</p>{/if}
     <div class="custom-actions">
       <p>
-        いつもの練習と同じ、3回返答して振り返りへ。<br
-        />月10回の練習枠を使います。実名・連絡先は入力しないでください。
+        いつもの練習と同じ、3回返答して振り返りへ。<br />{adminPlay
+          ? '管理者は利用枠を消費しません。'
+          : '3往復で1枠を使います。'}実名・連絡先は入力しないでください。
       </p>
       <button
         class="button primary"

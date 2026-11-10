@@ -1,3 +1,4 @@
+import { adminPracticeAccess, practiceForActor } from '$lib/server/practice-access'
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { findScene, normalizeCustomScene } from '$lib/practice'
@@ -20,7 +21,7 @@ import {
 
 export const GET: RequestHandler = async ({ request }) => {
   const actor = await requireFirebaseUser(request)
-  return privateJson(await getPracticeOverview(actor.uid))
+  return privateJson(await getPracticeOverview(actor.uid, new Date(), adminPracticeAccess(actor)))
 }
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -40,7 +41,8 @@ export const POST: RequestHandler = async ({ request }) => {
       photoUrl: actor.picture ?? null
     })
   }
-  if (!(await getPractice(actor.uid, body.id))) {
+  const adminPlay = adminPracticeAccess(actor)
+  if (!adminPlay && !(await getPractice(actor.uid, body.id))) {
     const billing = await getBillingOverview(actor.uid)
     const remaining = availableCredits(
       billing.credits,
@@ -59,7 +61,9 @@ export const POST: RequestHandler = async ({ request }) => {
     body.id,
     adventure ? 'adventure' : customScene ? 'custom' : scene!.id,
     customScene,
-    adventure
+    adventure,
+    undefined,
+    adminPlay
   )
   if (created === 'locked') throw error(403, '前のエピソードの合格点を満たすと、この話が開きます。')
   if (created === 'affinity')
@@ -69,5 +73,5 @@ export const POST: RequestHandler = async ({ request }) => {
   if (created === 'plus') throw error(403, '本編クリア後の交流・イベントはPlusの対象です。')
   if (created === 'unpublished') throw error(403, 'このイベントは公開前です。')
   if (!created) throw error(409, '別の練習として開始してください。')
-  return privateJson(await getPractice(actor.uid, body.id))
+  return privateJson(practiceForActor(await getPractice(actor.uid, body.id), actor))
 }

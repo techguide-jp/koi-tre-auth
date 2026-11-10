@@ -21,6 +21,7 @@ export interface CreditGrantView {
   expiresAt: string | null
 }
 export interface BillingOverview {
+  adminPlay?: boolean
   enabled: boolean
   testMode: boolean
   ownedCharacters: CharacterId[]
@@ -36,6 +37,9 @@ export interface BillingOverview {
   reserved: number
   resetsAt: string
 }
+// 管理者のプレイ権は、実際の購入・契約とは別に扱う。
+export const hasPaidPracticeAccess = (billing?: BillingOverview | null) =>
+  billing?.adminPlay === true || billing?.subscription?.active === true
 export type BillingProduct =
   | { kind: 'route'; characterId: CharacterId }
   | { kind: 'plus' }

@@ -45,7 +45,12 @@ export async function submitGuestMessage(input: GuestMessage, rate: { day: strin
   }
   return { session: await getGuestPractice(input.sessionId, input.id), pending: false }
 }
-export async function claimGuestPractice(sessionId: string, id: string, uid: string) {
+export async function claimGuestPractice(
+  sessionId: string,
+  id: string,
+  uid: string,
+  adminPlay = false
+) {
   const guest = await reserveGuestClaim(sessionId, id, uid)
   const adventure: Adventure = {
     version: 1,
@@ -54,16 +59,25 @@ export async function claimGuestPractice(sessionId: string, id: string, uid: str
     turns: 3
   }
   if (
-    (await createPractice(uid, id, 'adventure', null, adventure, {
-      characterContext: guest.characterContext,
-      policyReleaseId: guest.policyReleaseId,
-      storyContext: guest.storyContext
-    })) !== true
+    (await createPractice(
+      uid,
+      id,
+      'adventure',
+      null,
+      adventure,
+      {
+        characterContext: guest.characterContext,
+        policyReleaseId: guest.policyReleaseId,
+        storyContext: guest.storyContext
+      },
+      adminPlay
+    )) !== true
   )
     throw error(409, '会話を引き継げませんでした。同じアカウントでお試しください。')
   for (const turn of guest.state.turns) {
     const input = {
       uid,
+      adminPlay,
       id,
       requestId: turn.requestId,
       text: turn.userText,

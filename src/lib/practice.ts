@@ -289,6 +289,7 @@ export interface PracticeTurn {
 }
 
 export interface PracticeSession {
+  adminPlay?: boolean
   characterReactions?: import('./character-policy').CharacterReactions | null
   evaluation?: import('./adventure-progression').PracticeEvaluation | null
   id: string

@@ -15,7 +15,7 @@
   import { storyParts, storyPart, stageRules, type StoryPartId } from '$lib/adventure-story'
   import RelationshipMeter from './RelationshipMeter.svelte'
   import { dailyEpisodes, publishedEvents } from '$lib/adventure-life'
-  import { availableCredits, practiceCreditCost } from '$lib/billing'
+  import { availableCredits, practiceCreditCost, hasPaidPracticeAccess } from '$lib/billing'
   export let characterId: CharacterId
   export let progress: AdventureProgress | null = null
   export let disabled = false
@@ -51,11 +51,12 @@
     selected,
     completed,
     progress?.billing?.ownedCharacters ?? [],
-    !!progress?.billing?.subscription?.active,
+    hasPaidPracticeAccess(progress?.billing),
     new Date(),
     progress?.progression
   )
-  $: cost = practiceCreditCost(turns)
+  $: adminPlay = progress?.billing?.adminPlay === true
+  $: cost = adminPlay ? 0 : practiceCreditCost(turns)
   $: illustrationEarned =
     progress?.memories.some(
       (memory) =>
@@ -66,7 +67,7 @@
   $: remaining = progress?.billing
     ? availableCredits(progress.billing.credits, characterId, !!episode.chapter)
     : null
-  $: affordable = remaining === null || remaining >= cost
+  $: affordable = adminPlay || remaining === null || remaining >= cost
   $: lifeCompleted = completed.includes(episodeKey(characterId, `${characterId}-12`))
   $: events = publishedEvents()
   $: if (previousCharacter !== characterId) {
@@ -188,7 +189,11 @@
             choosePart(item.id)
           }}"
           ><strong>{item.label}</strong><span
-            >{done} / 3話{item.from === 1 ? ' · 無料' : ' · ルートパック'}</span
+            >{done} / 3話{adminPlay
+              ? ' · 管理者'
+              : item.from === 1
+                ? ' · 無料'
+                : ' · ルートパック'}</span
           ></button
         >{/each}
     </div>
@@ -205,7 +210,7 @@
           { ...selected, episodeId: item.id },
           completed,
           progress?.billing?.ownedCharacters ?? [],
-          !!progress?.billing?.subscription?.active,
+          hasPaidPracticeAccess(progress?.billing),
           new Date(),
           progress?.progression
         )}<button
@@ -239,7 +244,9 @@
   {:else if mode === 'life'}
     <p class="mode-note">
       {lifeCompleted
-        ? '選んだ結末と、これまでの会話を引き継ぐ時間。日常交流・イベントはPlusの対象です。'
+        ? adminPlay
+          ? '管理者は日常交流・公開済みイベントも、利用枠の消費なしで楽しめます。'
+          : '選んだ結末と、これまでの会話を引き継ぐ時間。日常交流・イベントはPlusの対象です。'
         : '本編12話をクリアすると、今の二人の日常と季節イベントが開きます。'}
     </p>
     <h4>日常のひと場面</h4>
@@ -261,7 +268,9 @@
         >{/each}
     </div>
     <p class="small muted">
-      毎月1日・16日に新しいテーマが登場。公開済みのイベントは加入中いつでも遊べます。
+      毎月1日・16日に新しいテーマが登場。公開済みのイベントは{adminPlay
+        ? '管理者は'
+        : '加入中'}いつでも遊べます。
     </p>
   {/if}
   <details class="other-scenes" open="{mode === 'scene'}">
@@ -324,10 +333,10 @@
       <fieldset disabled="{pending}">
         <legend>会話の長さ</legend><label
           ><input type="radio" bind:group="{turns}" value="{3}" />さくっと3往復
-          <small>1枠・最大30XP</small></label
+          <small>{adminPlay ? '利用枠消費なし' : '1枠'}・最大30XP</small></label
         ><label
           ><input type="radio" bind:group="{turns}" value="{6}" />じっくり6往復
-          <small>2枠・最大70XP</small></label
+          <small>{adminPlay ? '利用枠消費なし' : '2枠'}・最大70XP</small></label
         >
       </fieldset>
       {#if turns === 6}<p class="illustration-reward">
@@ -378,7 +387,9 @@
               ? 'このイベントは公開前です。'
               : !affordable
                 ? `使える枠が足りません（残り${remaining}枠）。3往復なら1枠で遊べます。`
-                : `今回は${cost}枠を使用。${remaining === null ? '' : `この場面に使える残り${remaining}枠。`}途中の再開は追加消費なし。`}
+                : adminPlay
+                  ? '管理者は利用枠を消費しません。合格点・好感度などの進行条件は通常どおりです。'
+                  : `今回は${cost}枠を使用。${remaining === null ? '' : `この場面に使える残り${remaining}枠。`}途中の再開は追加消費なし。`}
         </p>{/if}
     </div>
   </div>
