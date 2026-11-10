@@ -41,6 +41,20 @@ afterEach(() => {
 })
 
 describe('ブラウザ計測', () => {
+  it('管理画面の閲覧や管理画面からの参照元を利用者向け計測へ送らない', () => {
+    trackPageView(new URL('https://app.koi-tre.com/admin/users?email=private'), '')
+    trackPageView(new URL('https://app.koi-tre.com/admin'), '')
+    expect(sdk.logEvent).not.toHaveBeenCalled()
+    trackPageView(
+      new URL('https://app.koi-tre.com/'),
+      'https://app.koi-tre.com/admin/users/private-user'
+    )
+    expect(sdk.logEvent).toHaveBeenCalledWith(
+      sdk.analytics,
+      'page_view',
+      expect.objectContaining({ page_referrer: '' })
+    )
+  })
   it('紹介用の固定UTMだけを残し、混在する個人情報やフラグメントは送らない', () => {
     const url = new URL(promotionUrl('instagram', 'silence'))
     url.searchParams.set('email', 'private@example.test')

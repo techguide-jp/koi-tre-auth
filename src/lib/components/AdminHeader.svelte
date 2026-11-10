@@ -6,12 +6,18 @@
   import AdminNavigation from './AdminNavigation.svelte'
   let pending = false
   let message = ''
-  let current: 'home' | 'knowledge' | 'characters' = 'home'
-  $: current = $page.url.pathname.startsWith('/admin/knowledge')
-    ? 'knowledge'
-    : $page.url.pathname.startsWith('/admin/characters')
-      ? 'characters'
-      : 'home'
+  let current: 'home' | 'knowledge' | 'characters' | 'users' | 'billing' | 'usage' = 'home'
+  $: current = $page.url.pathname.startsWith('/admin/users')
+    ? 'users'
+    : $page.url.pathname.startsWith('/admin/billing')
+      ? 'billing'
+      : $page.url.pathname.startsWith('/admin/usage')
+        ? 'usage'
+        : $page.url.pathname.startsWith('/admin/knowledge')
+          ? 'knowledge'
+          : $page.url.pathname.startsWith('/admin/characters')
+            ? 'characters'
+            : 'home'
   async function logout() {
     if (!auth || pending) return
     pending = true
