@@ -458,3 +458,31 @@ describe('ログイン後の引き継ぎ', () => {
     expect(await getPractice(uid, guest.id)).not.toBeNull()
   })
 })
+
+describe('管理者の体験引き継ぎ', () => {
+  it('残枠0でも確認済み管理者は無料で保存し、再送で枠・会話・報酬を増やさない', async () => {
+    vi.stubEnv('KOITRE_ADMIN_UIDS', uid)
+    await db.insert(schema.practices).values({
+      id: randomUUID(),
+      uid,
+      sceneId: 'cafe',
+      creditCost: 10,
+      chargedAt: now
+    })
+    const guest = await complete()
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await claimApi(
+        event('POST', { adminPlay: false }, guest.id, guest.session.token, uid) as never
+      )
+      expect(await response.json()).toMatchObject({
+        adminPlay: true,
+        creditCost: 0,
+        turns: Array.from({ length: 3 }, () => expect.anything())
+      })
+    }
+    expect((await getPracticeOverview(uid)).remaining).toBe(0)
+    expect(await db.select().from(schema.creditSpends)).toEqual([])
+    expect(await db.select().from(schema.practiceEvaluations)).toHaveLength(1)
+    expect((await getAdventureProgress(uid, true)).memories).toHaveLength(1)
+  })
+})

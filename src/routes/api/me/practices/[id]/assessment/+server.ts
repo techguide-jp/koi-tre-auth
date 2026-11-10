@@ -1,3 +1,4 @@
+import { practiceForActor } from '$lib/server/practice-access'
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { requireFirebaseUser } from '$lib/server/request-auth'
@@ -9,5 +10,5 @@ export const POST: RequestHandler = async ({ request, params }) => {
   requirePracticeAvailable()
   if (!validId(params.id)) throw error(400, '練習を選び直してください。')
   const result = await reassessPractice(actor.uid, params.id)
-  return privateJson(result.session, result.pending ? 202 : 200)
+  return privateJson(practiceForActor(result.session, actor), result.pending ? 202 : 200)
 }

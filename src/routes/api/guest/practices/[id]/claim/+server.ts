@@ -1,3 +1,4 @@
+import { adminPracticeAccess, practiceForActor } from '$lib/server/practice-access'
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { requireFirebaseUser } from '$lib/server/request-auth'
@@ -18,6 +19,11 @@ export const POST: RequestHandler = async (event) => {
       displayName: actor.name ?? null,
       photoUrl: actor.picture ?? null
     })
-  const result = await claimGuestPractice(session.id, event.params.id, actor.uid)
-  return privateJson(result.session, result.pending ? 202 : 200)
+  const result = await claimGuestPractice(
+    session.id,
+    event.params.id,
+    actor.uid,
+    adminPracticeAccess(actor)
+  )
+  return privateJson(practiceForActor(result.session, actor), result.pending ? 202 : 200)
 }

@@ -12,29 +12,37 @@
 </script>
 
 <div class="balance" aria-label="利用できる練習枠">
-  <p class="label">{billing.subscription?.active ? 'Plus' : '無料'}の共通枠</p>
-  <p class="remaining">
-    あと <strong>{common}</strong> 枠 <span>／ {billing.subscription?.active ? '60' : '10'}枠</span>
-  </p>
-  <p class="small muted">
-    3往復＝1枠 · 6往復＝2枠{billing.reserved ? ` · ${billing.reserved}枠を処理中` : ''}
-  </p>
-  <p class="small muted">
-    {billing.subscription?.active && billing.subscription.cancelAtPeriodEnd
-      ? 'Plusの利用期限'
-      : '次の更新'}：{new Date(billing.resetsAt).toLocaleDateString('ja-JP', {
-      timeZone: 'Asia/Tokyo'
-    })}
-  </p>
-  <p class="small">
-    追加購入の共通枠 <strong>{topup}枠</strong> · 期限なし <a href="/pricing#topup">追加する →</a>
-  </p>
-  {#if packs.length}<div class="pack-balances">
-      {#each packs as pack}<span
-          >{characters.find((c) => c.id === pack.characterId)?.name}専用
-          <strong>{pack.remaining}枠</strong> · 期限なし</span
-        >{/each}
-    </div>{/if}<a class="small" href="/account">枠・購入・契約を確認 →</a>
+  {#if billing.adminPlay}<p class="label">管理者のプレイ権</p>
+    <p class="remaining"><strong>利用枠消費なし</strong></p>
+    <p class="small muted">
+      全キャラクター・有料モードを購入なしで利用できます。合格点・好感度・前話クリアなどの進行条件は通常どおりです。
+    </p>
+    <p class="small muted">購入済みの枠と契約はそのまま保持します。</p>{:else}
+    <p class="label">{billing.subscription?.active ? 'Plus' : '無料'}の共通枠</p>
+    <p class="remaining">
+      あと <strong>{common}</strong> 枠
+      <span>／ {billing.subscription?.active ? '60' : '10'}枠</span>
+    </p>
+    <p class="small muted">
+      3往復＝1枠 · 6往復＝2枠{billing.reserved ? ` · ${billing.reserved}枠を処理中` : ''}
+    </p>
+    <p class="small muted">
+      {billing.subscription?.active && billing.subscription.cancelAtPeriodEnd
+        ? 'Plusの利用期限'
+        : '次の更新'}：{new Date(billing.resetsAt).toLocaleDateString('ja-JP', {
+        timeZone: 'Asia/Tokyo'
+      })}
+    </p>
+    <p class="small">
+      追加購入の共通枠 <strong>{topup}枠</strong> · 期限なし <a href="/pricing#topup">追加する →</a>
+    </p>
+    {#if packs.length}<div class="pack-balances">
+        {#each packs as pack}<span
+            >{characters.find((c) => c.id === pack.characterId)?.name}専用
+            <strong>{pack.remaining}枠</strong> · 期限なし</span
+          >{/each}
+      </div>{/if}<a class="small" href="/account">枠・購入・契約を確認 →</a>
+  {/if}
 </div>
 
 <style>

@@ -23,6 +23,7 @@
   let pendingScene: SceneId | null = null
   let loading = false
   let message = ''
+  $: adminPlay = progress?.billing?.adminPlay === true || overview?.billing?.adminPlay === true
   $: customRemaining = progress?.billing
     ? availableCredits(progress.billing.credits)
     : overview?.remaining
@@ -186,12 +187,13 @@
           on:click="{loadOverview}">{loading ? '読み込み中…' : '足あとを再取得'}</button
         >{/if}
     </div>{/if}
-  {#if overview?.remaining === 0}<p class="notice">
+  {#if !adminPlay && overview?.remaining === 0}<p class="notice">
       現在使える練習枠を使い切りました。途中の会話や振り返り、アルバムは引き続き楽しめます。
     </p>{/if}
   <section class="custom-section" aria-label="自分で場面を設定する">
     <CustomSceneForm
-      disabled="{!$authReady || !!pendingScene || customRemaining === 0}"
+      disabled="{!$authReady || !!pendingScene || (!adminPlay && customRemaining === 0)}"
+      adminPlay="{adminPlay}"
       pending="{pendingScene === 'custom'}"
       on:start="{(event) => begin('custom', event.detail)}"
     />

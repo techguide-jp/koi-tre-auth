@@ -23,7 +23,10 @@ import { readCreditState } from './credits'
 import type { MessageInput } from './practices'
 import { readProgression, settleProgression } from './progression'
 
-export async function getAdventureProgress(uid: string): Promise<AdventureProgress> {
+export async function getAdventureProgress(
+  uid: string,
+  adminPlay = false
+): Promise<AdventureProgress> {
   const db = getDb()
   const [completed, favorites, billing, chosenEndings] = await Promise.all([
     db
@@ -140,11 +143,11 @@ export async function getAdventureProgress(uid: string): Promise<AdventureProgre
     encounters: encountered.size >= 3
   }
   progress.badges = progress.badges.map((badge) => ({ ...badge, earned: earned[badge.id] }))
-  progress.billing = billing
+  progress.billing = { ...billing, ...(adminPlay ? { adminPlay: true } : {}) }
   progress.stages = stageProgress(
     progress.progression,
     billing.ownedCharacters,
-    !!billing.subscription?.active
+    adminPlay || !!billing.subscription?.active
   )
   progress.endings = valid.flatMap((row) =>
     row.storyEnding

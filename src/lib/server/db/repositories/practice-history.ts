@@ -4,7 +4,7 @@ import { episodeById } from '$lib/adventure'
 import { getDb } from '../client'
 import { practices, practiceTurns, practiceEvaluations } from '../schema'
 import { readCreditState } from './credits'
-export async function getPracticeHistory(uid: string) {
+export async function getPracticeHistory(uid: string, adminPlay = false) {
   const db = getDb()
   const [rows, billing] = await Promise.all([
     db
@@ -85,7 +85,7 @@ export async function getPracticeHistory(uid: string) {
     }
   }
   const course =
-    billing.subscription?.active && latest && weakest
+    (adminPlay || billing.subscription?.active) && latest && weakest
       ? {
           ...prompts[weakest.id],
           characterId: latest.characterId,

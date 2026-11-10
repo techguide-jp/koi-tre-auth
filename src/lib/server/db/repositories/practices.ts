@@ -108,7 +108,8 @@ export async function getPractice(uid: string, id: string): Promise<PracticeSess
 
 export async function getPracticeOverview(
   uid: string,
-  now = new Date()
+  now = new Date(),
+  adminPlay = false
 ): Promise<PracticeOverview> {
   return getDb().transaction(async (db) => {
     await db
@@ -136,7 +137,7 @@ export async function getPracticeOverview(
       activePracticeId: active?.id ?? null,
       latestPracticeId: latest?.id ?? null,
       resetsAt: billing.resetsAt,
-      billing
+      billing: { ...billing, ...(adminPlay ? { adminPlay: true } : {}) }
     }
   })
 }
@@ -151,7 +152,8 @@ export async function createPractice(
     characterContext: import('$lib/character-policy').CharacterSnapshot
     policyReleaseId: string | null
     storyContext: import('$lib/adventure').StoryContext
-  }
+  },
+  adminPlay = false
 ) {
   return getDb().transaction(async (tx) => {
     await tx.select().from(users).where(eq(users.firebaseUid, uid)).for('update')
@@ -189,7 +191,7 @@ export async function createPractice(
         adventure!,
         keys,
         billing.ownedCharacters,
-        !!billing.subscription?.active,
+        adminPlay || !!billing.subscription?.active,
         new Date(),
         progression
       )
@@ -229,6 +231,8 @@ export async function createPractice(
 }
 
 export interface MessageInput {
+  // APIが確認済みトークンから設定する。送信本文のフラグは採用しない。
+  adminPlay?: boolean
   uid: string
   id: string
   requestId: string
@@ -271,28 +275,37 @@ export async function reservePracticeTurn(input: MessageInput, now = new Date())
           session.adventure,
           keys,
           billing.ownedCharacters,
-          !!billing.subscription?.active,
+          input.adminPlay === true || !!billing.subscription?.active,
           now,
           progression
         )
         if (access !== 'available') return { status: 'access' as const, access }
       }
-      const reserved = await reserveCredits(
-        tx,
-        input.uid,
-        input.id,
-        session.creditCost,
-        session.adventure?.characterId,
-        !!session.adventure && !!episodeById(session.adventure.episodeId)?.chapter,
-        until,
-        now
-      )
-      if (!reserved) return { status: 'quota' as const }
+      if (input.adminPlay) await releaseCredits(tx, input.id)
+      else {
+        const reserved = await reserveCredits(
+          tx,
+          input.uid,
+          input.id,
+          practiceCreditCost(practiceTurnLimit(session.adventure)),
+          session.adventure?.characterId,
+          !!session.adventure && !!episodeById(session.adventure.episodeId)?.chapter,
+          until,
+          now
+        )
+        if (!reserved) return { status: 'quota' as const }
+      }
     }
     const token = randomUUID()
     await tx
       .update(practices)
       .set({
+        // 初回保存前は現在の権限で決め直し、管理権限を失った再試行を無料にしない。
+        creditCost: session.chargedAt
+          ? session.creditCost
+          : input.adminPlay
+            ? 0
+            : practiceCreditCost(practiceTurnLimit(session.adventure)),
         pendingRequestId: input.requestId,
         pendingText: input.text,
         pendingToken: token,
@@ -355,6 +368,7 @@ export async function finishPracticeTurn(
     if (!session || session.pendingToken !== token) return false
     if (
       !session.chargedAt &&
+      !input.adminPlay &&
       !(await commitCredits(
         tx,
         input.uid,
@@ -366,6 +380,7 @@ export async function finishPracticeTurn(
       ))
     )
       return false
+    if (!session.chargedAt && input.adminPlay) await releaseCredits(tx, input.id)
     const position = input.expectedTurn + 1
     await tx.insert(practiceTurns).values({
       id: randomUUID(),
@@ -419,6 +434,11 @@ export async function finishPracticeTurn(
     await tx
       .update(practices)
       .set({
+        creditCost: session.chargedAt
+          ? session.creditCost
+          : input.adminPlay
+            ? 0
+            : session.creditCost,
         chargedAt: session.chargedAt ?? now,
         completedAt: final ? now : null,
         reward,

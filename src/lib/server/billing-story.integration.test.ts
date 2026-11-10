@@ -29,6 +29,7 @@ import { assessedFeedback } from './fixtures/progression-assessment'
 let client: PGlite
 let db: ReturnType<typeof drizzle<typeof schema>>
 let migrations: string[]
+let identityClaims: Record<string, unknown> = {}
 const uid = 'billing-story-test',
   other = 'billing-other-test'
 const now = new Date('2026-11-08T12:00:00Z')
@@ -119,7 +120,7 @@ vi.mock('./firebase-admin', () => ({
   getFirebaseAdminAuth: () => ({
     verifyIdToken: async (token: string) => {
       if (token !== 'fixture-token') throw Error('invalid')
-      return { uid }
+      return { uid, ...identityClaims }
     }
   })
 }))
@@ -134,6 +135,7 @@ beforeAll(async () => {
 })
 beforeEach(async () => {
   vi.clearAllMocks()
+  identityClaims = {}
   sessions.clear()
   checkoutRequests.clear()
   client = new PGlite()
@@ -1176,5 +1178,353 @@ describe('月額中心の本編アクセスと追加共通枠', () => {
     expect(state.credits.find((g) => g.kind === 'topup')?.remaining).toBe(15)
     expect(state.remaining).toBe(25)
     expect((await getAdventureProgress(uid)).progression?.clearedEpisodes).toContain('aoi:aoi-4')
+  })
+})
+
+// 料金免除は認証境界からだけ渡し、進行・採点・購入履歴を改変しない。
+describe('管理者の料金・利用枠免除', () => {
+  async function exhaust() {
+    await db.insert(schema.practices).values({
+      id: randomUUID(),
+      uid,
+      sceneId: 'cafe',
+      creditCost: 10,
+      chargedAt: new Date()
+    })
+    expect((await getBillingOverview(uid)).remaining).toBe(0)
+  }
+  async function startAsAdmin(episodeId = 'aoi-1', turns: 3 | 6 = 3) {
+    const id = randomUUID()
+    expect(
+      await createPractice(uid, id, 'adventure', null, adventure(episodeId, turns), undefined, true)
+    ).toBe(true)
+    return id
+  }
+  async function play(id: string, turns: 3 | 6) {
+    for (let i = 0; i < turns; i++)
+      await submitPracticeMessage({ ...input(id, i), adminPlay: true }, null)
+  }
+  it.each([3, 6] as const)(
+    '残枠0の%i往復も、予約・消費を増やさず実評価と報酬を保存する',
+    async (turns) => {
+      await exhaust()
+      const id = await startAsAdmin('aoi-1', turns)
+      await play(id, turns)
+      const session = await getPractice(uid, id)
+      expect(session).toMatchObject({
+        creditCost: 0,
+        turns: Array.from({ length: turns }, () => expect.anything())
+      })
+      expect(session?.chargedAt).toBeTruthy()
+      expect(session?.completedAt).toBeTruthy()
+      expect(session?.evaluation).toMatchObject({ status: 'passed', score: 23 })
+      expect(session?.reward?.xp).toBe(turns === 6 ? 70 : 30)
+      expect(await db.select().from(schema.creditSpends)).toEqual([])
+      expect(await db.select().from(schema.creditGrants)).toEqual([])
+      expect((await getBillingOverview(uid)).remaining).toBe(0)
+    }
+  )
+  it('確認済みGoogle管理者は購入せず有料本編をAPI開始でき、契約や購入済みに書き換えない', async () => {
+    await seedStory('aoi', 3)
+    await exhaust()
+    vi.stubEnv('PRACTICE_ENABLED', 'true')
+    vi.stubEnv('DIFY_PRACTICE_API_KEY', 'fixture-key')
+    vi.stubEnv('KOITRE_ADMIN_UIDS', '')
+    vi.stubEnv('KOITRE_ADMIN_GOOGLE_EMAILS', 'admin-play@example.test')
+    identityClaims = {
+      email: 'admin-play@example.test',
+      email_verified: true,
+      firebase: { sign_in_provider: 'google.com' }
+    }
+    const { POST } = await import('../../routes/api/me/practices/+server')
+    const response = await POST({
+      request: new Request('http://local/api/me/practices', {
+        method: 'POST',
+        headers: { authorization: 'Bearer fixture-token' },
+        body: JSON.stringify({
+          id: randomUUID(),
+          sceneId: 'adventure',
+          adventure: adventure('aoi-4', 6)
+        })
+      })
+    } as never)
+    expect(await response.json()).toMatchObject({ adminPlay: true, creditCost: 0 })
+    const billingApi = await import('../../routes/api/me/billing/+server')
+    const overviewApi = await import('../../routes/api/me/practices/+server')
+    const request = new Request('http://local/api/me/billing', {
+      headers: { authorization: 'Bearer fixture-token' }
+    })
+    expect(await (await billingApi.GET({ request } as never)).json()).toMatchObject({
+      adminPlay: true,
+      remaining: 0,
+      ownedCharacters: [],
+      subscription: null
+    })
+    expect(await (await overviewApi.GET({ request } as never)).json()).toMatchObject({
+      remaining: 0,
+      billing: { adminPlay: true }
+    })
+    const { getPracticeHistory } = await import('./db/repositories/practice-history')
+    expect((await getPracticeHistory(uid, true)).course).not.toBeNull()
+    expect((await getPracticeHistory(uid)).course).toBeNull()
+    const progress = await getAdventureProgress(uid, true)
+    expect(progress.billing).toMatchObject({
+      adminPlay: true,
+      ownedCharacters: [],
+      subscription: null,
+      remaining: 0
+    })
+    expect(progress.stages?.find((s) => s.episodeId === 'aoi-4')?.lockedReasons).toEqual([])
+    expect(
+      (await getAdventureProgress(uid)).stages?.find((s) => s.episodeId === 'aoi-4')?.lockedReasons
+    ).toContain('purchase')
+    expect(await db.select().from(schema.routePurchases)).toEqual([])
+    expect(await db.select().from(schema.billingSubscriptions)).toEqual([])
+  })
+  it('前話クリア・再練習のクリア条件・好感度を飛ばさない', async () => {
+    expect(
+      await createPractice(
+        uid,
+        randomUUID(),
+        'adventure',
+        null,
+        adventure('aoi-4'),
+        undefined,
+        true
+      )
+    ).toBe('locked')
+    expect(
+      await createPractice(
+        uid,
+        randomUUID(),
+        'adventure',
+        null,
+        { ...adventure('aoi-1'), revisit: true },
+        undefined,
+        true
+      )
+    ).toBe('locked')
+    expect(
+      await createPractice(
+        uid,
+        randomUUID(),
+        'adventure',
+        null,
+        adventure('daily-today'),
+        undefined,
+        true
+      )
+    ).toBe('locked')
+    await seedStory('aoi', 3)
+    await startAsAdmin('aoi-1')
+    await db
+      .update(schema.characterRelationships)
+      .set({ earned: 30, strain: 20 })
+      .where(eq(schema.characterRelationships.id, `${uid}:aoi`))
+    expect(
+      await createPractice(
+        uid,
+        randomUUID(),
+        'adventure',
+        null,
+        adventure('aoi-4'),
+        undefined,
+        true
+      )
+    ).toBe('affinity')
+  })
+  it('本編クリア後の日常・公開済みイベントと再練習を、Plusなしで遊べる', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(now)
+    await seedStory()
+    await exhaust()
+    for (const episode of ['daily-today', 'event-2026-11-1', 'aoi-7']) {
+      const id = await startAsAdmin(episode)
+      await play(id, 3)
+      expect((await getPractice(uid, id))?.creditCost).toBe(0)
+    }
+    expect(
+      await createPractice(
+        uid,
+        randomUUID(),
+        'adventure',
+        null,
+        adventure('event-2026-11-2'),
+        undefined,
+        true
+      )
+    ).toBe('unpublished')
+    expect(await db.select().from(schema.creditSpends)).toEqual([])
+  })
+  it('共通とカスタムでも利用枠を消費せず、既存の購入枠を保持する', async () => {
+    await topupPurchase()
+    const before = await getBillingOverview(uid)
+    for (const scene of ['cafe', 'custom'] as const) {
+      const id = randomUUID()
+      expect(
+        await createPractice(
+          uid,
+          id,
+          scene,
+          scene === 'custom'
+            ? {
+                situation: 'デートの帰りに次に会う約束をしたい場面です。',
+                partnerName: 'はる',
+                openingLine: ''
+              }
+            : null,
+          null,
+          undefined,
+          true
+        )
+      ).toBe(true)
+      await play(id, 3)
+      expect((await getPractice(uid, id))?.creditCost).toBe(0)
+    }
+    expect(await getBillingOverview(uid)).toEqual(before)
+    expect(await db.select().from(schema.creditSpends)).toEqual([])
+  })
+  it('生成失敗は消費せず、同じ返答の再送も0枠のまま保存は1回にする', async () => {
+    const id = await startAsAdmin(),
+      message = { ...input(id), adminPlay: true }
+    const generate = await import('./dify-practice')
+    vi.mocked(generate.generatePracticeReply).mockRejectedValueOnce(
+      new Error('fixture generation error')
+    )
+    await expect(submitPracticeMessage(message, null)).rejects.toMatchObject({ status: 502 })
+    expect((await getPractice(uid, id))?.chargedAt).toBeNull()
+    expect((await getBillingOverview(uid)).remaining).toBe(10)
+    await submitPracticeMessage(message, null)
+    await submitPracticeMessage(message, null)
+    expect((await getPractice(uid, id))?.turns).toHaveLength(1)
+    expect((await getPractice(uid, id))?.creditCost).toBe(0)
+    expect(await db.select().from(schema.creditSpends)).toEqual([])
+  })
+  it('並行生成の予約と期限切れ後の古い保存を区別し、無料でも二重保存しない', async () => {
+    const id = await startAsAdmin(),
+      message = { ...input(id), adminPlay: true }
+    const first = await reservePracticeTurn(message, now)
+    expect(first.status).toBe('ready')
+    if (first.status !== 'ready') throw Error('expected reservation')
+    expect((await reservePracticeTurn(message, now)).status).toBe('pending')
+    const next = await reservePracticeTurn(message, new Date(now.getTime() + 80_000))
+    expect(next.status).toBe('ready')
+    if (next.status !== 'ready') throw Error('expected reservation')
+    expect(
+      await finishPracticeTurn(
+        message,
+        first.token,
+        { reply: '古い返答', feedback: null },
+        new Date(now.getTime() + 81_000)
+      )
+    ).toBe(false)
+    expect(
+      await finishPracticeTurn(
+        message,
+        next.token,
+        { reply: '新しい返答', feedback: null },
+        new Date(now.getTime() + 81_000)
+      )
+    ).toBe(true)
+    expect((await getPractice(uid, id))?.turns).toHaveLength(1)
+    expect(await db.select().from(schema.creditSpends)).toEqual([])
+  })
+  it('初回保存前の権限喪失では通常の残枠と購入権を再検査する', async () => {
+    const id = await startAsAdmin(),
+      message = input(id)
+    const reserved = await reservePracticeTurn({ ...message, adminPlay: true })
+    if (reserved.status !== 'ready') throw Error('expected reservation')
+    await releasePracticeTurn(message, reserved.token)
+    await submitPracticeMessage(message, null)
+    expect((await getPractice(uid, id))?.creditCost).toBe(1)
+    expect((await getBillingOverview(uid)).remaining).toBe(9)
+    await seedStory('aoi', 3)
+    const paid = await startAsAdmin('aoi-4')
+    expect(await reservePracticeTurn(input(paid))).toMatchObject({
+      status: 'access',
+      access: 'purchase'
+    })
+  })
+  it('初回の無料保存後は権限がなくなっても、途中会話を追加消費せず完了する', async () => {
+    await exhaust()
+    const id = await startAsAdmin()
+    await submitPracticeMessage({ ...input(id), adminPlay: true }, null)
+    for (let i = 1; i < 3; i++) await submitPracticeMessage(input(id, i), null)
+    expect((await getPractice(uid, id))?.completedAt).toBeTruthy()
+    expect((await getPractice(uid, id))?.creditCost).toBe(0)
+    expect((await getBillingOverview(uid)).remaining).toBe(0)
+    expect(await db.select().from(schema.creditSpends)).toEqual([])
+  })
+  it('一般利用者は本文や保存プロフィールを偽装しても、管理者の購入・枠免除にならない', async () => {
+    vi.stubEnv('PRACTICE_ENABLED', 'true')
+    vi.stubEnv('DIFY_PRACTICE_API_KEY', 'fixture-key')
+    vi.stubEnv('KOITRE_ADMIN_UIDS', '')
+    vi.stubEnv('KOITRE_ADMIN_GOOGLE_EMAILS', 'admin-play@example.test')
+    await db
+      .update(schema.users)
+      .set({ email: 'admin-play@example.test' })
+      .where(eq(schema.users.firebaseUid, uid))
+    await seedStory('aoi', 3)
+    const { POST } = await import('../../routes/api/me/practices/+server')
+    const request = (sceneId: string, a?: Adventure) => ({
+      request: new Request('http://local/api/me/practices', {
+        method: 'POST',
+        headers: { authorization: 'Bearer fixture-token' },
+        body: JSON.stringify({
+          id: randomUUID(),
+          sceneId,
+          adventure: a,
+          adminPlay: true,
+          creditCost: 0
+        })
+      })
+    })
+    await expect(POST(request('adventure', adventure('aoi-4')) as never)).rejects.toMatchObject({
+      status: 403
+    })
+    const response = await POST(request('cafe') as never),
+      session = await response.json()
+    const messages = await import('../../routes/api/me/practices/[id]/messages/+server')
+    await messages.POST({
+      params: { id: session.id },
+      request: new Request('http://local/api/messages', {
+        method: 'POST',
+        headers: { authorization: 'Bearer fixture-token' },
+        body: JSON.stringify({
+          requestId: randomUUID(),
+          text: '自分の気持ちを話します。',
+          expectedTurn: 0,
+          adminPlay: true,
+          creditCost: 0
+        })
+      })
+    } as never)
+    expect((await getPractice(uid, session.id))?.creditCost).toBe(1)
+    await exhaust()
+    await expect(POST(request('cafe') as never)).rejects.toMatchObject({ status: 429 })
+  })
+  it('管理者も実評価で不合格になり、次の話はクリアするまで開かない', async () => {
+    const id = await startAsAdmin()
+    await submitPracticeMessage({ ...input(id, 0), adminPlay: true }, null)
+    await submitPracticeMessage({ ...input(id, 1), adminPlay: true }, null)
+    const message = { ...input(id, 2), adminPlay: true }
+    const generate = await import('./dify-practice')
+    vi.mocked(generate.generatePracticeReply).mockResolvedValueOnce({
+      reply: '気持ちは伝わりました。',
+      feedback: assessedFeedback(message.text, 9, 2)
+    })
+    await submitPracticeMessage(message, null)
+    expect((await getPractice(uid, id))?.evaluation).toMatchObject({ status: 'failed', score: 9 })
+    expect(
+      await createPractice(
+        uid,
+        randomUUID(),
+        'adventure',
+        null,
+        adventure('aoi-2'),
+        undefined,
+        true
+      )
+    ).toBe('locked')
   })
 })
