@@ -9,6 +9,8 @@ import { contentHash, restoreKnowledgeContext } from './knowledge-content'
 import { getKnowledgeOverview, saveKnowledgePreview } from './db/repositories/knowledge'
 const caseTitles: Record<string, string> = {
   'hobbies-short': '趣味：短い答えと好きな理由',
+  'hobbies-facts-only': '趣味：名前や事実だけの返答が続く',
+  'hobbies-reciprocal': '趣味：短くても互いに関心を返す',
   'invitation-settled': '誘い：次の約束が決まった',
   'invitation-respect-no': '誘い：相手の断りを受け入れる',
   'own-boundary': '断り：自分の意思を保つ',

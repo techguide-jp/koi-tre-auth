@@ -15,7 +15,7 @@ import {
   type StoryContext
 } from '$lib/adventure'
 import { assessPractice, selectPracticeCoaching } from './jev-practice'
-import { practiceCoaching } from './practice-coaching'
+import { practiceCoaching, withCoachingVariant } from './practice-coaching'
 import { parsePracticeOutput } from './practice-feedback'
 import type { KnowledgeContent } from '$lib/knowledge-policy'
 import { getKnowledgeRelease } from './db/repositories/knowledge'
@@ -114,7 +114,7 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
         }
       : {}),
     coaching: {
-      ...coaching,
+      ...withCoachingVariant(coaching, policy?.trace.coaching),
       replyStyle: final
         ? 'close_naturally'
         : input.turns.length === 0

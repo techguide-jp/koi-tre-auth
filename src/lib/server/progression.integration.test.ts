@@ -238,52 +238,59 @@ describe('クリアと好感度の永続化・権限', () => {
     expect(assessPractice).toHaveBeenCalledTimes(1)
     expect(last).toBeDefined()
   })
-  it('公開後に方針が変わっても無料再評価は元の参照箇所で一度だけ行う', async () => {
-    const id = await completed('aoi-1')
-    const content = defaultKnowledgeContent(),
-      releaseId = randomUUID()
-    const [release] = await db
-      .insert(schema.knowledgeReleases)
-      .values({
-        id: releaseId,
-        content,
-        contentHash: contentHash(content),
-        note: '初期版',
+  it.each([undefined, 'reciprocal-small-talk-v1'] as const)(
+    '公開後に方針が変わっても無料再評価は元の雑談方針 %s と参照箇所で一度だけ行う',
+    async (coaching) => {
+      const id = await completed('aoi-1')
+      const content = { ...defaultKnowledgeContent(), ...(coaching ? { coaching } : {}) },
+        releaseId = randomUUID()
+      const [release] = await db
+        .insert(schema.knowledgeReleases)
+        .values({
+          id: releaseId,
+          content,
+          contentHash: contentHash(content),
+          note: '初期版',
+          createdBy: uid
+        })
+        .returning()
+      const policy = makeKnowledgeContext(
+        { ...release, version: release.version! },
+        'first_meeting',
+        'カフェで自己紹介'
+      )
+      await db
+        .update(schema.practices)
+        .set({ policyReleaseId: releaseId })
+        .where(eq(schema.practices.id, id))
+      await db
+        .update(schema.practiceTurns)
+        .set({ feedback: null, policyContext: policy.trace })
+        .where(eq(schema.practiceTurns.practiceId, id))
+      const later = {
+        ...content,
+        coaching: coaching ? undefined : ('reciprocal-small-talk-v1' as const),
+        core: content.core + '\n後日変更した方針。'
+      }
+      const nextId = randomUUID()
+      await db.insert(schema.knowledgeReleases).values({
+        id: nextId,
+        content: later,
+        contentHash: contentHash(later),
+        note: '更新版',
         createdBy: uid
       })
-      .returning()
-    const policy = makeKnowledgeContext(
-      { ...release, version: release.version! },
-      'first_meeting',
-      'カフェで自己紹介'
-    )
-    await db
-      .update(schema.practices)
-      .set({ policyReleaseId: releaseId })
-      .where(eq(schema.practices.id, id))
-    await db
-      .update(schema.practiceTurns)
-      .set({ feedback: null, policyContext: policy.trace })
-      .where(eq(schema.practiceTurns.practiceId, id))
-    const later = { ...content, core: content.core + '\n後日変更した方針。' }
-    const nextId = randomUUID()
-    await db.insert(schema.knowledgeReleases).values({
-      id: nextId,
-      content: later,
-      contentHash: contentHash(later),
-      note: '更新版',
-      createdBy: uid
-    })
-    await db
-      .insert(schema.knowledgeSettings)
-      .values({ id: 'main', draft: later, activeReleaseId: nextId, updatedBy: uid })
-    await reassessPractice(uid, id)
-    expect(vi.mocked(assessPractice).mock.calls[0][4]).toEqual(policy)
-    expect((await getPractice(uid, id))?.evaluation?.assessment?.policy).toEqual(policy.trace)
-    await reassessPractice(uid, id)
-    expect(assessPractice).toHaveBeenCalledTimes(1)
-    expect(await db.select().from(schema.creditSpends)).toHaveLength(0)
-  })
+      await db
+        .insert(schema.knowledgeSettings)
+        .values({ id: 'main', draft: later, activeReleaseId: nextId, updatedBy: uid })
+      await reassessPractice(uid, id)
+      expect(vi.mocked(assessPractice).mock.calls[0][4]).toEqual(policy)
+      expect((await getPractice(uid, id))?.evaluation?.assessment?.policy).toEqual(policy.trace)
+      await reassessPractice(uid, id)
+      expect(assessPractice).toHaveBeenCalledTimes(1)
+      expect(await db.select().from(schema.creditSpends)).toHaveLength(0)
+    }
+  )
   it('Jev障害は失敗や減点にせず、短い再評価の間隔を設ける', async () => {
     const id = await completed('aoi-1')
     await db

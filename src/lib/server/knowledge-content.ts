@@ -9,7 +9,11 @@ import {
   type KnowledgeTrace,
   type KnowledgeRetriever
 } from '$lib/knowledge-policy'
-import { coachingProfiles } from './practice-coaching'
+import {
+  coachingForProfile,
+  coachingProfiles,
+  reciprocalCoachingGuidance
+} from './practice-coaching'
 
 type ContextRelease = {
   id: string | null
@@ -43,6 +47,13 @@ function contextHash(
     .update(JSON.stringify({ core, passages, profile, contentHash: hash, retriever }))
     .digest('hex')
 }
+function effectiveCoaching(content: KnowledgeContent, profile: KnowledgeProfile) {
+  const coaching = coachingForProfile(content.coaching, profile)
+  return {
+    coaching,
+    core: coaching ? `${content.core}\n\n${reciprocalCoachingGuidance}` : content.core
+  }
+}
 export function makeKnowledgeContext(
   release: ContextRelease,
   profile: KnowledgeProfile,
@@ -50,22 +61,18 @@ export function makeKnowledgeContext(
 ): KnowledgeContext {
   const passages = retrieveKnowledge(release.content, profile, query)
   const retriever = release.content.retrieval ?? 'scene-bm25-v1'
+  const { core, coaching } = effectiveCoaching(release.content, profile)
   return {
-    core: release.content.core,
+    core,
     passages,
     trace: {
       releaseId: release.id,
       version: release.version,
       contentHash: release.contentHash,
-      contextHash: contextHash(
-        release.content.core,
-        passages,
-        profile,
-        release.contentHash,
-        retriever
-      ),
+      contextHash: contextHash(core, passages, profile, release.contentHash, retriever),
       retriever,
       profile,
+      ...(coaching ? { coaching } : {}),
       sources: passages.map(({ documentId, chunkIndex }) => ({ documentId, chunkIndex }))
     }
   }
@@ -74,11 +81,13 @@ export function restoreKnowledgeContext(
   release: ContextRelease,
   trace: KnowledgeTrace
 ): KnowledgeContext {
+  const { core, coaching } = effectiveCoaching(release.content, trace.profile)
   if (
     trace.releaseId !== release.id ||
     trace.version !== release.version ||
     trace.contentHash !== release.contentHash ||
-    trace.retriever !== (release.content.retrieval ?? 'scene-bm25-v1')
+    trace.retriever !== (release.content.retrieval ?? 'scene-bm25-v1') ||
+    trace.coaching !== coaching
   )
     throw Error('保存された評価方針の版が一致しません。')
   const chunks = release.content.documents.flatMap(knowledgeChunks)
@@ -90,14 +99,9 @@ export function restoreKnowledgeContext(
     return passage
   })
   if (
-    contextHash(
-      release.content.core,
-      passages,
-      trace.profile,
-      release.contentHash,
-      trace.retriever
-    ) !== trace.contextHash
+    contextHash(core, passages, trace.profile, release.contentHash, trace.retriever) !==
+    trace.contextHash
   )
     throw Error('保存された評価方針の内容が一致しません。')
-  return { core: release.content.core, passages, trace }
+  return { core, passages, trace }
 }
