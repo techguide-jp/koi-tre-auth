@@ -67,7 +67,7 @@ export interface AdminCheckout {
 export interface AdminBillingView {
   period: AdminPeriod
   enabled: boolean
-  testMode: true
+  testMode: boolean
   page: number
   pageSize: number
   total: number

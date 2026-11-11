@@ -21,7 +21,12 @@ import { analysisAspects, assessmentTotal, assessmentPoints, assessmentStatus } 
 import { parseAssessment, practiceQuestions } from './server/jev-practice'
 import { parsePracticeOutput } from './server/practice-feedback'
 import { exampleFeedback, exampleTexts } from './server/fixtures/practice-analysis'
-import { stripeReady, stripeClient } from './server/stripe-client'
+import {
+  stripeReady,
+  stripeClient,
+  stripePortalReady,
+  stripeTestMode
+} from './server/stripe-client'
 const adventure: Adventure = { version: 1, characterId: 'aoi', episodeId: 'aoi-4', turns: 6 }
 const grants: CreditGrantView[] = [
   { id: 'route-aoi', kind: 'route', characterId: 'aoi', units: 24, remaining: 24, expiresAt: null },
@@ -127,7 +132,7 @@ describe('ルート・月額・再練習の共通ルール', () => {
     expect(parseStoryEnding(ending, final, ['今日はありがとう。'])).toBeNull()
     expect(episodeKey('aoi', 'aoi-12')).toBe('aoi:aoi-12')
   })
-  it('テストの設定が不足した場合と本番環境で購入を有効にしない', () => {
+  it('本番購入には専用キーとWebhookの準備が必要で、購入停止中も契約管理は使える', () => {
     vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_fixture')
     vi.stubEnv('BILLING_ENABLED', 'true')
     vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_fixture')
@@ -136,14 +141,30 @@ describe('ルート・月額・再練習の共通ルール', () => {
       vi.stubEnv(`STRIPE_PRICE_ROUTE_${id}`, `price_${id}`)
     vi.stubEnv('STRIPE_PRICE_PLUS', 'price_plus')
     vi.stubEnv('STRIPE_PRICE_TOPUP', 'price_topup')
+    vi.stubEnv('STRIPE_LIVE_BILLING_API_KEY', undefined)
+    vi.stubEnv('STRIPE_LIVE_WEBHOOK_API_KEY', undefined)
+    vi.stubEnv('STRIPE_LIVE_WEBHOOK_ENABLED', 'false')
     vi.stubEnv('VERCEL_ENV', 'preview')
     expect(stripeReady()).toBe(true)
+    expect(stripeTestMode()).toBe(true)
     vi.stubEnv('VERCEL_ENV', 'production')
     expect(stripeReady()).toBe(false)
-    expect(() => stripeClient()).toThrow('test configuration')
-    vi.stubEnv('VERCEL_ENV', '')
-    vi.stubEnv('STRIPE_SECRET_KEY', 'sk_live_fixture')
+    expect(stripeTestMode()).toBe(false)
+    expect(() => stripeClient()).toThrow('billing configuration')
+    vi.stubEnv('STRIPE_LIVE_BILLING_API_KEY', 'rk_live_billing_fixture')
     expect(stripeReady()).toBe(false)
+    vi.stubEnv('STRIPE_LIVE_WEBHOOK_API_KEY', 'rk_live_webhook_fixture')
+    vi.stubEnv('STRIPE_LIVE_WEBHOOK_ENABLED', 'true')
+    expect(stripeReady()).toBe(true)
+    vi.stubEnv('BILLING_ENABLED', 'false')
+    expect(stripeReady()).toBe(false)
+    expect(stripePortalReady()).toBe(true)
+    vi.stubEnv('VERCEL_ENV', 'preview')
+    vi.stubEnv('BILLING_ENABLED', 'true')
+    vi.stubEnv('STRIPE_SECRET_KEY', 'rk_live_fixture')
+    expect(stripeReady()).toBe(false)
+    expect(stripePortalReady()).toBe(false)
+    expect(() => stripeClient()).toThrow('billing configuration')
   })
 })
 describe('5観点25点の評価と旧履歴', () => {

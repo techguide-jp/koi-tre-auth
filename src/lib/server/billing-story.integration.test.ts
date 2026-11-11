@@ -25,6 +25,7 @@ import { getAdventureProgress, selectStoryEnding } from './db/repositories/adven
 import { submitPracticeMessage } from './practice-service'
 import { episodeById, type Adventure } from '$lib/adventure'
 import { assessedFeedback } from './fixtures/progression-assessment'
+import { liveStripeWebhookClient, stripeClient } from './stripe-client'
 
 let client: PGlite
 let db: ReturnType<typeof drizzle<typeof schema>>
@@ -47,6 +48,7 @@ const sdk = {
   prices: {
     retrieve: vi.fn(async (id: string) => ({
       id,
+      livemode: process.env.VERCEL_ENV === 'production',
       active: true,
       currency: 'jpy',
       unit_amount: id === 'price_plus' ? 980 : id === 'price_topup' ? 550 : 1480,
@@ -54,7 +56,9 @@ const sdk = {
       recurring: id === 'price_plus' ? { interval: 'month', interval_count: 1 } : null
     }))
   },
-  customers: { create: vi.fn(async () => ({ id: customer })) },
+  customers: {
+    create: vi.fn(async () => ({ id: customer, livemode: process.env.VERCEL_ENV === 'production' }))
+  },
   checkout: {
     sessions: {
       create: vi.fn(),
@@ -71,8 +75,22 @@ const sdk = {
   charges: { retrieve: vi.fn() },
   disputes: { retrieve: vi.fn() },
   billingPortal: {
+    configurations: {
+      retrieve: vi.fn(async (id: string) => ({
+        id,
+        active: true,
+        livemode: process.env.VERCEL_ENV === 'production',
+        features: {
+          subscription_cancel: { enabled: true, mode: 'at_period_end' },
+          subscription_update: { enabled: false }
+        }
+      }))
+    },
     sessions: {
-      create: vi.fn(async () => ({ url: 'https://billing.stripe.com/p/session/test_fixture' }))
+      create: vi.fn(async () => ({
+        livemode: process.env.VERCEL_ENV === 'production',
+        url: 'https://billing.stripe.com/p/session/fixture'
+      }))
     }
   },
   webhooks: new Stripe('sk_test_fixture').webhooks
@@ -80,7 +98,11 @@ const sdk = {
 vi.mock('./db/client', () => ({ getDb: () => db }))
 vi.mock('./stripe-client', async (importOriginal) => {
   const original = await importOriginal<typeof import('./stripe-client')>()
-  return { ...original, stripeClient: () => sdk, liveStripeWebhookClient: () => sdk }
+  return {
+    ...original,
+    stripeClient: vi.fn(() => sdk),
+    liveStripeWebhookClient: vi.fn(() => sdk)
+  }
 })
 vi.mock('./analytics', () => ({ trackPracticeCompleted: vi.fn(), trackQuestionSubmitted: vi.fn() }))
 vi.mock('./dify-practice', () => ({
@@ -148,6 +170,9 @@ beforeEach(async () => {
   vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_fixture')
   vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_fixture')
   vi.stubEnv('STRIPE_PORTAL_CONFIGURATION_ID', 'bpc_fixture')
+  vi.stubEnv('STRIPE_LIVE_BILLING_API_KEY', undefined)
+  vi.stubEnv('STRIPE_LIVE_WEBHOOK_API_KEY', undefined)
+  vi.stubEnv('STRIPE_LIVE_WEBHOOK_ENABLED', 'false')
   vi.stubEnv('BILLING_ENABLED', 'true')
   vi.stubEnv('VERCEL_ENV', '')
   vi.stubEnv('VITE_APP_DOMAIN', 'http://127.0.0.1:5194')
@@ -222,10 +247,11 @@ beforeEach(async () => {
       expect(params, 'Stripeは同じ冪等キーで異なるパラメーターを拒否する').toEqual(prior.params)
       return prior.session
     }
-    const id = `cs_${params.metadata.checkout_id}`
+    const live = process.env.VERCEL_ENV === 'production'
+    const id = `cs_${live ? 'live' : 'test'}_${params.metadata.checkout_id}`
     const result = {
       id,
-      livemode: false,
+      livemode: live,
       customer,
       mode: params.mode,
       metadata: params.metadata,
@@ -351,7 +377,7 @@ describe('Stripeの購入・契約・通知', () => {
     expect((await getBillingOverview(uid)).ownedCharacters).toEqual([])
     expect(await reconcileCheckout(uid, order)).toEqual({ pending: true })
     expect((await getBillingOverview(uid)).ownedCharacters).toEqual([])
-    expect(await reconcileCheckout(other, order)).toEqual({ pending: false })
+    await expect(reconcileCheckout(other, order)).rejects.toMatchObject({ status: 404 })
   })
   it('同じ購入の再送・別リクエストでも開いているCheckoutを再利用する', async () => {
     const first = await beginCheckout(uid, randomUUID(), { kind: 'route', characterId: 'aoi' })
@@ -727,6 +753,64 @@ describe('Stripeの購入・契約・通知', () => {
       expect.objectContaining({ customer, return_url: 'http://127.0.0.1:5194/account' })
     )
     await expect(openBillingPortal(other)).rejects.toMatchObject({ status: 404 })
+  })
+  it('本番Checkoutは受付中に作り、停止後も既存注文の照合と期間末解約を利用できる', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production')
+    vi.stubEnv('VITE_APP_DOMAIN', 'https://app.koi-tre.com')
+    vi.stubEnv('STRIPE_LIVE_BILLING_API_KEY', 'rk_live_billing_fixture')
+    vi.stubEnv('STRIPE_LIVE_WEBHOOK_API_KEY', 'rk_live_webhook_fixture')
+    vi.stubEnv('STRIPE_LIVE_WEBHOOK_ENABLED', 'true')
+    const order = randomUUID()
+    expect(await beginCheckout(uid, order, { kind: 'topup' })).toHaveProperty('url')
+    const session = [...sessions.values()][0]
+    expect(session.livemode).toBe(true)
+    expect(sdk.checkout.sessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success_url: `https://app.koi-tre.com/account?checkout=${order}`,
+        cancel_url: 'https://app.koi-tre.com/pricing?cancelled=1'
+      }),
+      expect.anything()
+    )
+    vi.stubEnv('BILLING_ENABLED', 'false')
+    await expect(beginCheckout(uid, randomUUID(), { kind: 'topup' })).rejects.toMatchObject({
+      status: 503
+    })
+    expect(sdk.checkout.sessions.create).toHaveBeenCalledTimes(1)
+    expect(await getBillingOverview(uid)).toMatchObject({
+      enabled: false,
+      portalEnabled: true,
+      testMode: false
+    })
+    expect(await openBillingPortal(uid)).toHaveProperty('url')
+    expect(sdk.billingPortal.sessions.create).toHaveBeenCalledWith({
+      configuration: 'bpc_fixture',
+      customer,
+      return_url: 'https://app.koi-tre.com/account'
+    })
+
+    Object.assign(session, {
+      status: 'complete',
+      payment_status: 'paid',
+      payment_intent: 'pi_live'
+    })
+    vi.mocked(stripeClient).mockClear()
+    expect(await reconcileCheckout(uid, order)).toEqual({ pending: false })
+    expect(liveStripeWebhookClient).toHaveBeenCalledTimes(1)
+    expect(stripeClient).not.toHaveBeenCalled()
+    expect((await getBillingOverview(uid)).remaining).toBe(25)
+  })
+  it('期間末解約が無効なPortal設定では契約管理セッションを作らない', async () => {
+    sdk.billingPortal.configurations.retrieve.mockResolvedValueOnce({
+      id: 'bpc_fixture',
+      active: true,
+      livemode: false,
+      features: {
+        subscription_cancel: { enabled: true, mode: 'immediately' },
+        subscription_update: { enabled: false }
+      }
+    })
+    await expect(openBillingPortal(uid)).rejects.toMatchObject({ status: 502 })
+    expect(sdk.billingPortal.sessions.create).not.toHaveBeenCalled()
   })
   it('Portalのcancel_atによる期間末解約も予約として同期し、支払い済み枠を維持する', async () => {
     subscription = { ...subscription, cancel_at: end, cancel_at_period_end: false }

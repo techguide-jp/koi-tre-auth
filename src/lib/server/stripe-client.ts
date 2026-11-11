@@ -2,23 +2,38 @@ import Stripe from 'stripe'
 import { characters } from '$lib/adventure-catalog'
 import { productKey, type BillingProduct } from '$lib/billing'
 
+export const stripeTestMode = () => process.env.VERCEL_ENV !== 'production'
+
+function stripeBillingKey() {
+  if (stripeTestMode()) {
+    const key = process.env.STRIPE_SECRET_KEY
+    return key?.startsWith('sk_test_') ? key : null
+  }
+  const key = process.env.STRIPE_LIVE_BILLING_API_KEY
+  return key?.startsWith('rk_live_') ? key : null
+}
+
 export function stripeClient() {
-  const key = process.env.STRIPE_SECRET_KEY
-  // 今回はテスト決済までの承認。本番用の鍵で課金を開始する経路は開かない。
-  if (!key?.startsWith('sk_test_') || process.env.VERCEL_ENV === 'production')
-    throw new Error('Stripe test configuration is required')
+  const key = stripeBillingKey()
+  if (!key) throw new Error('Stripe billing configuration is required')
   return new Stripe(key, { timeout: 12_000, maxNetworkRetries: 1, appInfo: { name: 'Koi-Tre' } })
 }
 
-export function liveStripeWebhookClient() {
+function liveStripeWebhookKey() {
   const key = process.env.STRIPE_LIVE_WEBHOOK_API_KEY
   // 新規購入を止めている間も、既存の契約・返金を照合できるようにする。
   if (
-    process.env.VERCEL_ENV !== 'production' ||
+    stripeTestMode() ||
     process.env.STRIPE_LIVE_WEBHOOK_ENABLED !== 'true' ||
     !key?.startsWith('rk_live_')
   )
     return null
+  return key
+}
+
+export function liveStripeWebhookClient() {
+  const key = liveStripeWebhookKey()
+  if (!key) return null
   return new Stripe(key, { timeout: 12_000, maxNetworkRetries: 1, appInfo: { name: 'Koi-Tre' } })
 }
 
@@ -36,10 +51,10 @@ export function stripePrice(product: BillingProduct) {
 export function stripeReady() {
   return (
     process.env.BILLING_ENABLED === 'true' &&
-    !!process.env.STRIPE_WEBHOOK_SECRET &&
-    !!process.env.STRIPE_PORTAL_CONFIGURATION_ID &&
-    process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_') === true &&
-    process.env.VERCEL_ENV !== 'production' &&
+    !!stripeBillingKey() &&
+    process.env.STRIPE_WEBHOOK_SECRET?.startsWith('whsec_') === true &&
+    process.env.STRIPE_PORTAL_CONFIGURATION_ID?.startsWith('bpc_') === true &&
+    (stripeTestMode() || !!liveStripeWebhookKey()) &&
     [
       { kind: 'plus' } as const,
       { kind: 'topup' } as const,
@@ -54,6 +69,15 @@ export function stripeReady() {
     })
   )
 }
+
+export function stripePortalReady() {
+  if (stripeTestMode()) return stripeReady()
+  // 販売を止めた後も、既存の契約者は解約や支払い方法の変更を行える。
+  return (
+    !!stripeBillingKey() && process.env.STRIPE_PORTAL_CONFIGURATION_ID?.startsWith('bpc_') === true
+  )
+}
+
 export function billingBaseUrl() {
   const url = new URL(process.env.VITE_APP_DOMAIN ?? 'https://app.koi-tre.com')
   if (

@@ -68,9 +68,15 @@
   >
     {#if $report.data}{@const view = $report.data}
       <div class="ops-notice">
-        <strong>{view.enabled ? 'テスト決済環境' : '購入は準備中・課金停止中'}</strong>
+        <strong
+          >{view.enabled
+            ? view.testMode
+              ? 'テスト決済環境'
+              : '本番決済環境'
+            : '購入は準備中'}</strong
+        >
         <p>
-          決済情報はテスト記録です。支払額・返金額はアプリに保存されていないため、この画面では金額を未記録として扱います。
+          {#if view.testMode}決済情報はテスト記録です。{/if}支払額・返金額はアプリに保存されていないため、この画面では金額を未記録として扱います。
         </p>
       </div>
       <p class="ops-period">

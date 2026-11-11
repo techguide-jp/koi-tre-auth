@@ -103,9 +103,9 @@
     無料で出会いを体験したら、Plusで全員の本編へ。<br
     />好きな人の物語を残したい方には、買い切りのルートパックも。
   </p>
-  {#if data.billingReady}<p class="notice">テスト環境です。実際の請求は発生しません。</p>{:else}<p
-      class="notice"
-    >
+  {#if data.billingReady && data.billingTestMode}<p class="notice">
+      テスト環境です。実際の請求は発生しません。
+    </p>{:else if !data.billingReady}<p class="notice">
       有料プランは準備中です。出会い編と無料の練習をお楽しみください。
     </p>{/if}
   <p class="small muted">料金はすべて税込。3往復＝1枠、6往復＝2枠です。</p>
