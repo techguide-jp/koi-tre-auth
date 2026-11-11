@@ -129,6 +129,7 @@
     <p class="eyebrow">全員の物語も、これからの会話も</p>
     <h2>Koi-Tre Plus</h2>
     <p class="price">{PLUS_PRICE.toLocaleString()}<span>円／月</span></p>
+    <p class="small muted">申込時に初回決済し、解約するまで毎月自動更新します。</p>
     <ul>
       <li>全キャラの通常本編を攻略・再練習</li>
       <li>本編クリア後は、その人物との日常交流</li>
@@ -238,7 +239,7 @@
     </div>{:else}<p class="small muted">まずは話したいお相手を選んでください。</p>{/if}
 </section>
 {#if messageKey === 'overview' && message}<p class="error" role="status">{message}</p>{/if}
-<section class="rules">
+<section class="rules" id="purchase-terms">
   <h2>枠と購入について</h2>
   <details>
     <summary>買い切りと月額は、両方必要ですか？</summary>
@@ -265,9 +266,9 @@
     </p>
   </details>
   <p class="small muted">
-    購入内容・料金・更新日を決済画面で確認してからお手続きください。契約管理はマイページから行えます。
+    お支払いはカード決済です。支払いが反映されると、購入した利用権や枠をマイページで確認できます。Plusの次回更新を止めるには、更新前にマイページから解約してください。
   </p>
-  <a href="/account">マイページへ →</a>
+  <a href="/account">マイページへ →</a> · <a href="/contact">購入・請求のお問い合わせ →</a>
 </section>
 
 <style>
