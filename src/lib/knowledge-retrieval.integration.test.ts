@@ -18,6 +18,19 @@ const precise = (content: KnowledgeContent): KnowledgeContent => ({
   ...content,
   retrieval: 'scene-bm25-v2'
 })
+it('会話照合の方針は公開版のハッシュに含め、別の版として復元する', () => {
+  const content = parseKnowledgeContent({ ...legacy, feedbackReview: 'transcript-v1' })
+  const release = { id: 'review-v1', version: 5, content, contentHash: contentHash(content) }
+  const context = makeKnowledgeContext(release, 'invitation', 'カフェ')
+  expect(contentHash(content)).not.toBe(contentHash(legacy))
+  expect(context.core).toContain('特定の時点だけの改善ならその時点を示し')
+  expect(context.trace.feedbackReview).toBe('transcript-v1')
+  expect(restoreKnowledgeContext(release, context.trace)).toEqual(context)
+  expect(() =>
+    restoreKnowledgeContext(release, { ...context.trace, feedbackReview: undefined })
+  ).toThrow()
+  expect(() => parseKnowledgeContent({ ...legacy, feedbackReview: 'unknown' })).toThrow('照合方針')
+})
 describe('公開版に固定するRAG検索方式', () => {
   it('新方式は場面タグだけで資料を返さず、一致なし・空の検索では0件にする', () => {
     expect(retrieveKnowledge(precise(legacy), 'invitation', 'quasar9981')).toEqual([])

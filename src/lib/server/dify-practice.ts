@@ -17,6 +17,7 @@ import {
 import { assessPractice, selectPracticeCoaching } from './jev-practice'
 import { practiceCoaching, withCoachingVariant } from './practice-coaching'
 import { parsePracticeOutput } from './practice-feedback'
+import { reviewPracticeFeedback, transcriptReviewRepair } from './practice-feedback-review'
 import type { KnowledgeContent } from '$lib/knowledge-policy'
 import { getKnowledgeRelease } from './db/repositories/knowledge'
 import { makeKnowledgeContext } from './knowledge-content'
@@ -131,49 +132,68 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
         }
       : null
   }
-  // Difyのscene入力上限を超えると会話自体が失敗するため、古い記憶から表示用文脈を縮める。
-  while (JSON.stringify(sceneData).length > 4000 && sceneData.storyContext?.memories.length)
+  const review = final && policy?.trace.feedbackReview === 'transcript-v1'
+  const repair = review ? ` ${transcriptReviewRepair}` : ''
+  // 再生成でも同じ会話の文脈を渡せるよう、Difyの入力上限内に補足指示の分を確保する。
+  const sceneLimit = 4000 - repair.length
+  while (JSON.stringify(sceneData).length > sceneLimit && sceneData.storyContext?.memories.length)
     sceneData.storyContext.memories.shift()
-  if (JSON.stringify(sceneData).length > 4000 && persona)
+  if (JSON.stringify(sceneData).length > sceneLimit && persona)
     sceneData.partnerDescription = characterDescription(
       persona,
       coaching.id,
       input.storyContext,
       false
     )
-  if (JSON.stringify(sceneData).length > 4000)
+  if (JSON.stringify(sceneData).length > sceneLimit)
     throw Error('Practice scene exceeds workflow input limit')
-  const response = await fetch(`${base.replace(/\/$/, '')}/workflows/run`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      // Dify上の識別には練習IDを使い、Googleのプロフィール情報を送らない。
-      user: input.id,
-      response_mode: 'blocking',
-      inputs: {
-        scene: JSON.stringify(sceneData),
-        transcript: JSON.stringify(transcript),
-        turn: input.turns.length + 1,
-        total_turns: input.rehearsal ? turnLimit + 1 : turnLimit,
-        ...(policy
-          ? { policy_context: JSON.stringify(policy), policy_hash: policy.trace.contextHash }
-          : {})
-      }
-    }),
-    signal
-  })
-  if (!response.ok) throw new Error('Practice generation failed')
-  const body = await response.json()
-  if (body.data?.status !== 'succeeded') throw new Error('Practice workflow failed')
-  // 旧Workflowが新しい方針入力を無視した場合は、適用済みとして保存しない。
-  if (policy && body.data.outputs?.policy_hash !== policy.trace.contextHash)
-    throw Error('Practice policy acknowledgement mismatch')
-  const raw =
-    typeof body.data.outputs?.result === 'string'
-      ? JSON.parse(body.data.outputs.result)
-      : body.data.outputs?.result
   const userTexts = [...input.turns.map((turn) => turn.userText), input.text]
-  const parsed = parsePracticeOutput(raw, userTexts, final, assessment)
+  async function generate() {
+    const response = await fetch(`${base.replace(/\/$/, '')}/workflows/run`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        // Dify上の識別には練習IDを使い、Googleのプロフィール情報を送らない。
+        user: input.id,
+        response_mode: 'blocking',
+        inputs: {
+          scene: JSON.stringify(sceneData),
+          transcript: JSON.stringify(transcript),
+          turn: input.turns.length + 1,
+          total_turns: input.rehearsal ? turnLimit + 1 : turnLimit,
+          ...(policy
+            ? { policy_context: JSON.stringify(policy), policy_hash: policy.trace.contextHash }
+            : {})
+        }
+      }),
+      signal
+    })
+    if (!response.ok) throw new Error('Practice generation failed')
+    const body = await response.json()
+    if (body.data?.status !== 'succeeded') throw new Error('Practice workflow failed')
+    // 旧Workflowが新しい方針入力を無視した場合は、適用済みとして保存しない。
+    if (policy && body.data.outputs?.policy_hash !== policy.trace.contextHash)
+      throw Error('Practice policy acknowledgement mismatch')
+    const raw =
+      typeof body.data.outputs?.result === 'string'
+        ? JSON.parse(body.data.outputs.result)
+        : body.data.outputs?.result
+    return { raw, parsed: parsePracticeOutput(raw, userTexts, final, assessment) }
+  }
+  let generated = await generate()
+  if (review) {
+    const check = (feedback: typeof generated.parsed.feedback) =>
+      feedback ? reviewPracticeFeedback(transcript, feedback, signal) : 'unavailable'
+    let decision = await check(generated.parsed.feedback)
+    if (decision === 'revise' && !signal.aborted) {
+      sceneData.coaching.avoid += repair
+      generated = await generate()
+      decision = await check(generated.parsed.feedback)
+    }
+    // 照合できない文章を返すと、会話・報酬と一緒に誤指摘が保存される。
+    if (decision !== 'confirmed') throw Error('Practice feedback grounding not confirmed')
+  }
+  const { raw, parsed } = generated
   if (policy && parsed.feedback?.analysis) parsed.feedback.analysis.policy = policy.trace
   const result = { ...parsed, ...(policy ? { policyContext: policy.trace } : {}) }
   if (!input.adventure) return result

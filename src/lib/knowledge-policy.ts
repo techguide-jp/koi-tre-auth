@@ -11,6 +11,7 @@ export const knowledgeProfiles = [
 ] as const
 export type KnowledgeProfile = (typeof knowledgeProfiles)[number]
 export type KnowledgeCoaching = 'reciprocal-small-talk-v1' | 'reciprocal-small-talk-v2'
+type KnowledgeFeedbackReview = 'transcript-v1'
 export interface KnowledgeDocument {
   id: string
   title: string
@@ -23,6 +24,7 @@ export interface KnowledgeContent {
   // 未指定の公開版は従来方式に固定し、既存会話の検索とハッシュを変えない。
   retrieval?: 'scene-bm25-v2'
   coaching?: KnowledgeCoaching
+  feedbackReview?: KnowledgeFeedbackReview
 }
 export type KnowledgeRetriever = 'scene-bm25-v1' | 'scene-bm25-v2'
 export interface KnowledgeSource {
@@ -37,6 +39,7 @@ export interface KnowledgeTrace {
   retriever: KnowledgeRetriever
   profile: KnowledgeProfile
   coaching?: KnowledgeCoaching
+  feedbackReview?: KnowledgeFeedbackReview
   sources: KnowledgeSource[]
 }
 export interface KnowledgePassage extends KnowledgeSource {
@@ -99,6 +102,8 @@ export function parseKnowledgeContent(value: unknown): KnowledgeContent {
     input.coaching !== 'reciprocal-small-talk-v2'
   )
     throw Error('雑談の評価方針を確認してください。')
+  if (input.feedbackReview !== undefined && input.feedbackReview !== 'transcript-v1')
+    throw Error('分析の照合方針を確認してください。')
   if (!Array.isArray(input.documents) || input.documents.length > 40)
     throw Error('知識文書は40件までです。')
   const ids = new Set<string>()
@@ -125,7 +130,8 @@ export function parseKnowledgeContent(value: unknown): KnowledgeContent {
     core,
     documents,
     ...(input.retrieval === 'scene-bm25-v2' ? { retrieval: input.retrieval } : {}),
-    ...(input.coaching ? { coaching: input.coaching } : {})
+    ...(input.coaching ? { coaching: input.coaching } : {}),
+    ...(input.feedbackReview ? { feedbackReview: input.feedbackReview } : {})
   }
 }
 

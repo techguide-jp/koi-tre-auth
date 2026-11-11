@@ -15,6 +15,7 @@ import {
   reciprocalCoachingGuidance,
   reciprocalClosingGuidance
 } from './practice-coaching'
+import { transcriptReviewGuidance } from './practice-feedback-review'
 
 type ContextRelease = {
   id: string | null
@@ -48,17 +49,16 @@ function contextHash(
     .update(JSON.stringify({ core, passages, profile, contentHash: hash, retriever }))
     .digest('hex')
 }
-function effectiveCoaching(content: KnowledgeContent, profile: KnowledgeProfile) {
+function effectivePolicy(content: KnowledgeContent, profile: KnowledgeProfile) {
   const coaching = coachingForProfile(content.coaching, profile)
   return {
     coaching,
-    core: coaching
-      ? [
-          content.core,
-          reciprocalCoachingGuidance,
-          ...(coaching === 'reciprocal-small-talk-v2' ? [reciprocalClosingGuidance] : [])
-        ].join('\n\n')
-      : content.core
+    core: [
+      content.core,
+      ...(coaching ? [reciprocalCoachingGuidance] : []),
+      ...(coaching === 'reciprocal-small-talk-v2' ? [reciprocalClosingGuidance] : []),
+      ...(content.feedbackReview === 'transcript-v1' ? [transcriptReviewGuidance] : [])
+    ].join('\n\n')
   }
 }
 export function makeKnowledgeContext(
@@ -68,7 +68,7 @@ export function makeKnowledgeContext(
 ): KnowledgeContext {
   const passages = retrieveKnowledge(release.content, profile, query)
   const retriever = release.content.retrieval ?? 'scene-bm25-v1'
-  const { core, coaching } = effectiveCoaching(release.content, profile)
+  const { core, coaching } = effectivePolicy(release.content, profile)
   return {
     core,
     passages,
@@ -80,6 +80,7 @@ export function makeKnowledgeContext(
       retriever,
       profile,
       ...(coaching ? { coaching } : {}),
+      ...(release.content.feedbackReview ? { feedbackReview: release.content.feedbackReview } : {}),
       sources: passages.map(({ documentId, chunkIndex }) => ({ documentId, chunkIndex }))
     }
   }
@@ -88,13 +89,14 @@ export function restoreKnowledgeContext(
   release: ContextRelease,
   trace: KnowledgeTrace
 ): KnowledgeContext {
-  const { core, coaching } = effectiveCoaching(release.content, trace.profile)
+  const { core, coaching } = effectivePolicy(release.content, trace.profile)
   if (
     trace.releaseId !== release.id ||
     trace.version !== release.version ||
     trace.contentHash !== release.contentHash ||
     trace.retriever !== (release.content.retrieval ?? 'scene-bm25-v1') ||
-    trace.coaching !== coaching
+    trace.coaching !== coaching ||
+    trace.feedbackReview !== release.content.feedbackReview
   )
     throw Error('保存された評価方針の版が一致しません。')
   const chunks = release.content.documents.flatMap(knowledgeChunks)
