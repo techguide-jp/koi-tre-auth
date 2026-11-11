@@ -9,6 +9,19 @@ export function stripeClient() {
     throw new Error('Stripe test configuration is required')
   return new Stripe(key, { timeout: 12_000, maxNetworkRetries: 1, appInfo: { name: 'Koi-Tre' } })
 }
+
+export function liveStripeWebhookClient() {
+  const key = process.env.STRIPE_LIVE_WEBHOOK_API_KEY
+  // 新規購入を止めている間も、既存の契約・返金を照合できるようにする。
+  if (
+    process.env.VERCEL_ENV !== 'production' ||
+    process.env.STRIPE_LIVE_WEBHOOK_ENABLED !== 'true' ||
+    !key?.startsWith('rk_live_')
+  )
+    return null
+  return new Stripe(key, { timeout: 12_000, maxNetworkRetries: 1, appInfo: { name: 'Koi-Tre' } })
+}
+
 export function stripePrice(product: BillingProduct) {
   const variable =
     product.kind === 'plus'
