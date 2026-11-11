@@ -11,6 +11,8 @@ const caseTitles: Record<string, string> = {
   'hobbies-short': '趣味：短い答えと好きな理由',
   'hobbies-facts-only': '趣味：名前や事実だけの返答が続く',
   'hobbies-reciprocal': '趣味：短くても互いに関心を返す',
+  'hobbies-respect-close': '趣味：終える意思を受けて締める',
+  'hobbies-continue-after-close': '趣味：終える意思の後も質問する',
   'invitation-settled': '誘い：次の約束が決まった',
   'invitation-respect-no': '誘い：相手の断りを受け入れる',
   'own-boundary': '断り：自分の意思を保つ',

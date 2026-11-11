@@ -14,7 +14,7 @@ describe('同じ公開方針を生成と評価に適用する', () => {
     vi.stubEnv('DIFY_PRACTICE_API_KEY', 'fixture')
     vi.stubEnv('TYPESAFE_API_KEY', 'fixture')
     const knowledge = defaultKnowledgeContent()
-    knowledge.coaching = 'reciprocal-small-talk-v1'
+    knowledge.coaching = 'reciprocal-small-talk-v2'
     const policyOverride = { content: knowledge, contentHash: contentHash(knowledge) }
     const fetch = vi.fn(async (url: string, options: RequestInit) => {
       expect(options.method).toBe('POST')
@@ -129,20 +129,22 @@ describe('同じ公開方針を生成と評価に適用する', () => {
       if (url.includes('typesafe.ai')) expect(options.body).not.toContain('青い便箋')
   })
   it.each([
-    { count: 3, mode: 'scene-bm25-v1', reciprocal: false },
-    { count: 6, mode: 'scene-bm25-v1', reciprocal: false },
-    { count: 3, mode: 'scene-bm25-v2', reciprocal: false },
-    { count: 6, mode: 'scene-bm25-v2', reciprocal: false },
-    { count: 3, mode: 'scene-bm25-v2', reciprocal: true },
-    { count: 6, mode: 'scene-bm25-v2', reciprocal: true }
+    { count: 3, mode: 'scene-bm25-v1', coaching: undefined },
+    { count: 6, mode: 'scene-bm25-v1', coaching: undefined },
+    { count: 3, mode: 'scene-bm25-v2', coaching: undefined },
+    { count: 6, mode: 'scene-bm25-v2', coaching: undefined },
+    { count: 3, mode: 'scene-bm25-v2', coaching: 'reciprocal-small-talk-v1' },
+    { count: 6, mode: 'scene-bm25-v2', coaching: 'reciprocal-small-talk-v1' },
+    { count: 3, mode: 'scene-bm25-v2', coaching: 'reciprocal-small-talk-v2' },
+    { count: 6, mode: 'scene-bm25-v2', coaching: 'reciprocal-small-talk-v2' }
   ] as const)(
-    '$count往復・$mode・雑談新版=$reciprocalの最終回に同じ文脈を送り、出典を記録する',
-    async ({ count, mode, reciprocal }) => {
+    '$count往復・$mode・雑談方針=$coachingの最終回に同じ文脈を送り、出典を記録する',
+    async ({ count, mode, coaching }) => {
       vi.stubEnv('DIFY_PRACTICE_API_KEY', 'fixture')
       vi.stubEnv('TYPESAFE_API_KEY', 'fixture')
       const content = defaultKnowledgeContent()
       if (mode === 'scene-bm25-v1') delete content.retrieval
-      if (reciprocal) content.coaching = 'reciprocal-small-talk-v1'
+      if (coaching) content.coaching = coaching
       const texts = Array.from({ length: count }, (_, i) => exampleTexts[i % 3])
       const feedback = structuredClone(exampleFeedback)
       feedback.analysis!.version = 3
@@ -181,11 +183,19 @@ describe('同じ公開方針を生成と評価に適用する', () => {
       const jev = JSON.parse(fetch.mock.calls[0][1].body as string),
         dify = JSON.parse(fetch.mock.calls[1][1].body as string)
       expect(JSON.parse(dify.inputs.policy_context)).toEqual(jev.state.policy)
-      if (reciprocal) {
+      if (coaching) {
         expect(jev.state.policy.core).toContain('該当する返答を引用して改善点に挙げる')
-        expect(jev.questions.questions.criteria[1]).toContain('名称や事実だけの回答が続く')
+        if (coaching === 'reciprocal-small-talk-v2') {
+          expect(jev.questions.questions.criteria[2]).toContain('終えると伝えた後も質問を重ねる')
+          expect(jev.questions.questions.criteria[4]).toContain(
+            'その意思に沿って自然に会話を締める'
+          )
+          expect(jev.state.policy.core).toContain('前半の相互性と締め方を分けて見る')
+        } else {
+          expect(jev.questions.questions.criteria[1]).toContain('名称や事実だけの回答が続く')
+        }
         expect(JSON.parse(dify.inputs.scene).coaching.focus).toContain('互いが話せる材料')
-        expect(result.policyContext?.coaching).toBe('reciprocal-small-talk-v1')
+        expect(result.policyContext?.coaching).toBe(coaching)
       } else {
         expect(jev.state.policy.core).toBe(content.core)
         expect(jev.questions.questions.criteria[1]).toContain('質問や自分の話が重なり')

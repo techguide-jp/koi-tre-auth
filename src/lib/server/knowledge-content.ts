@@ -12,7 +12,8 @@ import {
 import {
   coachingForProfile,
   coachingProfiles,
-  reciprocalCoachingGuidance
+  reciprocalCoachingGuidance,
+  reciprocalClosingGuidance
 } from './practice-coaching'
 
 type ContextRelease = {
@@ -51,7 +52,13 @@ function effectiveCoaching(content: KnowledgeContent, profile: KnowledgeProfile)
   const coaching = coachingForProfile(content.coaching, profile)
   return {
     coaching,
-    core: coaching ? `${content.core}\n\n${reciprocalCoachingGuidance}` : content.core
+    core: coaching
+      ? [
+          content.core,
+          reciprocalCoachingGuidance,
+          ...(coaching === 'reciprocal-small-talk-v2' ? [reciprocalClosingGuidance] : [])
+        ].join('\n\n')
+      : content.core
   }
 }
 export function makeKnowledgeContext(

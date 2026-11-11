@@ -10,7 +10,7 @@ export const knowledgeProfiles = [
   'general'
 ] as const
 export type KnowledgeProfile = (typeof knowledgeProfiles)[number]
-export type KnowledgeCoaching = 'reciprocal-small-talk-v1'
+export type KnowledgeCoaching = 'reciprocal-small-talk-v1' | 'reciprocal-small-talk-v2'
 export interface KnowledgeDocument {
   id: string
   title: string
@@ -93,7 +93,11 @@ export function parseKnowledgeContent(value: unknown): KnowledgeContent {
   const core = text(input.core, 20, 3000)
   if (input.retrieval !== undefined && input.retrieval !== 'scene-bm25-v2')
     throw Error('検索方式を確認してください。')
-  if (input.coaching !== undefined && input.coaching !== 'reciprocal-small-talk-v1')
+  if (
+    input.coaching !== undefined &&
+    input.coaching !== 'reciprocal-small-talk-v1' &&
+    input.coaching !== 'reciprocal-small-talk-v2'
+  )
     throw Error('雑談の評価方針を確認してください。')
   if (!Array.isArray(input.documents) || input.documents.length > 40)
     throw Error('知識文書は40件までです。')
@@ -121,7 +125,7 @@ export function parseKnowledgeContent(value: unknown): KnowledgeContent {
     core,
     documents,
     ...(input.retrieval === 'scene-bm25-v2' ? { retrieval: input.retrieval } : {}),
-    ...(input.coaching === 'reciprocal-small-talk-v1' ? { coaching: input.coaching } : {})
+    ...(input.coaching ? { coaching: input.coaching } : {})
   }
 }
 

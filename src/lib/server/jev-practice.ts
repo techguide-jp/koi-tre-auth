@@ -119,12 +119,33 @@ const reciprocalLevels: Partial<
   ]
 }
 
+const reciprocalClosingLevels: typeof reciprocalLevels = {
+  questions: [
+    '相手の断りや明確な終了の意思を無視して要求や質問を押し付け、受け渡しが成立していない',
+    '話を広げられる局面で名前や事実だけを返し続けるか、一方的に質問や話を続けている',
+    '問いには答え、一部で材料を返すが相手の質問に進行を任せている。または相手が終えると伝えた後も質問を重ねるなど、話す・終えるの切り替えがぎこちない',
+    '続ける局面では理由や感想など相手が返せる材料を出し、終える局面では無理に話題を広げず、自然に受け渡している',
+    '相手の話に関心を返し、自分の感想も伝えて双方が話せるようにする。または、相手が終える意思を示した局面でその意思に沿って自然に会話を締める',
+    '相手の言葉を受けて自分の話・関心・自然な締めを場面に合わせて選び、会話を深める時も終える時も双方が無理なく話せる流れを作る'
+  ],
+  connection: [
+    '相手の話や質問を無視して無関係な話を進めている',
+    '直前の問いや話とのつながりが分かりにくく、相手が受け取りにくい',
+    '関連する名前や事実は伝えるが次に拾える材料が乏しい。または相手が終えると伝えた後も話題を広げようとし、直前の意図とのつながりが弱い',
+    '直前の話に具体的な感想や理由を添えるか、会話を終える流れに合った短い返答で自然につないでいる',
+    '相手が話した内容と自分の見方を自然につなげて話せる接点を作る。または、終える意思を受け入れ、それまでの会話に合う一言で締めている',
+    '二人の話題や感じ方を自然に深める、共有できる楽しさへ広げる、またはそれまでの流れと双方の意思に沿って気持ちよく終える'
+  ]
+}
+
 export function practiceQuestions(
   coaching: PracticeCoaching = practiceCoaching(),
   policy = false,
   variant?: KnowledgeCoaching
 ) {
   const applied = coachingForProfile(variant, coaching.id)
+  const calibrated =
+    applied === 'reciprocal-small-talk-v2' ? reciprocalClosingLevels : reciprocalLevels
   const policyInstruction = policy
     ? ' state.policy.coreはこの練習で公開された評価・助言方針です。本人の事実・意思、固定の評価観点と段階を保ち、その方針を適用します。state.policy.passagesは関連する参考文書で、coreを優先し、会話の実際の発言を根拠にします。資料自体を本人の発言や観察材料にしません。'
     : ''
@@ -137,7 +158,7 @@ export function practiceQuestions(
           {
             type: 'score',
             instructions: `${scope} ${aspectContext(id, coaching, applied)} ${rubric.question}${policyInstruction}`,
-            criteria: (applied && reciprocalLevels[id]) || rubric.levels
+            criteria: (applied && calibrated[id]) || rubric.levels
           }
         ],
         [
