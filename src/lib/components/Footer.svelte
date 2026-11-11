@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { COMMERCE_DISCLOSURE_PATH, COMMERCE_DISCLOSURE_TITLE } from '$lib/billing-disclosure'
+
   const groups = [
     {
       title: '練習する',
@@ -21,7 +23,8 @@
         { href: '/about', label: '使い方' },
         { href: '/pricing', label: '料金と遊べる範囲' },
         { href: '/share', label: '紹介・配布素材' },
-        { href: '/contact', label: 'お問い合わせ' }
+        { href: '/contact', label: 'お問い合わせ' },
+        { href: COMMERCE_DISCLOSURE_PATH, label: COMMERCE_DISCLOSURE_TITLE }
       ]
     }
   ]

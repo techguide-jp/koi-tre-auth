@@ -12,6 +12,13 @@
     productKey,
     type BillingProduct
   } from '$lib/billing'
+  import {
+    COMMERCE_DISCLOSURE_PATH,
+    COMMERCE_DISCLOSURE_TITLE,
+    PLUS_REFUND,
+    REFUND_AFTER_PROVISION,
+    REFUND_EXCEPTIONS
+  } from '$lib/billing-disclosure'
   import { checkoutProduct } from '$lib/billing-client'
   import { authReady, authenticatedFetch, user } from '$lib/stores'
   import CharacterPortrait from '$lib/components/adventure/CharacterPortrait.svelte'
@@ -109,6 +116,7 @@
       有料プランは準備中です。出会い編と無料の練習をお楽しみください。
     </p>{/if}
   <p class="small muted">料金はすべて税込。3往復＝1枠、6往復＝2枠です。</p>
+  <p class="small"><a href="{COMMERCE_DISCLOSURE_PATH}">{COMMERCE_DISCLOSURE_TITLE}</a></p>
 </section>
 <div class="plan-grid">
   <article class="plan">
@@ -264,6 +272,12 @@
     <p>
       解約は次回更新の停止です。支払い済み期間の終了までPlusを利用できます。その後も購入済み本編、未使用の人物専用・追加購入枠、保存済み会話・分析・思い出・進行記録は残ります。未購入の有料本編を新たに遊ぶには、再加入か人物パックが必要です。日常交流やイベントの新しいプレイには再加入が必要です。消費済みの途中会話は完了まで続けられます。
     </p>
+  </details>
+  <details>
+    <summary>購入のキャンセルや返金はできますか？</summary>
+    <p>{REFUND_AFTER_PROVISION}{PLUS_REFUND}</p>
+    <p>{REFUND_EXCEPTIONS}</p>
+    <a href="{COMMERCE_DISCLOSURE_PATH}#refunds">キャンセル・返金の条件を確認する →</a>
   </details>
   <p class="small muted">
     お支払いはカード決済です。支払いが反映されると、購入した利用権や枠をマイページで確認できます。Plusの次回更新を止めるには、更新前にマイページから解約してください。

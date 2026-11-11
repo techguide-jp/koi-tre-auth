@@ -11,6 +11,13 @@ import {
   TOPUP_CREDITS,
   type BillingProduct
 } from '$lib/billing'
+import {
+  COMMERCE_DISCLOSURE_PATH,
+  COMMERCE_DISCLOSURE_TITLE,
+  PLUS_REFUND,
+  REFUND_AFTER_PROVISION,
+  REFUND_EXCEPTIONS
+} from '$lib/billing-disclosure'
 import { getDb } from './db/client'
 import {
   billingCheckouts,
@@ -48,7 +55,8 @@ function checkoutMessage(product: BillingProduct, origin: string) {
       : product.kind === 'route'
         ? `${price}円（税込）の買い切りです。支払いの反映後、対象人物の本編4〜12話・結末の利用権と、期限のない人物専用${ROUTE_CREDITS}枠を付与します。`
         : `${price}円（税込）の買い切りです。支払いの反映後、期限のない共通${TOPUP_CREDITS}枠を付与します。有料本編の利用権にはPlusまたは人物パックが必要です。`
-  return `${detail} 3往復は1枠、6往復は2枠を使います。[購入と解約の案内](${origin}/pricing#purchase-terms) · [お問い合わせ](${origin}/contact)`
+  const refund = `${REFUND_AFTER_PROVISION}${product.kind === 'plus' ? PLUS_REFUND : ''}${REFUND_EXCEPTIONS}`
+  return `${detail} 3往復は1枠、6往復は2枠を使います。\n\n${refund}\n\n[${COMMERCE_DISCLOSURE_TITLE}](${origin}${COMMERCE_DISCLOSURE_PATH}) · [購入と解約の案内](${origin}/pricing#purchase-terms) · [お問い合わせ](${origin}/contact)`
 }
 
 export async function beginCheckout(uid: string, id: string, product: BillingProduct) {

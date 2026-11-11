@@ -380,6 +380,14 @@ describe('Stripeの購入・契約・通知', () => {
     expect(message).toBeDefined()
     for (const term of terms) expect(message).toContain(term)
     expect(message).toContain('支払いの反映後')
+    expect(message).toContain('キャンセル・返金を原則として受け付けていません')
+    expect(message).toContain('二重請求、支払い後の未提供')
+    expect(message).toContain('購入内容を未利用')
+    expect(message).toContain('法令で定められている場合')
+    expect(message?.includes('Plusの支払い済み期間の日割り返金は行いません')).toBe(
+      product.kind === 'plus'
+    )
+    expect(message).toContain('[特定商取引法に基づく表記](http://127.0.0.1:5194/legal/commerce)')
     expect(message).toContain('/pricing#purchase-terms')
     expect(message).toContain('/contact')
     expect(message!.length).toBeLessThanOrEqual(1200)
