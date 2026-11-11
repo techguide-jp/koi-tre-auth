@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { and, eq, gt, inArray, lt, sql } from 'drizzle-orm'
+import { and, eq, gt, inArray, lt } from 'drizzle-orm'
 import { error } from '@sveltejs/kit'
 import { guestAdventure, type GuestTurn } from '$lib/guest-practice'
 import { applyRelationship, gradeConversation } from '$lib/adventure-progression'
@@ -7,15 +7,10 @@ import { type Adventure, parseMission, parsePresentation } from '$lib/adventure'
 import type { PracticeSession } from '$lib/practice'
 import type { GeneratePracticeInput } from '$lib/server/dify-practice'
 import { getDb } from '../client'
-import {
-  guestSessions,
-  guestPractices,
-  guestRateLimits,
-  knowledgeSettings,
-  practices
-} from '../schema'
+import { guestSessions, guestPractices, knowledgeSettings, practices } from '../schema'
 import { snapshotCharacter } from './character-policy'
 import type { CreditDb } from './credits'
+import { consumeRateLimit, pruneRateLimits } from './rate-limits'
 
 type GuestRow = typeof guestPractices.$inferSelect
 type RateContext = { day: string; hash: string }
@@ -116,16 +111,7 @@ async function consumeRate(
     [context.hash, kind === 'start' ? 12 : 60]
   ] as const) {
     const key = `${scope}:${kind}:${context.day}`
-    const [result] = await db
-      .insert(guestRateLimits)
-      .values({ key, used: 1, expiresAt: new Date(now.getTime() + 2 * 86400_000) })
-      .onConflictDoUpdate({
-        target: guestRateLimits.key,
-        set: { used: sql`${guestRateLimits.used} + 1` },
-        setWhere: lt(guestRateLimits.used, limit)
-      })
-      .returning({ key: guestRateLimits.key })
-    if (!result)
+    if (!(await consumeRateLimit(db, key, limit, new Date(now.getTime() + 2 * 86400_000))))
       throw error(
         429,
         '本日の体験が混み合っています。ログインして練習するか、日を改めてお試しください。'
@@ -154,18 +140,7 @@ export async function createGuestPractice(
           .limit(50)
       )
     )
-  await db
-    .delete(guestRateLimits)
-    .where(
-      inArray(
-        guestRateLimits.key,
-        db
-          .select({ key: guestRateLimits.key })
-          .from(guestRateLimits)
-          .where(lt(guestRateLimits.expiresAt, now))
-          .limit(100)
-      )
-    )
+  await pruneRateLimits(db, now)
   return db.transaction(async (tx) => {
     await tx.insert(guestSessions).values(session).onConflictDoNothing()
     await tx.select().from(guestSessions).where(eq(guestSessions.id, session.id)).for('update')
