@@ -1,6 +1,7 @@
 import Stripe from 'stripe'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { handleStripeEvent } from '$lib/server/billing-service'
+import { stripeReady } from '$lib/server/stripe-client'
 import { POST } from './+server'
 
 vi.mock('$lib/server/billing-service', () => ({ handleStripeEvent: vi.fn() }))
@@ -29,6 +30,8 @@ describe('Stripe Webhookの環境分離', () => {
     vi.stubEnv('BILLING_ENABLED', 'false')
     vi.stubEnv('STRIPE_WEBHOOK_SECRET', secret)
     vi.stubEnv('STRIPE_SECRET_KEY', undefined)
+    vi.stubEnv('STRIPE_LIVE_WEBHOOK_ENABLED', 'false')
+    vi.stubEnv('STRIPE_LIVE_WEBHOOK_API_KEY', undefined)
     vi.mocked(handleStripeEvent).mockClear()
   })
   afterEach(() => vi.unstubAllEnvs())
@@ -41,10 +44,26 @@ describe('Stripe Webhookの環境分離', () => {
     expect(handleStripeEvent).not.toHaveBeenCalled()
   })
 
-  it('本番の決済通知を再送対象にし、決済処理を呼ばない', async () => {
+  it('本番の反映が停止中、またはキーが不適切なら決済通知を再送対象にする', async () => {
     const body = JSON.stringify(notification('checkout.session.completed', true))
     await expect(post(body, sign(body))).rejects.toMatchObject({ status: 503 })
+    vi.stubEnv('STRIPE_LIVE_WEBHOOK_ENABLED', 'true')
+    vi.stubEnv('STRIPE_LIVE_WEBHOOK_API_KEY', 'sk_test_fixture')
+    await expect(post(body, sign(body))).rejects.toMatchObject({ status: 503 })
     expect(handleStripeEvent).not.toHaveBeenCalled()
+  })
+
+  it('専用キーがあれば購入停止中も本番通知を決済処理に渡す', async () => {
+    vi.stubEnv('STRIPE_LIVE_WEBHOOK_ENABLED', 'true')
+    vi.stubEnv('STRIPE_LIVE_WEBHOOK_API_KEY', 'rk_live_fixture')
+    const liveEvent = notification('invoice.paid', true)
+    const body = JSON.stringify(liveEvent)
+    expect(stripeReady()).toBe(false)
+    expect((await post(body, sign(body))).status).toBe(200)
+    expect(handleStripeEvent).toHaveBeenCalledTimes(1)
+    expect(handleStripeEvent).toHaveBeenCalledWith(liveEvent, expect.any(Stripe))
+    vi.mocked(handleStripeEvent).mockRejectedValueOnce(new Error('fixture'))
+    await expect(post(body, sign(body))).rejects.toMatchObject({ status: 500 })
   })
 
   it('設定前の本番通知を再送対象にする', async () => {
@@ -82,6 +101,6 @@ describe('Stripe Webhookの環境分離', () => {
     await expect(post(liveBody, sign(liveBody))).rejects.toMatchObject({ status: 400 })
     expect((await post(body, sign(body))).status).toBe(200)
     expect(handleStripeEvent).toHaveBeenCalledTimes(1)
-    expect(handleStripeEvent).toHaveBeenCalledWith(testEvent)
+    expect(handleStripeEvent).toHaveBeenCalledWith(testEvent, undefined)
   })
 })

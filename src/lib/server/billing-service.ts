@@ -204,8 +204,9 @@ export async function openBillingPortal(uid: string) {
     throw error(502, '契約管理を開けませんでした。')
   return { url: session.url }
 }
-function assertTest(object: { livemode: boolean }) {
-  if (object.livemode) throw Error('Live billing is not enabled')
+function assertStripeMode(object: { livemode: boolean }) {
+  if (object.livemode !== (process.env.VERCEL_ENV === 'production'))
+    throw Error('Stripe object mode mismatch')
 }
 async function verifyCustomer(db: CreditDb, uid: string, customerId: string | undefined) {
   const account = await db.query.billingCustomers.findFirst({
@@ -224,7 +225,7 @@ async function paymentRevokedAt(db: CreditDb, uid: string, intents: string[]) {
 }
 async function fulfillPayment(db: CreditDb, stripe: Stripe, sessionId: string) {
   const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['line_items'] })
-  assertTest(session)
+  assertStripeMode(session)
   const uid = session.metadata?.uid,
     orderId = session.metadata?.checkout_id
   if (session.metadata?.app !== 'koi-tre' || !uid || !orderId) return
@@ -336,7 +337,7 @@ function subscriptionPeriod(subscription: Stripe.Subscription) {
 async function syncSubscription(db: CreditDb, stripe: Stripe, id: string, invoiceId?: string) {
   // 通知順には依存せず、ユーザー行をロックした後のStripe最新状態で同期する。
   const subscription = await stripe.subscriptions.retrieve(id)
-  assertTest(subscription)
+  assertStripeMode(subscription)
   const uid = subscription.metadata.uid
   if (subscription.metadata.app !== 'koi-tre' || !uid) return
   await verifyCustomer(db, uid, stripeReference(subscription.customer))
@@ -367,7 +368,7 @@ async function syncSubscription(db: CreditDb, stripe: Stripe, id: string, invoic
   const paidInvoiceId = invoiceId ?? stripeReference(subscription.latest_invoice)
   if (!paidInvoiceId) return
   const invoice = await stripe.invoices.retrieve(paidInvoiceId)
-  assertTest(invoice)
+  assertStripeMode(invoice)
   if (invoice.status !== 'paid' || invoice.amount_paid !== PLUS_PRICE || invoice.currency !== 'jpy')
     return
   if (
@@ -392,7 +393,10 @@ async function syncSubscription(db: CreditDb, stripe: Stripe, id: string, invoic
     limit: 100
   })
   if (payments.has_more) throw Error('Invoice payments incomplete')
-  const intents = payments.data.map((payment) => stripeReference(payment.payment.payment_intent))
+  const intents = payments.data.map((payment) => {
+    assertStripeMode(payment)
+    return stripeReference(payment.payment.payment_intent)
+  })
   if (intents.some((intent) => !intent)) throw Error('Invoice payment type unsupported')
   const revokedAt = await paymentRevokedAt(db, uid, intents as string[])
   // 毎月の枠は支払い済み請求書の期間に一度だけ付与し、契約状態の通知だけでは増やさない。
@@ -418,11 +422,11 @@ async function revokeCharge(
   disputed = false
 ) {
   const charge = await stripe.charges.retrieve(chargeId)
-  assertTest(charge)
+  assertStripeMode(charge)
   await verifyCustomer(db, uid, stripeReference(charge.customer))
   // 紛争に勝っても、全額返金済みの購入権は復活させない。
   if (charge.amount_refunded >= charge.amount) restore = false
-  else if (!restore && !disputed && !charge.disputed) return
+  else if (!disputed) return
   const intent = stripeReference(charge.payment_intent)
   if (!intent) return
   const revokedAt = restore ? null : new Date()
@@ -460,7 +464,9 @@ async function revokeCharge(
     limit: 10
   })
   for (const payment of payments.data) {
+    assertStripeMode(payment)
     const invoice = await stripe.invoices.retrieve(stripeReference(payment.invoice)!)
+    assertStripeMode(invoice)
     const subId = stripeReference(invoice.parent?.subscription_details?.subscription)
     const line = invoice.lines.data.find(
       (l) => stripeReference(l.pricing?.price_details?.price) === stripePrice({ kind: 'plus' })
@@ -472,9 +478,8 @@ async function revokeCharge(
         .where(eq(creditGrants.id, `plus:${subId}:${line.period.start}`))
   }
 }
-export async function handleStripeEvent(event: Stripe.Event) {
-  assertTest(event)
-  const stripe = stripeClient()
+export async function handleStripeEvent(event: Stripe.Event, stripe = stripeClient()) {
+  assertStripeMode(event)
   const object = event.data.object
   let customerId: string | undefined
   if ('customer' in object)
@@ -482,6 +487,7 @@ export async function handleStripeEvent(event: Stripe.Event) {
   if (event.type.startsWith('charge.dispute.')) {
     const dispute = object as Stripe.Dispute
     const charge = await stripe.charges.retrieve(stripeReference(dispute.charge)!)
+    assertStripeMode(charge)
     customerId = stripeReference(charge.customer)
   }
   if (!customerId) return
@@ -500,6 +506,7 @@ export async function handleStripeEvent(event: Stripe.Event) {
       const session = await stripe.checkout.sessions.retrieve(
         (object as Stripe.Checkout.Session).id
       )
+      assertStripeMode(session)
       if (session.mode === 'payment') await fulfillPayment(tx, stripe, session.id)
       else if (session.mode === 'subscription' && stripeReference(session.subscription)) {
         await syncSubscription(tx, stripe, stripeReference(session.subscription)!)
@@ -518,6 +525,7 @@ export async function handleStripeEvent(event: Stripe.Event) {
       await syncSubscription(tx, stripe, (object as Stripe.Subscription).id)
     else if (['invoice.paid', 'invoice.payment_failed'].includes(event.type)) {
       const invoice = await stripe.invoices.retrieve((object as Stripe.Invoice).id)
+      assertStripeMode(invoice)
       const subId = stripeReference(invoice.parent?.subscription_details?.subscription)
       if (subId)
         await syncSubscription(
@@ -528,17 +536,10 @@ export async function handleStripeEvent(event: Stripe.Event) {
         )
     } else if (event.type === 'charge.refunded')
       await revokeCharge(tx, stripe, account.uid, (object as Stripe.Charge).id)
-    else if (event.type === 'charge.dispute.created')
-      await revokeCharge(
-        tx,
-        stripe,
-        account.uid,
-        stripeReference((object as Stripe.Dispute).charge)!,
-        false,
-        true
-      )
-    else if (event.type === 'charge.dispute.closed') {
+    else if (event.type === 'charge.dispute.created' || event.type === 'charge.dispute.closed') {
+      // 作成通知が解決後に届いても、最新の紛争状態で判断する。
       const dispute = await stripe.disputes.retrieve((object as Stripe.Dispute).id)
+      assertStripeMode(dispute)
       await revokeCharge(
         tx,
         stripe,
@@ -557,6 +558,7 @@ export async function reconcileCheckout(uid: string, id: string) {
   })
   if (!order?.stripeSessionId) return { pending: order?.status === 'creating' }
   const session = await stripeClient().checkout.sessions.retrieve(order.stripeSessionId)
+  assertStripeMode(session)
   const account = await getDb().query.billingCustomers.findFirst({
     where: eq(billingCustomers.uid, uid)
   })

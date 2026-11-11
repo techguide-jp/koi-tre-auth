@@ -80,7 +80,7 @@ const sdk = {
 vi.mock('./db/client', () => ({ getDb: () => db }))
 vi.mock('./stripe-client', async (importOriginal) => {
   const original = await importOriginal<typeof import('./stripe-client')>()
-  return { ...original, stripeClient: () => sdk }
+  return { ...original, stripeClient: () => sdk, liveStripeWebhookClient: () => sdk }
 })
 vi.mock('./analytics', () => ({ trackPracticeCompleted: vi.fn(), trackQuestionSubmitted: vi.fn() }))
 vi.mock('./dify-practice', () => ({
@@ -207,6 +207,7 @@ beforeEach(async () => {
         ? [
             {
               invoice: invoice.id,
+              livemode: invoice.livemode,
               status: 'paid',
               payment: { type: 'payment_intent', payment_intent: 'pi_plus_fixture' }
             }
@@ -579,7 +580,11 @@ describe('Stripeの購入・契約・通知', () => {
       disputed: false
     })
     await handleStripeEvent(event('charge.refunded', { id: 'ch_fixture', customer }))
-    sdk.disputes.retrieve.mockResolvedValue({ status: 'won', charge: 'ch_fixture' })
+    sdk.disputes.retrieve.mockResolvedValue({
+      livemode: false,
+      status: 'won',
+      charge: 'ch_fixture'
+    })
     await handleStripeEvent(
       event('charge.dispute.closed', { id: 'dp_fixture', charge: 'ch_fixture' })
     )
@@ -600,6 +605,11 @@ describe('Stripeの購入・契約・通知', () => {
         amount_refunded: kind === '返金' ? 1480 : 0,
         payment_intent: paid.session.payment_intent,
         disputed: kind === '紛争'
+      })
+      sdk.disputes.retrieve.mockResolvedValue({
+        livemode: false,
+        status: 'needs_response',
+        charge: 'ch_fixture'
       })
       await handleStripeEvent(
         kind === '返金'
@@ -636,10 +646,19 @@ describe('Stripeの購入・契約・通知', () => {
         payment_intent: paid.session.payment_intent,
         disputed: true
       })
+      sdk.disputes.retrieve.mockResolvedValue({
+        livemode: false,
+        status: 'needs_response',
+        charge: 'ch_fixture'
+      })
       await handleStripeEvent(
         event('charge.dispute.created', { id: 'dp_fixture', charge: 'ch_fixture' })
       )
-      sdk.disputes.retrieve.mockResolvedValue({ status: 'won', charge: 'ch_fixture' })
+      sdk.disputes.retrieve.mockResolvedValue({
+        livemode: false,
+        status: 'won',
+        charge: 'ch_fixture'
+      })
       await handleStripeEvent(
         event('charge.dispute.closed', { id: 'dp_fixture', charge: 'ch_fixture' })
       )
@@ -944,6 +963,60 @@ describe('決済APIの境界', () => {
     } as never)
     expect(response.status).toBe(200)
   })
+  it('購入停止中の本番通知で契約・購入権・枠を一度だけ反映し、テストの購入データを拒否する', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(now)
+    const { POST } = await import('../../routes/api/webhooks/stripe/+server')
+    const route = await routePurchase('aoi', false)
+    const topup = await topupPurchase(false)
+    vi.stubEnv('VERCEL_ENV', 'production')
+    vi.stubEnv('BILLING_ENABLED', 'false')
+
+    async function deliver(notification: Stripe.Event) {
+      const body = JSON.stringify({ ...notification, livemode: true })
+      return POST({
+        request: new Request('https://example.test/api/webhooks/stripe', {
+          method: 'POST',
+          body,
+          headers: {
+            'stripe-signature': Stripe.webhooks.generateTestHeaderString({
+              payload: body,
+              secret: 'whsec_fixture'
+            })
+          }
+        })
+      } as Parameters<typeof POST>[0])
+    }
+
+    await expect(beginCheckout(uid, randomUUID(), { kind: 'plus' })).rejects.toMatchObject({
+      status: 503
+    })
+    await expect(deliver(route.notification)).rejects.toMatchObject({ status: 500 })
+    expect(await db.select().from(schema.billingEvents)).toHaveLength(0)
+    expect(await db.select().from(schema.creditGrants)).toHaveLength(0)
+
+    route.session.livemode = true
+    topup.session.livemode = true
+    subscription.livemode = true
+    invoice.livemode = true
+    const paidInvoice = event('invoice.paid', invoice)
+    for (const notification of [route.notification, topup.notification, paidInvoice]) {
+      expect((await deliver(notification)).status).toBe(200)
+      expect((await deliver(notification)).status).toBe(200)
+    }
+    const state = await getBillingOverview(uid, now)
+    expect(state.subscription?.active).toBe(true)
+    expect(state.ownedCharacters).toEqual(['aoi'])
+    expect(state.credits.map(({ kind, remaining }) => [kind, remaining])).toEqual(
+      expect.arrayContaining([
+        ['plus', 60],
+        ['route', 24],
+        ['topup', 15]
+      ])
+    )
+    expect(await db.select().from(schema.creditGrants)).toHaveLength(3)
+    expect(await db.select().from(schema.billingEvents)).toHaveLength(3)
+  })
 })
 
 async function topupPurchase(fulfill = true) {
@@ -1039,10 +1112,24 @@ describe('月額中心の本編アクセスと追加共通枠', () => {
       disputed: true
     }
     sdk.charges.retrieve.mockResolvedValue(charge)
+    sdk.disputes.retrieve.mockResolvedValue({
+      id: 'dp_topup',
+      livemode: false,
+      status: 'needs_response',
+      charge: 'ch_topup'
+    })
     await handleStripeEvent(event('charge.dispute.created', { id: 'dp_topup', charge: 'ch_topup' }))
     expect((await getBillingOverview(uid)).remaining).toBe(10)
-    sdk.disputes.retrieve.mockResolvedValue({ id: 'dp_topup', status: 'won', charge: 'ch_topup' })
+    sdk.disputes.retrieve.mockResolvedValue({
+      id: 'dp_topup',
+      livemode: false,
+      status: 'won',
+      charge: 'ch_topup'
+    })
     await handleStripeEvent(event('charge.dispute.closed', { id: 'dp_topup', charge: 'ch_topup' }))
+    await handleStripeEvent(event('charge.dispute.created', { id: 'dp_topup', charge: 'ch_topup' }))
+    sdk.charges.retrieve.mockResolvedValue({ ...charge, amount_refunded: 100 })
+    await handleStripeEvent(event('charge.refunded', { id: 'ch_topup', customer }))
     expect((await getBillingOverview(uid)).remaining).toBe(25)
   })
   it('追加枠だけでは本編を解放せず、Plusだけで直接開始・再練習できる', async () => {
