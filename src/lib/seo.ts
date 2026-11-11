@@ -17,7 +17,7 @@ export const publicPages: Record<string, { title: string; description: string }>
   '/pricing': {
     title: '料金・無料とPlus・ルートパック・追加枠 | Koi-Tre',
     description:
-      '無料の出会い編、月980円で全員の通常本編を攻略・再練習できるPlus、1人1,480円のルートパック、追加共通15枠550円をご案内。3往復1枠・6往復2枠。有料プランは準備中。'
+      '無料の出会い編、月980円で全員の通常本編を攻略・再練習できるPlus、1人1,480円のルートパック、追加共通15枠550円をご案内。3往復1枠・6往復2枠。'
   },
   '/contact': {
     title: 'お問い合わせ | Koi-Tre',
