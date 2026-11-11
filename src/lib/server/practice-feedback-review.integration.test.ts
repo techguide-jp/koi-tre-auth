@@ -51,10 +51,18 @@ function scenario(reviews: (typeof confirmed | null)[], enabled = true, count = 
   const fetch = vi.fn(async (url: string, options: RequestInit) => {
     const body = JSON.parse(options.body as string)
     if (url.includes('typesafe.ai')) {
-      if (body.questions.grounding) {
+      if (body.questions.overview) {
         calls.push({ name: 'review', body })
         const response = reviews.shift()
-        return { ok: !!response, json: async () => ({ answers: { grounding: response } }) }
+        return {
+          ok: !!response,
+          json: async () => ({
+            answers: {
+              ...Object.fromEntries(Object.keys(body.questions).map((name) => [name, confirmed])),
+              next: response
+            }
+          })
+        }
       }
       calls.push({ name: 'score', body })
       return { ok: true, json: async () => exampleJevResponse() }
@@ -129,8 +137,13 @@ describe('回答済みの発言を不足扱いしないための最終分析の�
     expect(JSON.parse(repair.scene).coaching.avoid).toContain('すでに答えたことを不足扱いしない')
     expect(calls[2].body.state).toMatchObject({
       transcript: JSON.parse(first.transcript),
-      feedback: { analysis: { nextPractice: { goal: mismatch } } }
+      feedback: {
+        next: { goal: mismatch },
+        turn_1: { quote: '漫画を読みます。' },
+        [`turn_${count}`]: { quote: input.text }
+      }
     })
+    expect(Object.keys(calls[2].body.questions as object)).toHaveLength(count + 3)
     expect(JSON.stringify(calls[2].body.state)).not.toContain('jev-test-version')
     expect(result.feedback?.analysis?.summary).toContain('漫画を読むと答えています')
     expect(result.feedback?.analysis?.nextPractice.goal).not.toBe(mismatch)
