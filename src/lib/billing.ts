@@ -23,6 +23,7 @@ export interface CreditGrantView {
 export interface BillingOverview {
   adminPlay?: boolean
   enabled: boolean
+  portalEnabled: boolean
   testMode: boolean
   ownedCharacters: CharacterId[]
   subscription: {

@@ -18,14 +18,11 @@ import {
   practices,
   routePurchases
 } from '../schema'
-import { stripeReady } from '$lib/server/stripe-client'
+import { stripePortalReady, stripeReady, stripeTestMode } from '$lib/server/stripe-client'
 
 export type CreditDb = Pick<Database, 'select' | 'insert' | 'update' | 'delete' | 'query'>
 export const freeGrantId = (uid: string, now: Date) =>
   `free:${createHash('sha256').update(uid).digest('hex')}:${getTokyoMonthStart(now).toISOString()}`
-export function billingEnabled() {
-  return stripeReady()
-}
 export async function readCreditState(
   db: CreditDb,
   uid: string,
@@ -138,8 +135,9 @@ export async function readCreditState(
   })
   const current = subscriptions[0]
   return {
-    enabled: billingEnabled(),
-    testMode: true,
+    enabled: stripeReady(),
+    portalEnabled: stripePortalReady(),
+    testMode: stripeTestMode(),
     ownedCharacters,
     subscription: current
       ? {

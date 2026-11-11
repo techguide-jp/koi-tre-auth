@@ -19,7 +19,7 @@ import {
   type AdminProductFilter
 } from '$lib/admin-operations'
 import { adminPeriod } from '$lib/server/admin-operations-request'
-import { stripeReady } from '$lib/server/stripe-client'
+import { stripeReady, stripeTestMode } from '$lib/server/stripe-client'
 import { getDb } from '../client'
 import {
   billingCheckouts,
@@ -136,7 +136,7 @@ export async function getAdminBilling(
       return {
         period,
         enabled: stripeReady(),
-        testMode: true,
+        testMode: stripeTestMode(),
         page: input.page,
         pageSize: ADMIN_PAGE_SIZE,
         total: total.count,

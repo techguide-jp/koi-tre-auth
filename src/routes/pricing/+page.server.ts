@@ -1,4 +1,4 @@
-import { stripeReady } from '$lib/server/stripe-client'
+import { stripeReady, stripeTestMode } from '$lib/server/stripe-client'
 export function load() {
-  return { billingReady: stripeReady(), billingTestMode: stripeReady() }
+  return { billingReady: stripeReady(), billingTestMode: stripeTestMode() }
 }

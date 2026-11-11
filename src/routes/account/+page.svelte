@@ -71,16 +71,21 @@
     try {
       const checkout = $page.url.searchParams.get('checkout')
       if (checkout && /^[0-9a-f-]{36}$/i.test(checkout)) {
-        const reconciled = await authenticatedFetch(`/api/me/billing/checkout/${checkout}`, {
-          method: 'POST',
-          body: '{}'
-        })
-        const result = await reconciled.json()
-        if (result.pending && alive && retries++ < 8) timer = setTimeout(load, 2500)
-        else if (alive)
-          success = result.pending
-            ? 'お支払いの反映を確認しています。少し待ってから更新してください。'
-            : '購入内容を反映しました。'
+        success = ''
+        try {
+          const reconciled = await authenticatedFetch(`/api/me/billing/checkout/${checkout}`, {
+            method: 'POST',
+            body: '{}'
+          })
+          const result = await reconciled.json()
+          if (result.pending && alive && retries++ < 8) timer = setTimeout(load, 2500)
+          else if (alive)
+            success = result.pending
+              ? 'お支払いの反映を確認しています。少し待ってから更新してください。'
+              : '購入内容を反映しました。'
+        } catch (e) {
+          if (alive) message = e instanceof Error ? e.message : '購入状態を確認できませんでした。'
+        }
       }
       const [b, p, h, permissions] = await Promise.all([
         authenticatedFetch('/api/me/billing'),
@@ -115,7 +120,7 @@
     }
   }
   async function portal() {
-    if (pending) return
+    if (pending || !billing?.portalEnabled) return
     pending = 'portal'
     message = ''
     try {
@@ -180,7 +185,7 @@
           </p>
           <button
             class="button secondary"
-            disabled="{!!pending || !billing.enabled}"
+            disabled="{!!pending || !billing.portalEnabled}"
             aria-busy="{pending === 'portal'}"
             on:click="{portal}"
             >{pending === 'portal'

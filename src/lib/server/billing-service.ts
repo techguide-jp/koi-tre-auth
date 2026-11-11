@@ -25,11 +25,14 @@ import {
 import { readCreditState, type CreditDb } from './db/repositories/credits'
 import {
   billingBaseUrl,
+  liveStripeWebhookClient,
   stripeClient,
   stripeMetadata,
+  stripePortalReady,
   stripePrice,
   stripeReady,
-  stripeReference
+  stripeReference,
+  stripeTestMode
 } from './stripe-client'
 
 async function lockUser(db: CreditDb, uid: string) {
@@ -77,7 +80,11 @@ export async function beginCheckout(uid: string, id: string, product: BillingPro
       )
       .orderBy(desc(billingCheckouts.createdAt))
       .limit(1)
-    if (open?.status === 'open' && open.url) return { id: open.id, url: open.url }
+    if (open?.status === 'open' && open.url) {
+      if (!open.stripeSessionId?.startsWith(stripeTestMode() ? 'cs_test_' : 'cs_live_'))
+        throw error(409, '現在の購入環境と一致しない購入画面です。')
+      return { id: open.id, url: open.url }
+    }
     if (open?.status === 'creating') return { id: open.id, pending: true }
     await tx
       .insert(billingCheckouts)
@@ -100,6 +107,7 @@ export async function beginCheckout(uid: string, id: string, product: BillingPro
     let params = reservation.requestParams
     if (!params) {
       const price = await stripe.prices.retrieve(stripePrice(product))
+      assertStripeMode(price)
       if (
         price.currency !== 'jpy' ||
         price.unit_amount !== productPrice(product) ||
@@ -117,6 +125,7 @@ export async function beginCheckout(uid: string, id: string, product: BillingPro
           { metadata: { app: 'koi-tre', uid } },
           { idempotencyKey: `koi-tre:customer:${uid}` }
         )
+        assertStripeMode(customer)
         await getDb()
           .insert(billingCustomers)
           .values({ uid, stripeCustomerId: customer.id })
@@ -160,6 +169,7 @@ export async function beginCheckout(uid: string, id: string, product: BillingPro
     const session = await stripe.checkout.sessions.create(params, {
       idempotencyKey: `koi-tre:checkout:${id}`
     })
+    assertStripeMode(session)
     if (!session.url || !session.url.startsWith('https://checkout.stripe.com/'))
       throw Error('Checkout URL unavailable')
     await getDb()
@@ -190,23 +200,43 @@ export async function beginCheckout(uid: string, id: string, product: BillingPro
   }
 }
 export async function openBillingPortal(uid: string) {
-  if (!stripeReady()) throw error(503, '契約管理は準備中です。')
+  if (!stripePortalReady()) throw error(503, '契約管理は準備中です。')
   const account = await getDb().query.billingCustomers.findFirst({
     where: eq(billingCustomers.uid, uid)
   })
   if (!account) throw error(404, '管理する契約がありません。')
-  const session = await stripeClient().billingPortal.sessions.create({
-    customer: account.stripeCustomerId,
-    return_url: `${billingBaseUrl()}/account`,
-    configuration: process.env.STRIPE_PORTAL_CONFIGURATION_ID
-  })
-  if (!session.url.startsWith('https://billing.stripe.com/'))
+  try {
+    const portal = stripeClient().billingPortal
+    const config = await portal.configurations.retrieve(process.env.STRIPE_PORTAL_CONFIGURATION_ID!)
+    assertStripeMode(config)
+    if (
+      !config.active ||
+      !config.features.subscription_cancel.enabled ||
+      config.features.subscription_cancel.mode !== 'at_period_end' ||
+      config.features.subscription_update.enabled
+    )
+      throw Error('Unexpected Stripe Customer Portal configuration')
+    const session = await portal.sessions.create({
+      customer: account.stripeCustomerId,
+      return_url: `${billingBaseUrl()}/account`,
+      configuration: config.id
+    })
+    assertStripeMode(session)
+    if (!session.url.startsWith('https://billing.stripe.com/'))
+      throw Error('Unexpected Stripe Customer Portal URL')
+    return { url: session.url }
+  } catch {
     throw error(502, '契約管理を開けませんでした。')
-  return { url: session.url }
+  }
 }
 function assertStripeMode(object: { livemode: boolean }) {
-  if (object.livemode !== (process.env.VERCEL_ENV === 'production'))
-    throw Error('Stripe object mode mismatch')
+  if (object.livemode !== !stripeTestMode()) throw Error('Stripe object mode mismatch')
+}
+function stripeReadClient() {
+  if (stripeTestMode()) return stripeClient()
+  const stripe = liveStripeWebhookClient()
+  if (!stripe) throw error(503, '購入状態の確認を一時停止しています。')
+  return stripe
 }
 async function verifyCustomer(db: CreditDb, uid: string, customerId: string | undefined) {
   const account = await db.query.billingCustomers.findFirst({
@@ -478,7 +508,7 @@ async function revokeCharge(
         .where(eq(creditGrants.id, `plus:${subId}:${line.period.start}`))
   }
 }
-export async function handleStripeEvent(event: Stripe.Event, stripe = stripeClient()) {
+export async function handleStripeEvent(event: Stripe.Event, stripe = stripeReadClient()) {
   assertStripeMode(event)
   const object = event.data.object
   let customerId: string | undefined
@@ -556,8 +586,13 @@ export async function reconcileCheckout(uid: string, id: string) {
   const order = await getDb().query.billingCheckouts.findFirst({
     where: and(eq(billingCheckouts.id, id), eq(billingCheckouts.uid, uid))
   })
-  if (!order?.stripeSessionId) return { pending: order?.status === 'creating' }
-  const session = await stripeClient().checkout.sessions.retrieve(order.stripeSessionId)
+  if (!order) throw error(404, '確認できる購入がありません。')
+  if (!order.stripeSessionId) {
+    if (order.status === 'creating') return { pending: true }
+    throw error(409, '購入画面を確認できませんでした。')
+  }
+  const stripe = stripeReadClient()
+  const session = await stripe.checkout.sessions.retrieve(order.stripeSessionId)
   assertStripeMode(session)
   const account = await getDb().query.billingCustomers.findFirst({
     where: eq(billingCustomers.uid, uid)
@@ -566,9 +601,9 @@ export async function reconcileCheckout(uid: string, id: string) {
     throw error(403, '購入状態を確認できませんでした。')
   await getDb().transaction(async (tx) => {
     await lockUser(tx, uid)
-    if (session.mode === 'payment') await fulfillPayment(tx, stripeClient(), session.id)
+    if (session.mode === 'payment') await fulfillPayment(tx, stripe, session.id)
     else if (session.mode === 'subscription' && stripeReference(session.subscription))
-      await syncSubscription(tx, stripeClient(), stripeReference(session.subscription)!)
+      await syncSubscription(tx, stripe, stripeReference(session.subscription)!)
   })
   return { pending: session.status !== 'complete' || session.payment_status !== 'paid' }
 }
