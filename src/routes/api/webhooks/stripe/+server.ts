@@ -1,11 +1,12 @@
 import { error, json } from '@sveltejs/kit'
+import Stripe from 'stripe'
 import type { RequestHandler } from './$types'
-import { stripeClient } from '$lib/server/stripe-client'
 import { handleStripeEvent } from '$lib/server/billing-service'
 export const POST: RequestHandler = async ({ request }) => {
   const secret = process.env.STRIPE_WEBHOOK_SECRET
-  if (!secret || process.env.BILLING_ENABLED !== 'true' || process.env.VERCEL_ENV === 'production')
-    throw error(503, 'Billing is not enabled')
+  const production = process.env.VERCEL_ENV === 'production'
+  if (!secret || (!production && process.env.BILLING_ENABLED !== 'true'))
+    throw error(503, 'Webhook is not configured')
   const signature = request.headers.get('stripe-signature')
   if (!signature) throw error(400, 'Webhook signature is required')
   const reader = request.body?.getReader(),
@@ -26,11 +27,17 @@ export const POST: RequestHandler = async ({ request }) => {
     }
     chunks.push(value)
   }
-  let event
+  let event: Stripe.Event
   try {
-    event = stripeClient().webhooks.constructEvent(Buffer.concat(chunks), signature, secret)
+    event = Stripe.webhooks.constructEvent(Buffer.concat(chunks), signature, secret)
   } catch {
     throw error(400, 'Invalid webhook signature')
+  }
+  if (event?.livemode !== production) throw error(400, 'Invalid webhook mode')
+  if (production) {
+    // 商品更新で接続を確認する。販売開始まで決済通知は再送対象とし、処理済みにしない。
+    if (event.type !== 'product.updated') throw error(503, 'Live billing processing is paused')
+    return json({ received: true })
   }
   try {
     await handleStripeEvent(event)
