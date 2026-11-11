@@ -257,6 +257,18 @@
             on:input="{changed}"
           ></textarea></label
         >
+        <label class="field">
+          分析と会話の照合
+          <select
+            bind:value="{content.feedbackReview}"
+            disabled="{!!pending}"
+            on:change="{changed}"
+          >
+            <option value="{undefined}">引用の一致を確認する（従来）</option>
+            <option value="transcript-v1">回答の意味を会話全体で確認する</option>
+          </select>
+        </label>
+        <p class="hint">会話全体で照合すると、すでに答えたことを不足扱いしていないか確認します。</p>
       </section>
       <section class="panel">
         <div class="section-heading">
