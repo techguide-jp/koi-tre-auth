@@ -382,8 +382,12 @@
             <h3>あなたの言葉を、こんなふうに</h3>
             <span class="small muted">今回の発言</span>
             <blockquote>「{feedback.quote}」</blockquote>
-            <span class="small muted">言い換え例</span>
-            <blockquote class="rewrite-example">「{feedback.rewrite}」</blockquote>
+            {#if feedback.rewrite.trim() === feedback.quote.trim()}
+              <p><strong>そのままでOK</strong></p>
+            {:else}
+              <span class="small muted">言い換え例</span>
+              <blockquote class="rewrite-example">「{feedback.rewrite}」</blockquote>
+            {/if}
           </div>
         {/if}
         <div class="result-actions">

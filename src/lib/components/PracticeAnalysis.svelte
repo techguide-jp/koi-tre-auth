@@ -81,8 +81,10 @@
         </blockquote>
       </section>{/if}
     <h3 id="analysis-turns">ひと言ずつ、見直してみる</h3>
-    <p class="section-note">気になる返答を開くと、言い換えとその理由が読めます。</p>
+    <p class="section-note">気になる返答を開くと、よかった理由や言い換え案が読めます。</p>
     {#each analysis.turns as turn}
+      {@const original = turn.quote.trim()}
+      {@const keepReply = turn.rewrite.trim() === original}
       <details class="point turn">
         <summary>
           <span class="turn-number" aria-hidden="true">{turn.turn}</span>
@@ -94,13 +96,20 @@
           <span class="chevron" aria-hidden="true">⌄</span>
         </summary>
         <div class="detail-body">
-          <p>{turn.observation}</p>
+          {#if !keepReply}<p>{turn.observation}</p>{/if}
           <blockquote><span>今回の発言</span>「{turn.quote}」</blockquote>
-          <blockquote class="rewrite">
-            <span>{turn.rewritePurpose || '言い換え例'}</span>「{turn.rewrite}」
-          </blockquote>
-          <p class="reason">{turn.reason}</p>
-          {#if turn.alternative}
+          {#if keepReply}
+            <div class="keep-reply">
+              <strong>そのままでOK</strong>
+              <p>{turn.reason}</p>
+            </div>
+          {:else}
+            <blockquote class="rewrite">
+              <span>{turn.rewritePurpose || '言い換え例'}</span>「{turn.rewrite}」
+            </blockquote>
+            <p class="reason">{turn.reason}</p>
+          {/if}
+          {#if turn.alternative && turn.alternative.rewrite.trim() !== original}
             <blockquote class="rewrite">
               <span>別の選択肢 · {turn.alternative.purpose}</span>「{turn.alternative.rewrite}」
             </blockquote>
@@ -232,6 +241,18 @@
   .rewrite {
     color: var(--accent);
     font-weight: 600;
+  }
+  .keep-reply {
+    margin-top: 0.7rem;
+    padding: 0.8rem;
+    border-radius: 6px;
+    background: var(--olive-soft);
+  }
+  .keep-reply strong {
+    color: var(--olive);
+  }
+  .keep-reply p {
+    margin: 0.25rem 0 0;
   }
   .reason,
   .section-note {
