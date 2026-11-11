@@ -1,4 +1,5 @@
 import type { AnalysisAspectId, PracticeScene } from '$lib/practice'
+import type { KnowledgeCoaching } from '$lib/knowledge-policy'
 
 export const coachingProfiles = {
   first_meeting: {
@@ -93,6 +94,30 @@ export interface PracticeCoaching {
   avoid: string
   expression: string
 }
+
+export function coachingForProfile(variant: KnowledgeCoaching | undefined, id: CoachingProfileId) {
+  return id === 'first_meeting' || id === 'interests' ? variant : undefined
+}
+
+// 公開済みの文脈を復元するため、この指示を変えるときは新しい方針IDを追加する。
+export const reciprocalCoachingGuidance =
+  '【初対面・趣味で互いを知る】問いに沿う回答と、互いを知る会話を育てる行動を分けて見る。短い答えを認めることは、相手任せの会話を見逃すことではない。話を広げられる場面で事実や名前だけの返答が続き、相手の質問だけで進んだ場合は、該当する返答を引用して改善点に挙げる。最後に好きな理由を話せたことは強みとして、前半の改善とは別に扱う。\n' +
+  '本人が伝えた具体的な感想・好きな理由や、相手の話への反応・関心を、次に返しやすい材料として評価する。楽しさはその人らしい見方や一緒に楽しめる話題からも生まれる。質問や冗談の回数を条件にしない。話題を最初へ戻すことは求めない。\n' +
+  '改善点・次の練習・言い換えは、実際に変えると効果のある返答に結び付ける。同じ会話で後から本人が述べた好みや理由は、前の返答の言い換えに使える。主案は具体的な理由を添える、別案は相手へ話を渡すなど、会話上の目的を分ける。未発言の体験・感情は作らない。\n' +
+  '相手役は会話中、直前の返答に反応し、自分の好み・感想も自然に伝えて、利用者が関心を返せる材料を出す。毎回質問で終えず、終える意思は尊重する。'
+
+export function withCoachingVariant(coaching: PracticeCoaching, variant?: KnowledgeCoaching) {
+  if (!coachingForProfile(variant, coaching.id)) return coaching
+  return {
+    ...coaching,
+    focus:
+      '問いに答えたうえで、好みの理由・感想や相手への関心を返し、互いが話せる材料を作れているかを会話全体で見る。',
+    avoid:
+      '短さや質問の有無で判定せず、名前だけの回答が続いて相手の質問に頼る場合は受け渡しの改善とする。話題の回帰や毎回の質問返しは求めない。',
+    expression:
+      '名前や事実だけの回答、具体的な好きな理由・感じ方、その人らしい見方を区別する。本人が会話で述べた事実を根拠にし、後半のよい返答と前半の不足を別に扱う。'
+  }
+}
 export function practiceCoaching(scene?: PracticeScene, id?: CoachingProfileId): PracticeCoaching {
   const defaults: Partial<Record<PracticeScene['id'], CoachingProfileId>> = {
     cafe: 'first_meeting',
@@ -145,8 +170,25 @@ export function parseCoachingChoice(value: unknown): CoachingProfileId | undefin
     return undefined
   return choice as CoachingProfileId
 }
-export function aspectContext(id: AnalysisAspectId, coaching: PracticeCoaching) {
-  const common = `場面の主目的：${coaching.purpose}。${coaching.focus} ${coaching.avoid}`
+export function aspectContext(
+  id: AnalysisAspectId,
+  coaching: PracticeCoaching,
+  variant?: KnowledgeCoaching
+) {
+  const applied = id === 'consideration' ? coaching : withCoachingVariant(coaching, variant)
+  const common = `場面の主目的：${applied.purpose}。${applied.focus} ${applied.avoid}`
+  if (id !== 'consideration' && applied !== coaching) {
+    const reciprocalFocus = {
+      acknowledgment:
+        '質問への回答と、相手が自分から話した内容への具体的な反応を区別する。相手の好みや関心に触れた行動も評価する。',
+      self_expression: applied.expression,
+      questions:
+        '問いへの答えが正しくても、相手が質問を重ねないと進まない返答が続く場合と、双方が感想や関心を返して話せる場合は区別する。質問の数は使わない。',
+      connection:
+        '同じ話題に沿うだけの返答と、相手が拾える具体的な感想・理由・接点を足して話を深める返答を区別する。'
+    }
+    return `${common} ${reciprocalFocus[id]}`
+  }
   const focus: Record<AnalysisAspectId, string> = {
     acknowledgment:
       '相手の直前の問いへの自然な回答も受け止めです。相手の気持ちは明示された範囲で扱い、相づち・賛同・感情の言葉を毎回要求しません。',

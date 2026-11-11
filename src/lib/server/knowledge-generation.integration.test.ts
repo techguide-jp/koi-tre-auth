@@ -13,8 +13,12 @@ describe('同じ公開方針を生成と評価に適用する', () => {
   it('6人×12話で長い人物設定と過去の記憶があってもDifyの入力上限を守る', async () => {
     vi.stubEnv('DIFY_PRACTICE_API_KEY', 'fixture')
     vi.stubEnv('TYPESAFE_API_KEY', 'fixture')
+    const knowledge = defaultKnowledgeContent()
+    knowledge.coaching = 'reciprocal-small-talk-v1'
+    const policyOverride = { content: knowledge, contentHash: contentHash(knowledge) }
     const fetch = vi.fn(async (url: string, options: RequestInit) => {
       expect(options.method).toBe('POST')
+      const body = JSON.parse(options.body as string)
       return {
         ok: true,
         json: async () =>
@@ -24,6 +28,7 @@ describe('同じ公開方針を生成と評価に適用する', () => {
                 data: {
                   status: 'succeeded',
                   outputs: {
+                    policy_hash: body.inputs.policy_hash,
                     result: { reply: '私も話せて嬉しかったです。', feedback: exampleFeedback }
                   }
                 }
@@ -49,6 +54,7 @@ describe('同じ公開方針を生成と評価に適用する', () => {
             .slice(0, 2)
             .map((userText) => ({ userText, assistantText: 'はい。' })),
           text: exampleTexts[2],
+          policyOverride,
           characterContext: {
             releaseId: null,
             version: null,
@@ -123,17 +129,20 @@ describe('同じ公開方針を生成と評価に適用する', () => {
       if (url.includes('typesafe.ai')) expect(options.body).not.toContain('青い便箋')
   })
   it.each([
-    { count: 3, mode: 'scene-bm25-v1' },
-    { count: 6, mode: 'scene-bm25-v1' },
-    { count: 3, mode: 'scene-bm25-v2' },
-    { count: 6, mode: 'scene-bm25-v2' }
+    { count: 3, mode: 'scene-bm25-v1', reciprocal: false },
+    { count: 6, mode: 'scene-bm25-v1', reciprocal: false },
+    { count: 3, mode: 'scene-bm25-v2', reciprocal: false },
+    { count: 6, mode: 'scene-bm25-v2', reciprocal: false },
+    { count: 3, mode: 'scene-bm25-v2', reciprocal: true },
+    { count: 6, mode: 'scene-bm25-v2', reciprocal: true }
   ] as const)(
-    '$count往復・$modeの最終回に同じ文脈を送り、サーバー側の出典を記録する',
-    async ({ count, mode }) => {
+    '$count往復・$mode・雑談新版=$reciprocalの最終回に同じ文脈を送り、出典を記録する',
+    async ({ count, mode, reciprocal }) => {
       vi.stubEnv('DIFY_PRACTICE_API_KEY', 'fixture')
       vi.stubEnv('TYPESAFE_API_KEY', 'fixture')
       const content = defaultKnowledgeContent()
       if (mode === 'scene-bm25-v1') delete content.retrieval
+      if (reciprocal) content.coaching = 'reciprocal-small-talk-v1'
       const texts = Array.from({ length: count }, (_, i) => exampleTexts[i % 3])
       const feedback = structuredClone(exampleFeedback)
       feedback.analysis!.version = 3
@@ -172,7 +181,16 @@ describe('同じ公開方針を生成と評価に適用する', () => {
       const jev = JSON.parse(fetch.mock.calls[0][1].body as string),
         dify = JSON.parse(fetch.mock.calls[1][1].body as string)
       expect(JSON.parse(dify.inputs.policy_context)).toEqual(jev.state.policy)
-      expect(jev.state.policy.core).toBe(content.core)
+      if (reciprocal) {
+        expect(jev.state.policy.core).toContain('該当する返答を引用して改善点に挙げる')
+        expect(jev.questions.questions.criteria[1]).toContain('名称や事実だけの回答が続く')
+        expect(JSON.parse(dify.inputs.scene).coaching.focus).toContain('互いが話せる材料')
+        expect(result.policyContext?.coaching).toBe('reciprocal-small-talk-v1')
+      } else {
+        expect(jev.state.policy.core).toBe(content.core)
+        expect(jev.questions.questions.criteria[1]).toContain('質問や自分の話が重なり')
+        expect(result.policyContext).not.toHaveProperty('coaching')
+      }
       expect(jev.state.policy.trace.retriever).toBe(mode)
       expect(jev.state.policy.passages.length).toBeGreaterThan(0)
       expect(dify.inputs.scene.length).toBeLessThanOrEqual(4000)

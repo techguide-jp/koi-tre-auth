@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseKnowledgeContent, retrieveKnowledge, type KnowledgeContent } from './knowledge-policy'
+import { practiceQuestions } from './server/jev-practice'
+import { practiceCoaching } from './server/practice-coaching'
 import {
   contentHash,
   makeKnowledgeContext,
@@ -119,5 +121,42 @@ describe('公開版に固定するRAG検索方式', () => {
     expect(() =>
       restoreKnowledgeContext(release, { ...context.trace, retriever: 'scene-bm25-v2' })
     ).toThrow()
+  })
+})
+
+describe('雑談の評価方針を公開版と場面で固定する', () => {
+  const content = parseKnowledgeContent({ ...legacy, coaching: 'reciprocal-small-talk-v1' })
+  const release = { id: 'new-coaching', version: 4, content, contentHash: contentHash(content) }
+
+  it.each(['first_meeting', 'interests'] as const)(
+    '%sは新版の指示を渡して同じ文脈を復元し、方式を偽装できない',
+    (profile) => {
+      const context = makeKnowledgeContext(release, profile, 'カフェ')
+      expect(context.trace.coaching).toBe('reciprocal-small-talk-v1')
+      expect(context.core).toContain('相手任せの会話を見逃すことではない')
+      expect(restoreKnowledgeContext(release, context.trace)).toEqual(context)
+      expect(() =>
+        restoreKnowledgeContext(release, { ...context.trace, coaching: undefined })
+      ).toThrow()
+      expect(() => parseKnowledgeContent({ ...legacy, coaching: 'unknown' })).toThrow('雑談')
+    }
+  )
+
+  it.each([
+    'silence',
+    'boundary',
+    'invitation',
+    'conflict',
+    'positive_event',
+    'feelings',
+    'general'
+  ] as const)('%sには雑談の基準を適用しない', (profile) => {
+    const context = makeKnowledgeContext(release, profile, 'カフェ')
+    expect(context.core).toBe(legacy.core)
+    expect(context.trace).not.toHaveProperty('coaching')
+    expect(practiceQuestions(practiceCoaching(undefined, profile), true, content.coaching)).toEqual(
+      practiceQuestions(practiceCoaching(undefined, profile), true)
+    )
+    expect(restoreKnowledgeContext(release, context.trace)).toEqual(context)
   })
 })
