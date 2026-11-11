@@ -128,6 +128,29 @@ describe('雑談の評価方針を公開版と場面で固定する', () => {
   const content = parseKnowledgeContent({ ...legacy, coaching: 'reciprocal-small-talk-v1' })
   const release = { id: 'new-coaching', version: 4, content, contentHash: contentHash(content) }
 
+  it('締めを含む新版の追加後も、最初の雑談方式の文脈を復元できる', () => {
+    const original = makeKnowledgeContext(release, 'interests', 'カフェ')
+    const updatedContent = parseKnowledgeContent({
+      ...content,
+      coaching: 'reciprocal-small-talk-v2'
+    })
+    const updated = {
+      ...release,
+      content: updatedContent,
+      contentHash: contentHash(updatedContent)
+    }
+    const context = makeKnowledgeContext(updated, 'interests', 'カフェ')
+    expect(context.trace.coaching).toBe('reciprocal-small-talk-v2')
+    expect(context.core).toContain('前半の相互性と締め方を分けて見る')
+    expect(original.core).not.toContain('前半の相互性と締め方を分けて見る')
+    expect(restoreKnowledgeContext(release, original.trace)).toEqual(original)
+    expect(restoreKnowledgeContext(updated, context.trace)).toEqual(context)
+    expect(() => restoreKnowledgeContext(updated, original.trace)).toThrow()
+    const boundary = makeKnowledgeContext(updated, 'boundary', 'カフェ')
+    expect(boundary.core).toBe(legacy.core)
+    expect(boundary.trace).not.toHaveProperty('coaching')
+  })
+
   it.each(['first_meeting', 'interests'] as const)(
     '%sは新版の指示を渡して同じ文脈を復元し、方式を偽装できない',
     (profile) => {

@@ -106,6 +106,9 @@ export const reciprocalCoachingGuidance =
   '改善点・次の練習・言い換えは、実際に変えると効果のある返答に結び付ける。同じ会話で後から本人が述べた好みや理由は、前の返答の言い換えに使える。主案は具体的な理由を添える、別案は相手へ話を渡すなど、会話上の目的を分ける。未発言の体験・感情は作らない。\n' +
   '相手役は会話中、直前の返答に反応し、自分の好み・感想も自然に伝えて、利用者が関心を返せる材料を出す。毎回質問で終えず、終える意思は尊重する。'
 
+export const reciprocalClosingGuidance =
+  '雑談でも、本人や相手が終える意思を示した後は、その意思に沿って自然に締めることがよい受け渡し。締めの一言に追加の質問・自己開示は求めず、前半の相互性と締め方を分けて見る。終える意思を受け入れず質問を続けることは、関心や話題の広がりとして加点しない。'
+
 export function withCoachingVariant(coaching: PracticeCoaching, variant?: KnowledgeCoaching) {
   if (!coachingForProfile(variant, coaching.id)) return coaching
   return {
@@ -113,7 +116,8 @@ export function withCoachingVariant(coaching: PracticeCoaching, variant?: Knowle
     focus:
       '問いに答えたうえで、好みの理由・感想や相手への関心を返し、互いが話せる材料を作れているかを会話全体で見る。',
     avoid:
-      '短さや質問の有無で判定せず、名前だけの回答が続いて相手の質問に頼る場合は受け渡しの改善とする。話題の回帰や毎回の質問返しは求めない。',
+      '短さや質問の有無で判定せず、名前だけの回答が続いて相手の質問に頼る場合は受け渡しの改善とする。話題の回帰や毎回の質問返しは求めない。' +
+      (variant === 'reciprocal-small-talk-v2' ? '終える意思に沿う短い締めも評価する。' : ''),
     expression:
       '名前や事実だけの回答、具体的な好きな理由・感じ方、その人らしい見方を区別する。本人が会話で述べた事実を根拠にし、後半のよい返答と前半の不足を別に扱う。'
   }

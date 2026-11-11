@@ -238,7 +238,7 @@ describe('クリアと好感度の永続化・権限', () => {
     expect(assessPractice).toHaveBeenCalledTimes(1)
     expect(last).toBeDefined()
   })
-  it.each([undefined, 'reciprocal-small-talk-v1'] as const)(
+  it.each([undefined, 'reciprocal-small-talk-v1', 'reciprocal-small-talk-v2'] as const)(
     '公開後に方針が変わっても無料再評価は元の雑談方針 %s と参照箇所で一度だけ行う',
     async (coaching) => {
       const id = await completed('aoi-1')
@@ -269,7 +269,7 @@ describe('クリアと好感度の永続化・権限', () => {
         .where(eq(schema.practiceTurns.practiceId, id))
       const later = {
         ...content,
-        coaching: coaching ? undefined : ('reciprocal-small-talk-v1' as const),
+        coaching: coaching ? undefined : ('reciprocal-small-talk-v2' as const),
         core: content.core + '\n後日変更した方針。'
       }
       const nextId = randomUUID()
