@@ -361,6 +361,30 @@ const input = (id: string, expectedTurn = 0) => ({
 })
 
 describe('Stripeの購入・契約・通知', () => {
+  it.each([
+    [
+      { kind: 'plus' } as const,
+      ['月額980円（税込）', '毎月同額で自動更新', '共通60枠', '次回更新前に解約']
+    ],
+    [
+      { kind: 'route', characterId: 'aoi' } as const,
+      ['1,480円（税込）の買い切り', '本編4〜12話・結末', '人物専用24枠']
+    ],
+    [
+      { kind: 'topup' } as const,
+      ['550円（税込）の買い切り', '共通15枠', '有料本編の利用権にはPlusまたは人物パックが必要']
+    ]
+  ])('商品 %j の利用条件をStripeの支払い確定ボタンのそばに表示する', async (product, terms) => {
+    await beginCheckout(uid, randomUUID(), product)
+    const message = sdk.checkout.sessions.create.mock.calls.at(-1)?.[0].custom_text?.submit?.message
+    expect(message).toBeDefined()
+    for (const term of terms) expect(message).toContain(term)
+    expect(message).toContain('支払いの反映後')
+    expect(message).toContain('/pricing#purchase-terms')
+    expect(message).toContain('/contact')
+    expect(message!.length).toBeLessThanOrEqual(1200)
+  })
+
   it('サーバーの固定価格と本人顧客で購入を作り、未払い・戻りURLだけで権利を付けない', async () => {
     const order = randomUUID()
     const opened = await beginCheckout(uid, order, { kind: 'route', characterId: 'aoi' })

@@ -39,6 +39,18 @@ async function lockUser(db: CreditDb, uid: string) {
   const rows = await db.select().from(users).where(eq(users.firebaseUid, uid)).for('update')
   if (!rows.length) throw error(404, 'アカウントが見つかりません。ログインし直してください。')
 }
+
+function checkoutMessage(product: BillingProduct, origin: string) {
+  const price = productPrice(product).toLocaleString('ja-JP')
+  const detail =
+    product.kind === 'plus'
+      ? `月額${price}円（税込）。申込時に初回決済し、解約まで毎月同額で自動更新します。支払いの反映後、Plusの対象場面と共通${PLUS_CREDITS}枠を利用できます。枠は契約期間ごとに更新し、繰り越しはありません。[マイページ](${origin}/account)から次回更新前に解約でき、支払い済みの期間末まで利用できます。`
+      : product.kind === 'route'
+        ? `${price}円（税込）の買い切りです。支払いの反映後、対象人物の本編4〜12話・結末の利用権と、期限のない人物専用${ROUTE_CREDITS}枠を付与します。`
+        : `${price}円（税込）の買い切りです。支払いの反映後、期限のない共通${TOPUP_CREDITS}枠を付与します。有料本編の利用権にはPlusまたは人物パックが必要です。`
+  return `${detail} 3往復は1枠、6往復は2枠を使います。[購入と解約の案内](${origin}/pricing#purchase-terms) · [お問い合わせ](${origin}/contact)`
+}
+
 export async function beginCheckout(uid: string, id: string, product: BillingProduct) {
   if (!stripeReady())
     throw error(503, '購入は準備中です。現在の練習と保存済みの内容は引き続き利用できます。')
@@ -144,6 +156,7 @@ export async function beginCheckout(uid: string, id: string, product: BillingPro
         metadata,
         line_items: [{ price: stripePrice(product), quantity: 1 }],
         allowed_payment_method_types: ['card'],
+        custom_text: { submit: { message: checkoutMessage(product, base) } },
         success_url: `${base}/account?checkout=${id}`,
         cancel_url: `${base}/pricing?cancelled=1`,
         locale: 'ja',

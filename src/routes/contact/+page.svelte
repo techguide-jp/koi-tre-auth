@@ -90,6 +90,7 @@
             >
               <option value="">選択してください</option>
               <option value="general">Koi-Treに関する質問</option>
+              <option value="billing">購入・請求・解約について</option>
               <option value="feedback">フィードバック</option>
               <option value="consultation">ご相談</option>
               <option value="other">その他</option>
