@@ -1,6 +1,8 @@
 <script lang="ts">
   import { fade } from 'svelte/transition'
   const FORMSPARK_ACTION_URL = 'https://submit-form.com/Sn4hRi2Aw'
+  const BILLING_EMAIL = 'y.takahashi@techguide.jp'
+  const billingEmailLink = `mailto:${BILLING_EMAIL}?subject=${encodeURIComponent('[Koi-Tre] 購入・請求・解約のお問い合わせ')}`
 
   let name = ''
   let email = ''
@@ -47,6 +49,13 @@
         Koi-Treをご利用いただきありがとうございます。<br
         />何かご質問やご要望がございましたら、お気軽にお知らせください。
       </p>
+      <section class="mb-6 rounded-lg border bg-white px-6 py-5" aria-labelledby="billing-contact">
+        <h3 id="billing-contact" class="font-semibold">購入・請求・解約のお問い合わせ</h3>
+        <p class="mt-2">
+          <a class="underline" href="{billingEmailLink}">{BILLING_EMAIL}</a>
+          へ直接メールでもご連絡いただけます。
+        </p>
+      </section>
       {#if submitError}<p class="error" role="alert">{submitError}</p>{/if}
       {#if submitting}
         <div class="flex justify-center items-center">
