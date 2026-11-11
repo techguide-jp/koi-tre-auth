@@ -18,7 +18,7 @@
 
 上記の機能公開時の最終アプリコミットは `80b56d708efe829c15b428611bb2424bd3eb29c5`。本番ドメインは <https://app.koi-tre.com>。公開後にも文書等のコミットは追加されるため、デプロイの現在値はVercelとGitHubで照合する。
 
-本番では `BILLING_ENABLED=false` を維持し、Stripeのクライアント・Checkout等の処理・WebhookもProductionを拒否する。変数をtrueへ変更するだけでは販売開始できない。本番Stripeアカウントの指定と販売開始の承認を得た後、別変更で本番対応と設定・検証を行う。テスト購入は分離環境に限定する。
+本番では `BILLING_ENABLED=false` を維持する。Checkoutと契約管理はProductionで停止している。[本番Stripe Webhook](stripe-live-webhook.md) は販売開始前に署名と配信を検証できる。テスト購入は分離環境に限定する。
 
 ## 現行仕様を読む
 
