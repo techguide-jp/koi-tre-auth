@@ -33,6 +33,8 @@
     ...theme,
     count: entries.filter(({ tip }) => tip.group === theme.id).length
   }))
+  $: discoveredThemes = counts.filter((theme) => theme.count > 0)
+  $: undiscoveredThemes = counts.length - discoveredThemes.length
   $: percent = Math.floor((100 * entries.length) / total)
   $: nextMilestone = Math.min(total, (Math.floor(entries.length / 10) + 1) * 10)
   $: query = search.trim().toLocaleLowerCase('ja')
@@ -100,10 +102,16 @@
   <section class="tip-themes" aria-label="テーマ別の収集状況">
     <h2>テーマ別の進み具合</h2>
     <ul>
-      {#each counts as theme (theme.id)}
+      {#each discoveredThemes as theme (theme.id)}
         <li class:complete="{theme.count === theme.total}">
           <span>{theme.label}</span>
           <strong>{theme.count} / {theme.total}</strong>
+        </li>
+      {/each}
+      {#each Array.from({ length: undiscoveredThemes }) as _}
+        <li class="undiscovered">
+          <span aria-hidden="true">???</span>
+          <strong>未発見</strong>
         </li>
       {/each}
     </ul>
@@ -112,17 +120,11 @@
     <h2>集めたTips</h2>
     {#if entries.length}
       <div class="filters">
-        <label
-          >キーワード<input
-            type="search"
-            bind:value="{search}"
-            placeholder="例：話題、約束"
-          /></label
-        >
+        <label>キーワード<input type="search" bind:value="{search}" /></label>
         <label
           >テーマ<select bind:value="{groupFilter}">
             <option value="">すべてのテーマ</option>
-            {#each counts.filter((theme) => theme.count) as theme (theme.id)}
+            {#each discoveredThemes as theme (theme.id)}
               <option value="{theme.id}">{theme.label}</option>
             {/each}
           </select></label
@@ -261,6 +263,11 @@
 
   li strong {
     flex-shrink: 0;
+    color: var(--muted);
+  }
+
+  li.undiscovered {
+    background: #f7f3f3;
     color: var(--muted);
   }
 
