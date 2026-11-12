@@ -1,37 +1,70 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { tipSelfRatings, type PracticeTip, type TipSelfRating } from '$lib/practice-tips'
+  import { authenticatedFetch } from '$lib/stores'
+  import { guestFetch } from '$lib/guest-practice-client'
+  import {
+    practiceTipById,
+    type TipOffer,
+    type TipRating,
+    type TipSelfRating
+  } from '$lib/practice-tips'
+  import TipRatingChoices from './TipRatingChoices.svelte'
 
-  export let tip: PracticeTip
   export let practiceId: string
+  export let requestId: string
+  export let guest: boolean
   export let ready: boolean
   export let dismiss: () => void
 
   let dialog: HTMLDialogElement
   let title: HTMLHeadingElement
-  let selected: TipSelfRating | undefined
-
-  const storageKey = `koi-practice-tip:${practiceId}:${tip.id}`
+  let offer: TipOffer | null = null
+  let saving: TipSelfRating | null = null
+  let message = ''
+  let loadError = ''
+  $: tip = offer && practiceTipById(offer.tipId)
 
   onMount(() => {
-    try {
-      const stored = sessionStorage.getItem(storageKey)
-      selected = tipSelfRatings.find(({ id }) => id === stored)?.id
-    } catch {
-      /* 保存できない場合も、その場で選べる。 */
-    }
     const modal = dialog
     modal.showModal()
     title.focus()
+    void loadTip()
     return () => modal.close()
   })
 
-  function choose(rating: TipSelfRating) {
-    selected = rating
+  async function loadTip() {
+    const endpoint = `/api/${guest ? 'guest' : 'me'}/practices/${practiceId}/tip`
     try {
-      sessionStorage.setItem(storageKey, rating)
+      const response = await (guest ? guestFetch : authenticatedFetch)(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({ requestId })
+      })
+      offer = await response.json()
     } catch {
-      /* 自己評価は任意なので、保存できなくても結果へ進める。 */
+      loadError = '会話のヒントを読み込めませんでした。'
+    }
+  }
+
+  async function choose(value: TipSelfRating) {
+    if (!offer || saving || offer.rating?.value === value) return
+    saving = value
+    message = ''
+    const endpoint = guest
+      ? `/api/guest/practices/${practiceId}/tip`
+      : `/api/me/tips/${offer.tipId}`
+    try {
+      const response = await (guest ? guestFetch : authenticatedFetch)(endpoint, {
+        method: 'PATCH',
+        body: JSON.stringify({ value, revision: offer.rating?.id ?? null })
+      })
+      const rating: TipRating = await response.json()
+      offer = { ...offer, rating }
+      message = '自己評価を保存しました。'
+    } catch (error) {
+      message = error instanceof Error ? error.message : '自己評価を保存できませんでした。'
+      await loadTip()
+    } finally {
+      saving = null
     }
   }
 </script>
@@ -44,25 +77,24 @@
   <div class="tip-content">
     <header>
       <p class="tip-label">会話のヒント</p>
-      <h2 id="practice-tip-title" bind:this="{title}" tabindex="-1">{tip.title}</h2>
+      <h2 id="practice-tip-title" bind:this="{title}" tabindex="-1">
+        {tip?.title ?? '会話のヒント'}
+      </h2>
     </header>
 
-    <p class="tip-text">{tip.tip}</p>
-    <blockquote><span>たとえば</span>「{tip.example}」</blockquote>
-
-    <fieldset>
-      <legend>{tip.prompt}</legend>
-      <div class="choices">
-        {#each tipSelfRatings as rating}
-          <button
-            type="button"
-            class:selected="{selected === rating.id}"
-            aria-pressed="{selected === rating.id}"
-            on:click="{() => choose(rating.id)}">{rating.label}</button
-          >
-        {/each}
-      </div>
-    </fieldset>
+    {#if tip}
+      <p class="tip-text">{tip.tip}</p>
+      <blockquote><span>たとえば</span>「{tip.example}」</blockquote>
+      <TipRatingChoices
+        prompt="{tip.prompt}"
+        selected="{offer?.rating?.value}"
+        saving="{saving}"
+        choose="{choose}"
+      />
+      {#if message}<p class="tip-label" role="status">{message}</p>{/if}
+    {:else}
+      <p class="tip-text" role="status">{loadError || '会話のヒントを読み込んでいます…'}</p>
+    {/if}
 
     <footer>
       <p role="status" aria-live="polite">
@@ -135,49 +167,6 @@
     font-weight: 700;
   }
 
-  fieldset {
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    border: 0;
-  }
-
-  legend {
-    padding: 0 0 8px;
-    font-size: var(--text-sm);
-    font-weight: 700;
-  }
-
-  .choices {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 7px;
-  }
-
-  button {
-    min-height: 44px;
-    padding: 6px 9px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: white;
-    color: var(--ink);
-    cursor: pointer;
-    font: inherit;
-    font-size: var(--text-sm);
-  }
-
-  button.selected {
-    border-color: var(--accent);
-    background: #faeef2;
-    color: var(--accent);
-    font-weight: 700;
-  }
-
-  button:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-
   footer {
     display: flex;
     flex-wrap: wrap;
@@ -198,9 +187,15 @@
   }
 
   footer button {
-    border-color: var(--accent);
+    min-height: 44px;
+    padding: 6px 12px;
+    border: 1px solid var(--accent);
+    border-radius: 10px;
     background: var(--accent);
     color: white;
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-sm);
   }
 
   .spinner {
@@ -215,12 +210,6 @@
   @keyframes spin {
     to {
       transform: rotate(360deg);
-    }
-  }
-
-  @media (max-width: 430px) {
-    .choices {
-      grid-template-columns: 1fr;
     }
   }
 

@@ -11,7 +11,7 @@
   } from '$lib/practice'
   import { getAnalyticsContext } from '$lib/analytics'
   import { startPractice } from '$lib/practice-client'
-  import { isFinalPracticeReply, practiceTipFor, type PracticeTip } from '$lib/practice-tips'
+  import { isFinalPracticeReply } from '$lib/practice-tips'
   import PracticeWaitTip from '$lib/components/PracticeWaitTip.svelte'
   import { guestFetch } from '$lib/guest-practice-client'
   import { guestLoginUrl } from '$lib/guest-practice'
@@ -30,7 +30,7 @@
   let loading = false
   let claiming = false
   let pending = false
-  let waitingTip: PracticeTip | null = null
+  let waitingTipRequestId = ''
   let offeredTipRequestId = ''
   let restarting = false
   let animateAffinity = false
@@ -56,7 +56,7 @@
   $: if (mounted && $authReady && ($user || guestRoute) && loadedKey !== sessionKey) {
     loadedKey = sessionKey
     session = null
-    waitingTip = null
+    waitingTipRequestId = ''
     offeredTipRequestId = ''
     animateAffinity = false
     text = ''
@@ -65,7 +65,7 @@
   }
   $: if (!$user && !guestRoute) {
     session = null
-    waitingTip = null
+    waitingTipRequestId = ''
     offeredTipRequestId = ''
     loadedKey = ''
     text = ''
@@ -107,12 +107,12 @@
   }
   function offerWaitingTip(practice: PracticeSession, finalRequestId: string) {
     if (!isFinalPracticeReply(practice)) return
-    waitingTip = practiceTipFor(practice)
+    waitingTipRequestId = finalRequestId
     offeredTipRequestId = finalRequestId
   }
 
   function dismissWaitingTip() {
-    waitingTip = null
+    waitingTipRequestId = ''
     if (session?.completedAt) void tick().then(() => bottom?.focus())
   }
 
@@ -154,7 +154,8 @@
     // 閉じたTipsを定期取得で開き直さず、再開した最終返答だけ新たに案内する。
     if (pending && result.pending && offeredTipRequestId !== result.pending.requestId)
       offerWaitingTip(result, result.pending.requestId)
-    else if (!pending && (!result.completedAt || !result.turns.at(-1)?.feedback)) waitingTip = null
+    else if (!pending && (!result.completedAt || !result.turns.at(-1)?.feedback))
+      waitingTipRequestId = ''
     clearTimeout(pollTimer)
     if (pending && mounted) pollTimer = setTimeout(() => void load(false), 2000)
     void tick().then(() => {
@@ -196,7 +197,7 @@
     } catch (error) {
       if (key === sessionKey) {
         pending = false
-        waitingTip = null
+        waitingTipRequestId = ''
         claiming = false
         message = error instanceof Error ? error.message : '会話を読み込めませんでした。'
       }
@@ -230,7 +231,7 @@
     } catch (error) {
       if (key === sessionKey && mounted) {
         pending = false
-        waitingTip = null
+        waitingTipRequestId = ''
         message =
           error instanceof Error
             ? error.message
@@ -368,11 +369,12 @@
       </section>
     </svelte:element>
     <div bind:this="{bottom}" tabindex="-1" aria-label="練習結果"></div>
-    {#if waitingTip}
-      {#key session.id}
+    {#if waitingTipRequestId}
+      {#key waitingTipRequestId}
         <PracticeWaitTip
-          tip="{waitingTip}"
           practiceId="{session.id}"
+          requestId="{waitingTipRequestId}"
+          guest="{guestMode}"
           ready="{!!session.completedAt && !!feedback}"
           dismiss="{dismissWaitingTip}"
         />

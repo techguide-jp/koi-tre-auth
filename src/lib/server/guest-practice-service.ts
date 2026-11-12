@@ -17,6 +17,7 @@ import {
 } from './db/repositories/practices'
 import type { GuestTurn } from '$lib/guest-practice'
 import type { Adventure } from '$lib/adventure'
+import { importGuestTip } from './db/repositories/practice-tips'
 
 export async function submitGuestMessage(input: GuestMessage, rate: { day: string; hash: string }) {
   const reservation = await reserveGuestTurn(input, rate)
@@ -113,5 +114,6 @@ export async function claimGuestPractice(
       )
     }
   }
+  if (guest.state.tip) await importGuestTip(uid, id, guest.state.tip)
   return { session: await getPractice(uid, id), pending: false }
 }

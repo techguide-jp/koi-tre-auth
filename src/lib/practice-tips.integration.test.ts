@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { episodes, type Adventure } from './adventure'
 import type { PracticeTurn } from './practice'
-import { isFinalPracticeReply, practiceTipFor } from './practice-tips'
+import { drawPracticeTip, isFinalPracticeReply } from './practice-tips'
 import tips from './practice-tip-content.json'
 
 function turns(count: number): PracticeTurn[] {
@@ -38,29 +38,31 @@ describe('最終返答の待ち時間に表示するTips', () => {
     expect(mainEpisodes).toHaveLength(72)
     const groupsById = new Map(tips.map((tip) => [tip.id, tip.group]))
     for (const episode of mainEpisodes) {
-      const tip = practiceTipFor({
-        id: 'sample-' + episode.id,
-        sceneId: 'adventure',
-        adventure: {
-          version: 1,
-          characterId: episode.characterId!,
-          episodeId: episode.id,
-          turns: 3
-        }
-      })
+      const tip = drawPracticeTip(
+        {
+          sceneId: 'adventure',
+          adventure: {
+            version: 1,
+            characterId: episode.characterId!,
+            episodeId: episode.id,
+            turns: 3
+          }
+        },
+        new Map(),
+        () => 0
+      )
       expect(groupsById.get(tip.id), episode.id).toBe(episode.coachingProfile)
     }
   })
 
-  it('同じ練習の再送では同じTipsを選び、別の練習では候補に幅がある', () => {
-    const context = { sceneId: 'hobbies' as const, id: 'practice-a' }
-    expect(practiceTipFor(context)).toEqual(practiceTipFor({ ...context }))
-    const chosen = Array.from({ length: 20 }, (_, i) =>
-      practiceTipFor({ ...context, id: 'practice-' + i })
-    )
-    expect(new Set(chosen.map((tip) => tip.id)).size).toBeGreaterThan(1)
-    expect(chosen.every((tip) => tips.find(({ id }) => id === tip.id)?.group === 'interests')).toBe(
-      true
-    )
+  it('未収集の場面内候補から選び、収集後は最近見ていない候補を優先する', () => {
+    const practice = { sceneId: 'hobbies' as const }
+    const group = tips.filter(({ group }) => group === 'interests')
+    const seen = new Map<string, string>()
+    for (const [i, tip] of group.entries()) {
+      expect(drawPracticeTip(practice, seen, () => 0).id).toBe(tip.id)
+      seen.set(tip.id, new Date(2026, 0, i + 1).toISOString())
+    }
+    expect(drawPracticeTip(practice, seen, (length) => length - 1).id).toBe(group[2].id)
   })
 })

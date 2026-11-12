@@ -18,6 +18,15 @@ import { generatePracticeReply, parsePracticeOutput } from './dify-practice'
 import { trackPracticeCompleted, trackQuestionSubmitted } from './analytics'
 import { sceneWithPartner } from '$lib/practice'
 import { exampleFeedback, exampleTexts } from './fixtures/practice-analysis'
+import {
+  listCollectedTips,
+  listTipRatings,
+  offerPracticeTip,
+  saveTipRating
+} from './db/repositories/practice-tips'
+import { practiceTipById } from '$lib/practice-tips'
+import { GET as tipCollectionApi } from '../../routes/api/me/tips/+server'
+import { PATCH as rateTipApi } from '../../routes/api/me/tips/[tipId]/+server'
 
 let client: PGlite
 let db: ReturnType<typeof drizzle<typeof schema>>
@@ -83,6 +92,85 @@ async function session() {
 function message(id: string, expectedTurn = 0, text = '映画が好きです') {
   return { uid, id, requestId: randomUUID(), text, expectedTurn }
 }
+
+async function addTipTestTurns(id: string, count: number) {
+  const turns = Array.from({ length: count }, (_, index) => ({
+    id: randomUUID(),
+    practiceId: id,
+    requestId: randomUUID(),
+    position: index + 1,
+    userText: '架空の会話',
+    assistantText: 'そうなんですね。'
+  }))
+  await db.insert(schema.practiceTurns).values(turns)
+  return turns.at(-1)!.requestId
+}
+
+describe('Tipsコレクション', () => {
+  it('最終返答の時だけ抽選でき、同時抽選・再送でも既出や同じ練習を二重に数えない', async () => {
+    const first = await session()
+    const second = await session()
+    const requestId = randomUUID()
+    await expect(offerPracticeTip(uid, first, requestId)).rejects.toMatchObject({ status: 409 })
+    await Promise.all([addTipTestTurns(first, 2), addTipTestTurns(second, 2)])
+    const [a, replay, b] = await Promise.all([
+      offerPracticeTip(uid, first, requestId),
+      offerPracticeTip(uid, first, randomUUID()),
+      offerPracticeTip(uid, second, randomUUID())
+    ])
+    expect(replay.tipId).toBe(a.tipId)
+    expect(b.tipId).not.toBe(a.tipId)
+    expect(practiceTipById(a.tipId)?.group).toBe('first_meeting')
+    expect(await listCollectedTips(uid)).toHaveLength(2)
+    await expect(offerPracticeTip('other', first, requestId)).rejects.toMatchObject({ status: 404 })
+    expect(await listCollectedTips('other')).toEqual([])
+  })
+
+  it('最終返答が先に保存された場合も、送信が一致するときだけ新しく抽選できる', async () => {
+    const id = await session()
+    const finalRequest = await addTipTestTurns(id, 3)
+    await expect(offerPracticeTip(uid, id, randomUUID())).rejects.toMatchObject({ status: 409 })
+    expect(await offerPracticeTip(uid, id, finalRequest)).toMatchObject({ rating: null })
+  })
+
+  it('現在の自己評価と推移を分け、再送・古い更新・別ユーザーの更新を区別する', async () => {
+    const id = await session()
+    await addTipTestTurns(id, 2)
+    const { tipId } = await offerPracticeTip(uid, id, randomUUID())
+    const initial = await saveTipRating(uid, tipId, 'difficult', null)
+    expect(await saveTipRating(uid, tipId, 'difficult', null)).toEqual(initial)
+    const improved = await saveTipRating(uid, tipId, 'intentional', initial.id)
+    await expect(saveTipRating(uid, tipId, 'comfortable', initial.id)).rejects.toMatchObject({
+      status: 409
+    })
+    await expect(saveTipRating('other', tipId, 'comfortable', null)).rejects.toMatchObject({
+      status: 404
+    })
+    expect(await listTipRatings(uid, tipId)).toEqual([improved, initial])
+    expect(await listCollectedTips(uid)).toMatchObject([{ tipId, rating: improved }])
+  })
+
+  it('APIが認証と3択を検証し、非公開の応答を返す', async () => {
+    const url = 'https://koitre.example/api/me/tips'
+    const unauthenticated = { request: new Request(url) } as Parameters<typeof tipCollectionApi>[0]
+    await expect(tipCollectionApi(unauthenticated)).rejects.toMatchObject({ status: 401 })
+    const headers = { Authorization: 'Bearer valid-test-token' }
+    const request = new Request(url, { headers })
+    const collection = await tipCollectionApi({ request } as Parameters<typeof tipCollectionApi>[0])
+    expect(collection.headers.get('cache-control')).toBe('no-store')
+    expect(await collection.json()).toEqual([])
+    const invalid = new Request(url + '/T001', {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ value: 'not_used', revision: null })
+    })
+    await expect(
+      rateTipApi({ request: invalid, params: { tipId: 'T001' } } as Parameters<
+        typeof rateTipApi
+      >[0])
+    ).rejects.toMatchObject({ status: 400 })
+  })
+})
 async function charged(total: number, at = now) {
   await db.insert(schema.practices).values(
     Array.from({ length: total }, () => ({

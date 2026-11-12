@@ -68,7 +68,13 @@
         if (destination === 'pricing') await goto(`/pricing${charactersForReturn()}`)
         else
           await goto(
-            destination === 'memories' ? '/memories' : destination === 'account' ? '/account' : '/'
+            destination === 'tips'
+              ? '/account/tips'
+              : destination === 'memories'
+                ? '/memories'
+                : destination === 'account'
+                  ? '/account'
+                  : '/'
           )
       }
     } catch (error) {

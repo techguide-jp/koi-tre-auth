@@ -1,6 +1,7 @@
 import { normalizeAdventure, type Adventure, type MissionResult } from './adventure'
 import type { PracticeTurn } from './practice'
 import type { KnowledgeTrace } from './knowledge-policy'
+import type { GuestTip } from './practice-tips'
 
 export const GUEST_RETENTION_DAYS = 30
 export function guestAdventure(value: unknown): Adventure | null {
@@ -21,4 +22,5 @@ export interface GuestPracticeState {
   turns: GuestTurn[]
   completedAt: string | null
   pending: { requestId: string; text: string; until: string | null } | null
+  tip?: GuestTip
 }

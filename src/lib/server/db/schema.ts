@@ -20,6 +20,7 @@ import { boolean } from 'drizzle-orm/pg-core'
 import type { KnowledgeContent, KnowledgePreview, KnowledgeTrace } from '$lib/knowledge-policy'
 import type { CharacterContent, CharacterPreview, CharacterSnapshot } from '$lib/character-policy'
 import type { GuestPracticeState } from '$lib/guest-practice'
+import type { TipSelfRating } from '$lib/practice-tips'
 
 export const guestSessions = pgTable('guest_sessions', {
   id: varchar('id', { length: 64 }).primaryKey(),
@@ -155,6 +156,8 @@ export const practices = pgTable(
     ),
     chargedAt: timestamp('charged_at', { withTimezone: true, mode: 'date' }),
     completedAt: timestamp('completed_at', { withTimezone: true, mode: 'date' }),
+    tipId: varchar('tip_id', { length: 16 }),
+    tipShownAt: timestamp('tip_shown_at', { withTimezone: true, mode: 'date' }),
     pendingRequestId: varchar('pending_request_id', { length: 36 }),
     pendingText: text('pending_text'),
     pendingToken: varchar('pending_token', { length: 36 }),
@@ -163,6 +166,22 @@ export const practices = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
   },
   (table) => [index('practices_uid_charged_at_idx').on(table.uid, table.chargedAt)]
+)
+
+export const practiceTipRatings = pgTable(
+  'practice_tip_ratings',
+  {
+    id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
+    uid: varchar('uid', { length: 255 })
+      .notNull()
+      .references(() => users.firebaseUid, { onDelete: 'cascade', onUpdate: 'cascade' }),
+    tipId: varchar('tip_id', { length: 16 }).notNull(),
+    value: varchar('value', { length: 16 }).$type<TipSelfRating>().notNull(),
+    ratedAt: timestamp('rated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
+  },
+  (table) => [
+    index('practice_tip_ratings_uid_tip_date_idx').on(table.uid, table.tipId, table.ratedAt)
+  ]
 )
 
 export const billingCustomers = pgTable('billing_customers', {
