@@ -71,6 +71,13 @@
       "when": 1794200540845,
       "tag": "0009_silky_sandman",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794460574066,
+      "tag": "0010_practice_tip_collection",
+      "breakpoints": true
     }
   ]
 }

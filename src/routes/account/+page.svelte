@@ -9,6 +9,7 @@
   import { billingPortal } from '$lib/billing-client'
   import BillingBalance from '$lib/components/billing/BillingBalance.svelte'
   import PracticeGrowth from '$lib/components/adventure/PracticeGrowth.svelte'
+  import TipCollection from '$lib/components/TipCollection.svelte'
   import { storyParts } from '$lib/adventure-story'
   let billing: BillingOverview | null = null
   let knowledgeAdmin = false
@@ -160,6 +161,7 @@
     aria-busy="{pending === 'load'}"
     on:click="{load}">{pending === 'load' ? '読み込んでいます…' : '最新の状態を確認する'}</button
   >
+  {#key $user.uid}<TipCollection />{/key}
   {#if billing}<div class="account-panels">
       <section class="card"><BillingBalance billing="{billing}" /></section>
       <section class="card">

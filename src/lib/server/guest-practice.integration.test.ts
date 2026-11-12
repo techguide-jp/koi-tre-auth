@@ -12,9 +12,12 @@ import {
   createGuestPractice,
   finishGuestTurn,
   getGuestPractice,
+  offerGuestTip,
   releaseGuestTurn,
-  reserveGuestTurn
+  reserveGuestTurn,
+  saveGuestTipRating
 } from './db/repositories/guest-practices'
+import { listCollectedTips, listTipRatings } from './db/repositories/practice-tips'
 import { claimGuestPractice, submitGuestMessage } from './guest-practice-service'
 import { getPractice, getPracticeOverview } from './db/repositories/practices'
 import { getAdventureProgress } from './db/repositories/adventures'
@@ -104,6 +107,31 @@ async function complete(input?: Awaited<ReturnType<typeof start>>) {
   for (let i = 0; i < 3; i++) await submitGuestMessage(message(guest, i), rate())
   return guest
 }
+
+it('ゲストのTipsと最新の自己評価を完了・再開・会話の引き継ぎでも一度だけ保存する', async () => {
+  const guest = await start()
+  await submitGuestMessage(message(guest, 0), rate())
+  await submitGuestMessage(message(guest, 1), rate())
+  const final = message(guest, 2)
+  const offered = await offerGuestTip(guest.session.id, guest.id, final.requestId)
+  const rating = await saveGuestTipRating(guest.session.id, guest.id, 'difficult', null)
+  await submitGuestMessage(final, rate())
+  expect(await offerGuestTip(guest.session.id, guest.id, final.requestId)).toMatchObject({
+    tipId: offered.tipId,
+    rating
+  })
+  const otherSession = await start('rin')
+  await expect(
+    offerGuestTip(otherSession.session.id, guest.id, final.requestId)
+  ).rejects.toMatchObject({ status: 404 })
+  await claimGuestPractice(guest.session.id, guest.id, uid)
+  await claimGuestPractice(guest.session.id, guest.id, uid)
+  expect(await listCollectedTips(uid)).toMatchObject([{ tipId: offered.tipId }])
+  expect(await listTipRatings(uid, offered.tipId)).toMatchObject([
+    { value: rating.value, ratedAt: rating.ratedAt }
+  ])
+  expect(await listCollectedTips(otherUid)).toEqual([])
+})
 function event(
   method: string,
   body: unknown = {},

@@ -11,6 +11,8 @@
   } from '$lib/practice'
   import { getAnalyticsContext } from '$lib/analytics'
   import { startPractice } from '$lib/practice-client'
+  import { isFinalPracticeReply } from '$lib/practice-tips'
+  import PracticeWaitTip from '$lib/components/PracticeWaitTip.svelte'
   import { guestFetch } from '$lib/guest-practice-client'
   import { guestLoginUrl } from '$lib/guest-practice'
   import GuestPracticeResult from '$lib/components/adventure/GuestPracticeResult.svelte'
@@ -28,6 +30,8 @@
   let loading = false
   let claiming = false
   let pending = false
+  let waitingTipRequestId = ''
+  let offeredTipRequestId = ''
   let restarting = false
   let animateAffinity = false
   let message = ''
@@ -40,6 +44,7 @@
     ? resolveScene(session.sceneId, session.customScene, session.adventure)
     : undefined
   $: turnLimit = practiceTurnLimit(session?.adventure)
+  $: finalReply = !!session && isFinalPracticeReply(session)
   $: character = characterById(session?.adventure?.characterId)
   $: episode = episodeById(session?.adventure?.episodeId)
   $: presentation = session?.turns.at(-1)?.presentation
@@ -51,6 +56,8 @@
   $: if (mounted && $authReady && ($user || guestRoute) && loadedKey !== sessionKey) {
     loadedKey = sessionKey
     session = null
+    waitingTipRequestId = ''
+    offeredTipRequestId = ''
     animateAffinity = false
     text = ''
     message = ''
@@ -58,6 +65,8 @@
   }
   $: if (!$user && !guestRoute) {
     session = null
+    waitingTipRequestId = ''
+    offeredTipRequestId = ''
     loadedKey = ''
     text = ''
   }
@@ -96,6 +105,17 @@
       /* 壊れた下書きは利用しない。 */
     }
   }
+  function offerWaitingTip(practice: PracticeSession, finalRequestId: string) {
+    if (!isFinalPracticeReply(practice)) return
+    waitingTipRequestId = finalRequestId
+    offeredTipRequestId = finalRequestId
+  }
+
+  function dismissWaitingTip() {
+    waitingTipRequestId = ''
+    if (session?.completedAt) void tick().then(() => bottom?.focus())
+  }
+
   function applySession(result: PracticeSession, initial = false) {
     // 履歴の読み直しを新しい獲得に見せず、この画面で完了・再評価した差分だけを動かす。
     if (initial) animateAffinity = false
@@ -131,6 +151,11 @@
       !result.completedAt &&
       !!result.pending?.until &&
       new Date(result.pending.until).getTime() > Date.now()
+    // 閉じたTipsを定期取得で開き直さず、再開した最終返答だけ新たに案内する。
+    if (pending && result.pending && offeredTipRequestId !== result.pending.requestId)
+      offerWaitingTip(result, result.pending.requestId)
+    else if (!pending && (!result.completedAt || !result.turns.at(-1)?.feedback))
+      waitingTipRequestId = ''
     clearTimeout(pollTimer)
     if (pending && mounted) pollTimer = setTimeout(() => void load(false), 2000)
     void tick().then(() => {
@@ -172,6 +197,7 @@
     } catch (error) {
       if (key === sessionKey) {
         pending = false
+        waitingTipRequestId = ''
         claiming = false
         message = error instanceof Error ? error.message : '会話を読み込めませんでした。'
       }
@@ -188,6 +214,7 @@
     }
     saveDraft()
     pending = true
+    offerWaitingTip(session, requestId)
     message = ''
     const key = sessionKey
     try {
@@ -204,6 +231,7 @@
     } catch (error) {
       if (key === sessionKey && mounted) {
         pending = false
+        waitingTipRequestId = ''
         message =
           error instanceof Error
             ? error.message
@@ -340,11 +368,20 @@
           </div>{/each}
       </section>
     </svelte:element>
-    <div bind:this="{bottom}"></div>
+    <div bind:this="{bottom}" tabindex="-1" aria-label="練習結果"></div>
+    {#if waitingTipRequestId}
+      {#key waitingTipRequestId}
+        <PracticeWaitTip
+          practiceId="{session.id}"
+          requestId="{waitingTipRequestId}"
+          guest="{guestMode}"
+          ready="{!!session.completedAt && !!feedback}"
+          dismiss="{dismissWaitingTip}"
+        />
+      {/key}
+    {/if}
     {#if pending}<p class="notice" role="status" aria-live="polite">
-        {session.turns.length + 1 === turnLimit && !session.completedAt
-          ? '会話全体を振り返り、分析と言い換えをまとめています…'
-          : '返答を考えています…'} この画面を閉じても、あとから再開できます。
+        {finalReply ? '会話全体を振り返り、分析と言い換えをまとめています…' : '返答を考えています…'} この画面を閉じても、あとから再開できます。
       </p>{/if}
     {#if message && !session.completedAt}<p class="error" role="alert">{message}</p>{/if}
     {#if session.completedAt && feedback}
@@ -433,10 +470,10 @@
             disabled="{pending || !text.trim()}"
             aria-busy="{pending}"
             >{pending
-              ? session.turns.length + 1 === turnLimit
+              ? finalReply
                 ? '分析をまとめています…'
                 : '返答を考えています…'
-              : session.turns.length + 1 === turnLimit
+              : finalReply
                 ? '送信して振り返る'
                 : '返答を送る'}<span aria-hidden="true">↑</span></button
           >

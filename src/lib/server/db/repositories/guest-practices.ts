@@ -1,16 +1,18 @@
-import { randomUUID } from 'node:crypto'
+import { randomInt, randomUUID } from 'node:crypto'
 import { and, eq, gt, inArray, lt } from 'drizzle-orm'
 import { error } from '@sveltejs/kit'
 import { guestAdventure, type GuestTurn } from '$lib/guest-practice'
 import { applyRelationship, gradeConversation } from '$lib/adventure-progression'
 import { type Adventure, parseMission, parsePresentation } from '$lib/adventure'
 import type { PracticeSession } from '$lib/practice'
+import { drawPracticeTip, type GuestTip, type TipSelfRating } from '$lib/practice-tips'
 import type { GeneratePracticeInput } from '$lib/server/dify-practice'
 import { getDb } from '../client'
 import { guestSessions, guestPractices, knowledgeSettings, practices } from '../schema'
 import { snapshotCharacter } from './character-policy'
 import type { CreditDb } from './credits'
 import { consumeRateLimit, pruneRateLimits } from './rate-limits'
+import { requireRatingRevision } from './practice-tips'
 
 type GuestRow = typeof guestPractices.$inferSelect
 type RateContext = { day: string; hash: string }
@@ -99,6 +101,69 @@ async function owned(db: CreditDb, sessionId: string, id: string, now: Date, loc
 }
 export async function getGuestPractice(sessionId: string, id: string) {
   return guestPracticeView(await owned(getDb(), sessionId, id, new Date()))
+}
+
+export async function offerGuestTip(sessionId: string, id: string, requestId: string) {
+  return getDb().transaction(async (tx) => {
+    const now = new Date()
+    await tx
+      .select({ id: guestSessions.id })
+      .from(guestSessions)
+      .where(eq(guestSessions.id, sessionId))
+      .for('update')
+    const row = await owned(tx, sessionId, id, now, true)
+    if (row.claimedUid) throw error(403, 'ログイン後の画面から続けてください。')
+    if (row.state.tip) return row.state.tip
+    const { turns } = row.state
+    if (turns.length !== 2 && (turns.length !== 3 || turns.at(-1)?.requestId !== requestId))
+      throw error(409, '最後の返答を送信すると会話のヒントが表示されます。')
+    const previous = await tx
+      .select({ state: guestPractices.state })
+      .from(guestPractices)
+      .where(eq(guestPractices.sessionId, sessionId))
+    const lastShown = new Map<string, string>()
+    for (const { state } of previous) {
+      if (state.tip && state.tip.shownAt > (lastShown.get(state.tip.tipId) ?? ''))
+        lastShown.set(state.tip.tipId, state.tip.shownAt)
+    }
+    const tip: GuestTip = {
+      tipId: drawPracticeTip(
+        { sceneId: 'adventure', adventure: adventureFor(row) },
+        lastShown,
+        randomInt
+      ).id,
+      shownAt: now.toISOString(),
+      rating: null
+    }
+    await tx
+      .update(guestPractices)
+      .set({ state: { ...row.state, tip } })
+      .where(eq(guestPractices.id, id))
+    return tip
+  })
+}
+
+export async function saveGuestTipRating(
+  sessionId: string,
+  id: string,
+  value: TipSelfRating,
+  revision: number | null
+) {
+  return getDb().transaction(async (tx) => {
+    const now = new Date()
+    const row = await owned(tx, sessionId, id, now, true)
+    if (row.claimedUid) throw error(403, 'ログイン後の画面から続けてください。')
+    const tip = row.state.tip
+    if (!tip) throw error(404, '表示したTipsが見つかりません。')
+    if (tip.rating?.value === value) return tip.rating
+    requireRatingRevision(tip.rating, revision)
+    const rating = { id: (tip.rating?.id ?? 0) + 1, value, ratedAt: now.toISOString() }
+    await tx
+      .update(guestPractices)
+      .set({ state: { ...row.state, tip: { ...tip, rating } } })
+      .where(eq(guestPractices.id, id))
+    return rating
+  })
 }
 async function consumeRate(
   db: CreditDb,
@@ -260,7 +325,12 @@ export async function finishGuestTurn(
       .update(guestPractices)
       .set({
         pendingToken: null,
-        state: { turns, completedAt: turns.length === 3 ? now.toISOString() : null, pending: null }
+        state: {
+          ...row.state,
+          turns,
+          completedAt: turns.length === 3 ? now.toISOString() : null,
+          pending: null
+        }
       })
       .where(eq(guestPractices.id, row.id))
     return true
