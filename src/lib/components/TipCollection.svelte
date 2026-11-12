@@ -108,7 +108,7 @@
           <strong>{theme.count} / {theme.total}</strong>
         </li>
       {/each}
-      {#each Array.from({ length: undiscoveredThemes }) as _}
+      {#each Array.from({ length: undiscoveredThemes }, (_, index) => index) as slot (slot)}
         <li class="undiscovered">
           <span aria-hidden="true">???</span>
           <strong>未発見</strong>
