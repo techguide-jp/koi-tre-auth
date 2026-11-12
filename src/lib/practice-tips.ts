@@ -15,8 +15,7 @@ export interface PracticeTip {
 export const tipSelfRatings = [
   { id: 'comfortable', label: '自然にできる' },
   { id: 'intentional', label: '意識すればできる' },
-  { id: 'difficult', label: 'まだ苦手' },
-  { id: 'not_used', label: '今回は使っていない' }
+  { id: 'difficult', label: 'まだ苦手' }
 ] as const
 export type TipSelfRating = (typeof tipSelfRatings)[number]['id']
 

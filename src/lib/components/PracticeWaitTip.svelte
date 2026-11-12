@@ -69,9 +69,7 @@
         {#if !ready}<span class="spinner" aria-hidden="true"></span>{/if}
         {ready ? '振り返りができました' : '振り返りをまとめています…'}
       </p>
-      <button type="button" class:ready="{ready}" on:click="{dismiss}"
-        >{ready ? '結果を見る' : '閉じて待つ'}</button
-      >
+      {#if ready}<button type="button" on:click="{dismiss}">結果を見る</button>{/if}
     </footer>
   </div>
 </dialog>
@@ -152,7 +150,7 @@
 
   .choices {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 7px;
   }
 
@@ -199,7 +197,7 @@
     font-size: var(--text-xs);
   }
 
-  footer button.ready {
+  footer button {
     border-color: var(--accent);
     background: var(--accent);
     color: white;
@@ -217,6 +215,12 @@
   @keyframes spin {
     to {
       transform: rotate(360deg);
+    }
+  }
+
+  @media (max-width: 430px) {
+    .choices {
+      grid-template-columns: 1fr;
     }
   }
 
