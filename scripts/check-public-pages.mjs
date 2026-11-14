@@ -62,8 +62,23 @@ for (const path of [
   assert.doesNotMatch(html, /rel="canonical"|property="og:url"/, path)
   if (path.includes('missing-seo-check')) assert.equal(response.status, 404, path)
 }
+for (const path of [
+  '/admin',
+  '/admin/users',
+  '/admin/billing',
+  '/admin/usage',
+  '/admin/knowledge',
+  '/admin/characters',
+  '/%61dmin'
+]) {
+  const { response, html } = await read(path)
+  assert.equal(response.status, 200, path)
+  assert.match(html, /アクセス権限を確認しています/, path)
+  assert.doesNotMatch(html, /aria-label="管理者モード"|<h1[^>]*>/, path)
+  assert.match(html, /name="robots" content="noindex,follow"/, path)
+}
 const { html: robots } = await read('/robots.txt')
 assert.ok(robots.includes(`Sitemap: ${origin}/sitemap.xml`))
 console.log(
-  `公開${urls.length}ページのSSRメタデータ・サイトマップ・非公開/404のnoindexを確認しました。`
+  `公開${urls.length}ページのSSRメタデータ・サイトマップ・非公開/404のnoindex・管理画面の初期表示を確認しました。`
 )
