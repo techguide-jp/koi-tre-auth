@@ -38,6 +38,7 @@
       ? resolveScene('custom', customScene)
       : findScene($page.url.searchParams.get('scene'))
   $: practiceId = $page.url.searchParams.get('practice')
+  $: adminLogin = $page.url.searchParams.get('returnTo') === 'admin'
   async function login() {
     if (pending) return
     if (!auth || !provider) {
@@ -56,7 +57,8 @@
         if (getAdditionalUserInfo(result)?.isNewUser) trackSignup(provider.providerId)
       }
       await syncCurrentUserToApi(firebaseUser)
-      if (practiceId && /^[0-9a-f-]{36}$/i.test(practiceId))
+      if (adminLogin) await goto('/admin')
+      else if (practiceId && /^[0-9a-f-]{36}$/i.test(practiceId))
         await goto(
           `/practice/${practiceId}${$page.url.searchParams.get('guest') === '1' ? '?guest=1' : ''}`
         )
@@ -101,13 +103,17 @@
 
 <svelte:head><title>Googleで始める | Koi-Tre</title></svelte:head>
 <section class="login-card card">
-  <p class="eyebrow">会話の続きを、ここから</p>
-  <h1>準備ができたら、始めよう。</h1>
-  <p>Googleアカウントで登録すると、<br />途中の会話や振り返りを保存できます。</p>
-  {#if practiceId && $page.url.searchParams.get('guest') === '1'}<p class="notice">
+  {#if adminLogin}
+    <h1>管理者アカウントでログイン</h1>
+  {:else}
+    <p class="eyebrow">会話の続きを、ここから</p>
+    <h1>準備ができたら、始めよう。</h1>
+    <p>Googleアカウントで登録すると、<br />途中の会話や振り返りを保存できます。</p>
+  {/if}
+  {#if !adminLogin && practiceId && $page.url.searchParams.get('guest') === '1'}<p class="notice">
       第1話の体験を引き継ぎます。最初の返答の保存時に、毎月10枠のうち1枠を使用します。ログインをやり直しても二重に消費しません。
     </p>{/if}
-  {#if scene}<div class="selection">
+  {#if !adminLogin && scene}<div class="selection">
       <span class="small muted">選んだ場面</span><strong>{scene.title}</strong><span
         class="partner-name">お相手：{scene.partnerName}さん（AI）</span
       ><span class="small"
@@ -122,21 +128,35 @@
     </div>{/if}<button
     class="button primary"
     on:click="{login}"
-    disabled="{pending || (isCustom && !scene && !practiceId)}"
+    disabled="{pending || (!adminLogin && isCustom && !scene && !practiceId)}"
     aria-busy="{pending}"
-    >{pending ? '準備しています…' : $user ? '練習へ進む' : 'Googleで登録・ログイン'}</button
+    >{pending
+      ? '準備しています…'
+      : adminLogin
+        ? $user
+          ? 'このアカウントで進む'
+          : 'Googleでログイン'
+        : $user
+          ? '練習へ進む'
+          : 'Googleで登録・ログイン'}</button
   >{#if message}<p class="error" role="alert">{message}</p>{/if}
-  {#if isCustom && !customDraftReady}<p role="status">場面の設定を読み込んでいます…</p>
-  {:else if isCustom && !scene}<p class="notice">
+  {#if !adminLogin && isCustom && !customDraftReady}<p role="status">
+      場面の設定を読み込んでいます…
+    </p>
+  {:else if !adminLogin && isCustom && !scene}<p class="notice">
       カスタム場面の設定を読み込めませんでした。場面選択に戻って設定してください。
     </p>{/if}
-  <p class="small muted">練習で名前・性別・年齢を入力する必要はありません。</p>
-  <a
-    href="{isCustom && $page.url.searchParams.get('preset') !== '1'
-      ? '/#custom-scene'
-      : '/#scenes'}"
-    class="text-link">場面選択に戻る</a
-  >
+  {#if adminLogin}
+    <a href="/" class="text-link">トップに戻る</a>
+  {:else}
+    <p class="small muted">練習で名前・性別・年齢を入力する必要はありません。</p>
+    <a
+      href="{isCustom && $page.url.searchParams.get('preset') !== '1'
+        ? '/#custom-scene'
+        : '/#scenes'}"
+      class="text-link">場面選択に戻る</a
+    >
+  {/if}
 </section>
 
 <style>
