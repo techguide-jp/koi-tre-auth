@@ -20,16 +20,24 @@
   let title: HTMLHeadingElement
   let offer: TipOffer | null = null
   let saving: TipSelfRating | null = null
+  let confirmed = false
+  let active = false
+  let dismissTimer: ReturnType<typeof setTimeout> | undefined
   let message = ''
   let loadError = ''
   $: tip = offer && practiceTipById(offer.tipId)
 
   onMount(() => {
     const modal = dialog
+    active = true
     modal.showModal()
     title.focus()
     void loadTip()
-    return () => modal.close()
+    return () => {
+      active = false
+      clearTimeout(dismissTimer)
+      modal.close()
+    }
   })
 
   async function loadTip() {
@@ -46,7 +54,11 @@
   }
 
   async function choose(value: TipSelfRating) {
-    if (!offer || saving || offer.rating?.value === value) return
+    if (!offer || saving || confirmed) return
+    if (offer.rating?.value === value) {
+      confirmRating()
+      return
+    }
     saving = value
     message = ''
     const endpoint = guest
@@ -59,7 +71,7 @@
       })
       const rating: TipRating = await response.json()
       offer = { ...offer, rating }
-      message = '自己評価を保存しました。'
+      confirmRating()
     } catch (error) {
       message = error instanceof Error ? error.message : '自己評価を保存できませんでした。'
       await loadTip()
@@ -67,16 +79,40 @@
       saving = null
     }
   }
+
+  function confirmRating() {
+    if (!active) return
+    message = ''
+    confirmed = true
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    dismissTimer = setTimeout(dismiss, reduceMotion ? 400 : 1000)
+  }
+
+  function skip() {
+    if (!saving && !confirmed) dismiss()
+  }
 </script>
 
 <dialog
   bind:this="{dialog}"
+  class:closing="{confirmed}"
   aria-labelledby="practice-tip-title"
-  on:cancel|preventDefault="{dismiss}"
+  aria-describedby="practice-tip-intro"
+  on:cancel|preventDefault="{skip}"
 >
   <div class="tip-content">
+    <div class="analysis-status">
+      <p class="status-label" role="status">
+        {#if !ready}<span class="spinner" aria-hidden="true"></span>{/if}
+        {ready ? '会話の分析が完了しました' : '会話を分析しています…'}
+      </p>
+      <p id="practice-tip-intro">
+        {ready
+          ? '結果を見る前に、会話のヒントをひとつ。'
+          : '結果を待つ間に、会話のヒントをひとつ。'}
+      </p>
+    </div>
     <header>
-      <p class="tip-label">会話のヒント</p>
       <h2 id="practice-tip-title" bind:this="{title}" tabindex="-1">
         {tip?.title ?? '会話のヒント'}
       </h2>
@@ -89,19 +125,25 @@
         prompt="{tip.prompt}"
         selected="{offer?.rating?.value}"
         saving="{saving}"
+        disabled="{confirmed}"
         choose="{choose}"
       />
-      {#if message}<p class="tip-label" role="status">{message}</p>{/if}
+      {#if message}<p class="tip-label" role="alert">{message}</p>{/if}
     {:else}
       <p class="tip-text" role="status">{loadError || '会話のヒントを読み込んでいます…'}</p>
     {/if}
 
     <footer>
-      <p role="status" aria-live="polite">
-        {#if !ready}<span class="spinner" aria-hidden="true"></span>{/if}
-        {ready ? '振り返りができました' : '振り返りをまとめています…'}
-      </p>
-      {#if ready}<button type="button" on:click="{dismiss}">結果を見る</button>{/if}
+      {#if confirmed}
+        <p class="saved-label" role="status">
+          <span aria-hidden="true">✓</span> 自己評価を保存しました
+        </p>
+      {:else}
+        {#if tip}<p>自己評価を選ぶと、自動で結果へ進みます。</p>{/if}
+        {#if ready}<button type="button" disabled="{saving !== null}" on:click="{skip}">
+            結果を見る
+          </button>{/if}
+      {/if}
     </footer>
   </div>
 </dialog>
@@ -127,6 +169,26 @@
     display: grid;
     gap: 14px;
     padding: clamp(16px, 4vw, 26px);
+  }
+
+  .analysis-status {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #faf0f2;
+  }
+
+  .analysis-status p {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .status-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent);
+    font-weight: 700;
   }
 
   .tip-label {
@@ -173,6 +235,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    min-height: 44px;
     padding-top: 12px;
     border-top: 1px solid var(--border);
   }
@@ -198,6 +261,29 @@
     font-size: var(--text-sm);
   }
 
+  footer button:disabled {
+    cursor: wait;
+    opacity: 0.6;
+  }
+
+  footer .saved-label {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .saved-label span {
+    font-size: var(--text-sm);
+    animation: confirm-rating 320ms ease-out both;
+  }
+
+  dialog.closing {
+    animation: dismiss-tip 1s ease-in both;
+  }
+
+  dialog.closing::backdrop {
+    animation: dismiss-backdrop 1s ease-in both;
+  }
+
   .spinner {
     width: 12px;
     height: 12px;
@@ -213,8 +299,45 @@
     }
   }
 
+  @keyframes confirm-rating {
+    0% {
+      transform: scale(0.6);
+      opacity: 0;
+    }
+    65% {
+      transform: scale(1.2);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes dismiss-tip {
+    75% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(8px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes dismiss-backdrop {
+    75% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .spinner {
+    .spinner,
+    .saved-label span,
+    dialog.closing,
+    dialog.closing::backdrop {
       animation: none;
     }
   }
