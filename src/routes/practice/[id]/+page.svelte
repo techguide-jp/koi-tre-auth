@@ -32,6 +32,7 @@
   let pending = false
   let waitingTipRequestId = ''
   let offeredTipRequestId = ''
+  let revealResult = false
   let restarting = false
   let animateAffinity = false
   let message = ''
@@ -49,6 +50,7 @@
   $: episode = episodeById(session?.adventure?.episodeId)
   $: presentation = session?.turns.at(-1)?.presentation
   $: feedback = session?.turns.at(-1)?.feedback
+  $: resultReady = !!session?.completedAt && !!feedback
   $: guestRoute = $page.url.searchParams.get('guest') === '1'
   $: guestMode = guestRoute && !$user
   $: sessionKey = `${$user?.uid ?? (guestRoute ? 'guest' : 'none')}:${$page.params.id}`
@@ -58,6 +60,7 @@
     session = null
     waitingTipRequestId = ''
     offeredTipRequestId = ''
+    revealResult = false
     animateAffinity = false
     text = ''
     message = ''
@@ -67,8 +70,16 @@
     session = null
     waitingTipRequestId = ''
     offeredTipRequestId = ''
+    revealResult = false
     loadedKey = ''
     text = ''
+  }
+  $: if (revealResult && resultReady && !waitingTipRequestId) {
+    revealResult = false
+    void tick().then(() => {
+      bottom?.focus({ preventScroll: true })
+      bottom?.scrollIntoView({ block: 'start', behavior: 'auto' })
+    })
   }
   onMount(() => {
     mounted = true
@@ -107,13 +118,14 @@
   }
   function offerWaitingTip(practice: PracticeSession, finalRequestId: string) {
     if (!isFinalPracticeReply(practice)) return
+    revealResult = false
     waitingTipRequestId = finalRequestId
     offeredTipRequestId = finalRequestId
   }
 
   function dismissWaitingTip() {
     waitingTipRequestId = ''
-    if (session?.completedAt) void tick().then(() => bottom?.focus())
+    revealResult = true
   }
 
   function applySession(result: PracticeSession, initial = false) {
@@ -158,15 +170,16 @@
       waitingTipRequestId = ''
     clearTimeout(pollTimer)
     if (pending && mounted) pollTimer = setTimeout(() => void load(false), 2000)
-    void tick().then(() => {
-      if (mounted && saved) {
+    if (saved && (!result.completedAt || (!waitingTipRequestId && !revealResult))) {
+      void tick().then(() => {
+        if (!mounted) return
         const target = result.adventure && !result.completedAt ? reactionAnchor : bottom
         target?.scrollIntoView({
           behavior: result.adventure ? 'auto' : 'smooth',
           block: result.adventure ? 'start' : 'nearest'
         })
-      }
-    })
+      })
+    }
   }
   async function load(initial = false) {
     if (initial) loading = true
@@ -375,7 +388,7 @@
           practiceId="{session.id}"
           requestId="{waitingTipRequestId}"
           guest="{guestMode}"
-          ready="{!!session.completedAt && !!feedback}"
+          ready="{resultReady}"
           dismiss="{dismissWaitingTip}"
         />
       {/key}
@@ -384,7 +397,7 @@
         {finalReply ? '会話全体を振り返り、分析と言い換えをまとめています…' : '返答を考えています…'} この画面を閉じても、あとから再開できます。
       </p>{/if}
     {#if message && !session.completedAt}<p class="error" role="alert">{message}</p>{/if}
-    {#if session.completedAt && feedback}
+    {#if session.completedAt && feedback && !waitingTipRequestId}
       {#if guestMode}<GuestPracticeResult session="{session}" />
       {:else if session.adventure}<AdventureResult
           session="{session}"
@@ -448,6 +461,8 @@
               : '新しい練習は3往復1枠・6往復2枠を使います。今回の振り返りは、この画面で再確認できます。'}
         </p>
       </section>
+    {:else if session.completedAt && feedback}
+      <!-- 結果の演出は、ヒントを閉じて結果が見えるときに始める。 -->
     {:else if !data.practiceEnabled}<p class="notice">
         練習の送信は現在停止しています。保存済みの会話は引き続き確認できます。
       </p>

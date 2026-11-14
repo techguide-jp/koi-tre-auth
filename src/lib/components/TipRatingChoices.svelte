@@ -5,9 +5,10 @@
   export let selected: TipSelfRating | undefined
   export let saving: TipSelfRating | null
   export let choose: (rating: TipSelfRating) => void
+  export let disabled = false
 </script>
 
-<fieldset disabled="{saving !== null}" aria-busy="{saving !== null}">
+<fieldset disabled="{disabled || saving !== null}" aria-busy="{saving !== null}">
   <legend>{prompt}</legend>
   <div class="choices">
     {#each tipSelfRatings as rating}
