@@ -3,11 +3,10 @@
   import PracticeAspectChart from './PracticeAspectChart.svelte'
   export let analysis: PracticeAnalysis
   export let assessment: PracticeAssessment | null | undefined = undefined
-  export let showChart = true
 </script>
 
 <div class="analysis">
-  {#if showChart}<PracticeAspectChart analysis="{analysis}" assessment="{assessment}" />{/if}
+  <PracticeAspectChart analysis="{analysis}" assessment="{assessment}" />
 
   <section class="next-practice" aria-labelledby="analysis-next">
     <span class="next-icon" aria-hidden="true">↗</span>

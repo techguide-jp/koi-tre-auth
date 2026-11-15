@@ -4,7 +4,8 @@
   import { characterById } from '$lib/adventure'
   import CharacterPortrait from './CharacterPortrait.svelte'
   import ListenToCharacter from './ListenToCharacter.svelte'
-  import PracticeAspectChart from '../PracticeAspectChart.svelte'
+  import PracticeRewardSummary from './PracticeRewardSummary.svelte'
+  import RelationshipMeter from './RelationshipMeter.svelte'
   export let session: PracticeSession
   export let guest: boolean
   export let signedIn: boolean
@@ -12,8 +13,6 @@
   $: evaluation = session.evaluation
   $: trial = session.adventure?.trial
   $: reply = session.turns.at(-1)
-  $: analysis = reply?.feedback?.analysis
-  $: showChart = !!(analysis || evaluation?.assessment)
 </script>
 
 <section class="card guest-result" aria-label="会話の体験結果">
@@ -39,28 +38,30 @@
       <blockquote>「{reply.assistantText}」</blockquote>
       <ListenToCharacter text="{reply.assistantText}" />
     {/if}
-    {#if !showChart && session.reward?.xp}<p class="earned-xp">
-        獲得経験値 <strong>+{session.reward.xp} XP</strong>
-      </p>
-    {:else if trial && !guest && !session.reward?.xp}<p class="small muted">
-        この人物の体験XPは獲得済みです。
-      </p>{/if}
-    {#if !showChart && (evaluation?.score != null || !trial)}
+  </div>
+  <div class="overview">
+    <PracticeRewardSummary
+      xp="{session.reward?.xp}"
+      caption="{trial && !guest && !session.reward?.xp ? 'この人物の体験XPは獲得済みです。' : ''}"
+    >
+      <RelationshipMeter
+        slot="affinity"
+        name="{character.name}"
+        value="{trial ? 0 : (evaluation?.affinityAfter ?? 0)}"
+        preview="{!!trial || !evaluation}"
+      />
+    </PracticeRewardSummary>
+  </div>
+  <div class="result-actions">
+    {#if evaluation?.score != null || !trial}
       <p class="score">{evaluation?.score?.toFixed(1) ?? '—'}<span> / 25点</span></p>
     {/if}
-  </div>
-  {#if showChart}
-    <div class="result-overview">
-      <PracticeAspectChart
-        analysis="{analysis}"
-        assessment="{evaluation?.assessment}"
-        experience="{session.reward?.xp || undefined}"
-      />
-    </div>
-  {/if}
-  <div class="result-actions">
     {#if trial}
-      <p class="small muted">1往復から分かる範囲の評価です。</p>
+      <p class="small muted">
+        1往復から分かる範囲の評価です。{evaluation?.score == null
+          ? '合計点を出せない場合も、振り返りで観点ごとのヒントを確認できます。'
+          : ''}
+      </p>
     {:else if evaluation?.status === 'pending'}<p>
         採点できない観点があるため、合否は評価待ちです。ログインして保存した後、追加の枠を使わず再評価できます。
       </p>
@@ -92,7 +93,7 @@
   .guest-result {
     display: grid;
     grid-template-columns: 130px 1fr;
-    gap: 16px 24px;
+    gap: 24px;
     padding: 28px;
     margin: 24px 0;
   }
@@ -101,7 +102,7 @@
     max-height: 240px;
     align-self: center;
   }
-  .result-overview,
+  .overview,
   .result-actions {
     grid-column: 1 / -1;
     min-width: 0;
@@ -121,11 +122,6 @@
     border-radius: 12px;
     background: var(--surface);
     line-height: 1.7;
-  }
-  .earned-xp strong {
-    margin-left: 0.4rem;
-    color: var(--accent);
-    font-size: 1.2rem;
   }
   .score {
     font-size: 2rem;

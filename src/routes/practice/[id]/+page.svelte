@@ -430,10 +430,9 @@
           <PracticeAnalysis
             analysis="{feedback.analysis}"
             assessment="{session.evaluation?.assessment}"
-            showChart="{!session.adventure}"
           />
         {:else}
-          {#if !session.adventure && session.evaluation?.assessment}<PracticeAspectChart
+          {#if session.evaluation?.assessment}<PracticeAspectChart
               assessment="{session.evaluation.assessment}"
             />{/if}
           <div class="feedback-item">
