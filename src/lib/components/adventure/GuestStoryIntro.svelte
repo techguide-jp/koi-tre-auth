@@ -9,22 +9,22 @@
   $: episode = episodes.find((e) => e.id === `${characterId}-1`)!
 </script>
 
-<section class="guest-intro" aria-label="ログインせず第1話を体験">
+<section class="guest-intro" aria-label="ログインせずに会話を体験">
   <p class="eyebrow">{character.name}との、はじめの一歩</p>
   <h3>{episode.title}</h3>
   <p>{episode.setting}</p>
-  <p class="small muted">まずは3往復。表情の変化も、25点の振り返りも体験できます。</p>
+  <p class="small muted">
+    1回返すと、相手の返事と会話の評価が届きます。ヒントと経験値も獲得できます。
+  </p>
   <button
     class="button primary"
     disabled="{disabled || pending}"
     aria-busy="{pending}"
     on:click="{() =>
       dispatch('start', { version: 1, characterId, episodeId: episode.id, turns: 3 })}"
-    >{pending ? '出会いを準備しています…' : 'ログインせず、第1話を始める'} →</button
+    >{pending ? '出会いを準備しています…' : '1往復を体験する'} →</button
   >
-  <p class="small muted">
-    会話を保存して第2話へ進むときにログインできます。保存時に毎月10枠のうち1枠を使用します。
-  </p>
+  <p class="small muted">ログインすると体験の記録を保存し、第1話の本編を始められます。</p>
   <a href="{`/login?character=${characterId}&episode=${episode.id}&turns=6`}"
     >ログインして6往復で練習する →</a
   >

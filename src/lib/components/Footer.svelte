@@ -6,7 +6,7 @@
       title: '練習する',
       links: [
         { href: '/#scenes', label: 'お相手を選ぶ' },
-        { href: '/try', label: '30秒のお試し' },
+        { href: '/try', label: '1往復の会話体験' },
         { href: '/memories', label: '思い出アルバム' }
       ]
     },

@@ -33,7 +33,7 @@
     <a class="button primary" href="/#scenes"
       >お相手を選んで体験する <span aria-hidden="true">→</span></a
     >
-    <p class="small muted">第1話・3往復はログイン不要</p>
+    <p class="small muted">1往復の会話体験はログイン不要</p>
   </header>
 
   <section aria-labelledby="steps-title">

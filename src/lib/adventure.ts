@@ -27,6 +27,8 @@ export interface Adventure {
   episodeId: string
   turns: 3 | 6
   revisit?: true
+  /** 体験としてサーバーが保存した会話。通常の開始リクエストでは採用しない。 */
+  trial?: true
 }
 export interface MissionResult {
   id: string
@@ -34,7 +36,7 @@ export interface MissionResult {
 }
 export interface AdventureReward {
   version: 1
-  xp: 20 | 30 | 50 | 70
+  xp: 0 | 10 | 20 | 30 | 50 | 70
   mission: MissionResult | null
 }
 export interface Rehearsal {

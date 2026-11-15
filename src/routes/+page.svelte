@@ -8,7 +8,7 @@
   import { availableCredits } from '$lib/billing'
   import { startPractice } from '$lib/practice-client'
   import { startGuestPractice } from '$lib/guest-practice-client'
-  import { guestAdventure } from '$lib/guest-practice'
+  import { guestAdventure, guestPracticeUrl } from '$lib/guest-practice'
   import AdventureLobby from '$lib/components/adventure/AdventureLobby.svelte'
   import AdventureProgressPanel from '$lib/components/adventure/AdventureProgress.svelte'
   import BillingBalance from '$lib/components/billing/BillingBalance.svelte'
@@ -103,7 +103,7 @@
       const session = guest
         ? await startGuestPractice(adventure!)
         : await startPractice(sceneId, customScene, adventure)
-      await goto(`/practice/${session.id}${guest ? '?guest=1' : ''}`)
+      await goto(guest ? guestPracticeUrl(session.id) : `/practice/${session.id}`)
     } catch (error) {
       message = error instanceof Error ? error.message : '練習を開始できませんでした。'
     } finally {
@@ -125,7 +125,7 @@
         >お相手を選んで始める <span aria-hidden="true">→</span></a
       >
       <p class="small muted hero-note">
-        第1話はログイン不要 · 登録後は毎月10枠無料 · スマホでそのまま
+        1往復の体験はログイン不要 · 登録後は毎月10枠無料 · スマホでそのまま
       </p>
     </div>
     <figure>

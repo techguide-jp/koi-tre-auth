@@ -6,7 +6,8 @@ import { eq } from 'drizzle-orm'
 import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import * as schema from './db/schema'
 import { characters, type Adventure } from '$lib/adventure'
-import { guestAdventure } from '$lib/guest-practice'
+import { guestAdventure, TRIAL_XP } from '$lib/guest-practice'
+import { practiceTurnLimit } from '$lib/practice'
 import { GUEST_COOKIE, guestRateContext, guestTokenHash, newGuestSession } from './guest-request'
 import {
   createGuestPractice,
@@ -76,7 +77,10 @@ beforeEach(async () => {
   await db.insert(schema.users).values([{ firebaseUid: uid }, { firebaseUid: otherUid }])
   vi.mocked(generatePracticeReply).mockImplementation(async (input) => ({
     reply: 'その気持ちを聞けて、うれしいです。',
-    feedback: input.turns.length === 2 ? assessedFeedback(input.text) : null,
+    feedback:
+      input.turns.length + 1 === practiceTurnLimit(input.adventure)
+        ? assessedFeedback(input.text)
+        : null,
     presentation: { emotion: 'smile', gesture: '小さく手を開く。' },
     mission: null
   }))
@@ -91,6 +95,12 @@ async function start(
   session = newGuestSession()
 ) {
   const view = await createGuestPractice(session, randomUUID(), adventure(person), rate())
+  // 旧3往復の保存済みセッションも、公開後に同じ手順で完了・引き継ぎできる。
+  if (view.adventure?.trial)
+    await db
+      .update(schema.guestPractices)
+      .set({ state: { turns: [], completedAt: null, pending: null } })
+      .where(eq(schema.guestPractices.id, view.id))
   return { session, id: view.id }
 }
 function message(guest: Awaited<ReturnType<typeof start>>, expectedTurn = 0) {
@@ -164,7 +174,7 @@ function event(
 
 describe('未ログインの第1話と所有権', () => {
   it.each(characters.map((c) => c.id))(
-    '%sの第1話だけを3往復で開始し、人物設定全文は返さない',
+    '%sの第1話の場面で1往復体験を開始し、人物設定全文は返さない',
     async (person) => {
       const e = event('POST', {
         id: randomUUID(),
@@ -175,6 +185,8 @@ describe('未ログインの第1話と所有権', () => {
       expect(response.headers.get('cache-control')).toBe('no-store')
       const view = await response.json()
       expect(view.adventure).toMatchObject(adventure(person))
+      expect(view.adventure.trial).toBe(true)
+      expect(practiceTurnLimit(view.adventure)).toBe(1)
       expect(view.characterContext).toBeUndefined()
       expect(view.characterReactions.general).toBeTruthy()
       const cookie = e.cookies.set.mock.calls[0]
@@ -194,7 +206,7 @@ describe('未ログインの第1話と所有権', () => {
     { ...adventure(), turns: 6 },
     { ...adventure(), episodeId: 'shared-invite' },
     { ...adventure(), revisit: true }
-  ])('直接POSTで第1話・3往復の制限を越えられない: %j', async (value) => {
+  ])('直接POSTで体験の対象外の場面を始められない: %j', async (value) => {
     expect(guestAdventure(value)).toBeNull()
     await expect(
       startApi(event('POST', { id: randomUUID(), sceneId: 'adventure', adventure: value }) as never)
@@ -245,6 +257,50 @@ describe('未ログインの第1話と所有権', () => {
     }
     expect(generatePracticeReply).not.toHaveBeenCalled()
   })
+})
+
+it('新規体験は1往復で評価・返事・XPを保存し、無料で引き継いでも本編は解放しない', async () => {
+  const session = newGuestSession()
+  const view = await createGuestPractice(session, randomUUID(), adventure(), rate())
+  const guest = { session, id: view.id }
+  await expect(claimGuestPractice(session.id, view.id, uid)).rejects.toMatchObject({ status: 409 })
+  const input = message(guest)
+  const offered = await offerGuestTip(session.id, view.id, input.requestId)
+  const rating = await saveGuestTipRating(session.id, view.id, 'comfortable', null)
+  const finished = await submitGuestMessage(input, rate())
+  expect(finished.session).toMatchObject({
+    completedAt: expect.any(String),
+    turns: [{ assistantText: expect.any(String), presentation: { emotion: 'smile' } }],
+    evaluation: { score: 23, earnedDelta: 0, strainDelta: 0 },
+    reward: { xp: TRIAL_XP, mission: null }
+  })
+  await submitGuestMessage(input, rate())
+  await expect(submitGuestMessage(message(guest, 1), rate())).rejects.toMatchObject({ status: 409 })
+  expect(generatePracticeReply).toHaveBeenCalledTimes(1)
+
+  const [saved, replay] = await Promise.all([
+    claimGuestPractice(session.id, view.id, uid),
+    claimGuestPractice(session.id, view.id, uid)
+  ])
+  expect(saved.session).toEqual(replay.session)
+  expect(saved.session).toMatchObject({ creditCost: 0, reward: { xp: TRIAL_XP } })
+  expect(await listCollectedTips(uid)).toMatchObject([{ tipId: offered.tipId }])
+  expect(await listTipRatings(uid, offered.tipId)).toMatchObject([{ value: rating.value }])
+  expect(await getPracticeOverview(uid)).toMatchObject({ remaining: 10 })
+  expect(await getAdventureProgress(uid)).toMatchObject({
+    xp: TRIAL_XP,
+    completedEpisodes: [],
+    progression: { clearedEpisodes: [], achievements: [] }
+  })
+  await expect(claimGuestPractice(session.id, view.id, otherUid)).rejects.toMatchObject({
+    status: 403
+  })
+
+  const secondSession = newGuestSession()
+  const second = await createGuestPractice(secondSession, randomUUID(), adventure(), rate())
+  await submitGuestMessage(message({ session: secondSession, id: second.id }), rate())
+  expect((await claimGuestPractice(secondSession.id, second.id, uid)).session?.reward?.xp).toBe(0)
+  expect((await getAdventureProgress(uid)).xp).toBe(TRIAL_XP)
 })
 describe('生成・再開・上限', () => {
   it('3往復と25点評価を保存するが、アカウントの枠・好感度・会話は増やさない', async () => {

@@ -57,6 +57,7 @@ export async function settleProgression(db: CreditDb, uid: string, now = new Dat
     )
     .orderBy(asc(practices.completedAt), asc(practices.createdAt), asc(practices.id))
   for (const session of completed) {
+    if (session.adventure?.trial) continue
     const adventure = normalizeAdventure(session.adventure)
     if (!adventure) continue
     const prior = await db.query.practiceEvaluations.findFirst({
@@ -87,7 +88,7 @@ export async function settleEvaluation(
     where: and(eq(practices.id, practiceId), eq(practices.uid, uid))
   })
   const adventure = normalizeAdventure(session?.adventure)
-  if (!session?.completedAt || !adventure) return
+  if (!session?.completedAt || !adventure || session.adventure?.trial) return
   const prior = await db.query.practiceEvaluations.findFirst({
     where: eq(practiceEvaluations.practiceId, practiceId)
   })

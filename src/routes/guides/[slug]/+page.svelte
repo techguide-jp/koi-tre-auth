@@ -71,7 +71,7 @@
       >
       <p class="muted small">Googleログインが必要です。月10回無料・1回3往復と振り返り。</p>
       <a class="text-link" href="/topics">まずは登録不要の会話ネタ帳を見る →</a>
-      <p><a class="text-link" href="/try">返し方を選ぶ、30秒のお試しも →</a></p>
+      <p><a class="text-link" href="/try">AIキャラクターと、1往復の会話体験も →</a></p>
     </aside>
   </article>
   <section class="related-guides" aria-labelledby="related-title">

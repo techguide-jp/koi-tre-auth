@@ -127,7 +127,7 @@
     <p class="muted small">
       紹介文には、アクセス元を集計するためのリンクが含まれます。氏名・会話内容は含みません。
     </p>
-    <a class="text-link" href="/try">まずは自分で、30秒のお試しを体験する →</a>
+    <a class="text-link" href="/try">まずは1往復、会話を体験する →</a>
   </section>
 </div>
 

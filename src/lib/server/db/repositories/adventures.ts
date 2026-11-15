@@ -21,6 +21,7 @@ import {
 } from '../schema'
 import { readCreditState } from './credits'
 import type { MessageInput } from './practices'
+import { TRIAL_XP } from '$lib/guest-practice'
 import { readProgression, settleProgression } from './progression'
 
 export async function getAdventureProgress(
@@ -88,11 +89,13 @@ export async function getAdventureProgress(
   progress.progression = await readProgression(db, uid)
   const valid = completed.filter(
     (row) =>
+      !row.adventure?.trial &&
       normalizeAdventure(row.adventure) &&
       row.reward?.version === 1 &&
       [20, 30, 50, 70].includes(row.reward.xp)
   )
-  progress.xp = valid.reduce((sum, row) => sum + row.reward!.xp, 0)
+  const trialXp = completed.filter((row) => row.adventure?.trial && row.reward?.xp === TRIAL_XP)
+  progress.xp = valid.reduce((sum, row) => sum + row.reward!.xp, 0) + trialXp.length * TRIAL_XP
   progress.level = Math.floor(progress.xp / 100) + 1
   progress.xpInLevel = progress.xp % 100
   progress.completed = valid.length
@@ -211,7 +214,7 @@ export async function saveFavoriteTurn(uid: string, id: string, position: number
     const session = await tx.query.practices.findFirst({
       where: and(eq(practices.id, id), eq(practices.uid, uid))
     })
-    if (!session?.completedAt || !session.adventure) return false
+    if (!session?.completedAt || !session.adventure || session.adventure.trial) return false
     if (
       position !== null &&
       !(await tx.query.practiceTurns.findFirst({
@@ -236,7 +239,8 @@ export async function reserveRehearsal(input: RehearsalInput, now = new Date()) 
     const session = await tx.query.practices.findFirst({
       where: and(eq(practices.id, input.id), eq(practices.uid, input.uid))
     })
-    if (!session?.completedAt || !session.adventure) return { status: 'not_found' as const }
+    if (!session?.completedAt || !session.adventure || session.adventure.trial)
+      return { status: 'not_found' as const }
     if (session.rehearsal?.reply)
       return {
         status:

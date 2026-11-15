@@ -163,6 +163,7 @@ export async function createPractice(
     if (existing)
       return (
         existing.uid === uid &&
+        !existing.adventure?.trial &&
         existing.sceneId === sceneId &&
         existing.customScene?.situation === customScene?.situation &&
         existing.customScene?.partnerName === customScene?.partnerName &&

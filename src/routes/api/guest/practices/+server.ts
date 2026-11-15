@@ -22,7 +22,7 @@ export const POST: RequestHandler = async (event) => {
   const body = await readPracticeBody(event.request)
   const adventure = guestAdventure(body.adventure)
   if (!validId(body.id) || !adventure || body.sceneId !== 'adventure')
-    throw error(400, 'ログインせず体験できるのは、各人物の第1話・3往復です。')
+    throw error(400, '体験できるのは、各人物の第1話の場面です。')
   const current = await readGuestSession(event)
   const fresh = current ? null : newGuestSession()
   const session = await createGuestPractice(

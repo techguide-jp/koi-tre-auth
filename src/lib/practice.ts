@@ -10,7 +10,7 @@ export const PRACTICE_LIMIT = 10
 export const PRACTICE_TURNS = 3
 export const MAX_PRACTICE_TURNS = 6
 export const practiceTurnLimit = (adventure?: Adventure | null) =>
-  adventure?.turns ?? PRACTICE_TURNS
+  adventure?.trial ? 1 : (adventure?.turns ?? PRACTICE_TURNS)
 export const MAX_MESSAGE_LENGTH = 1000
 export const MAX_SITUATION_LENGTH = 500
 export const MAX_PARTNER_NAME_LENGTH = 20

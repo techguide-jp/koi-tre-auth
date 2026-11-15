@@ -1,14 +1,22 @@
 import { randomInt, randomUUID } from 'node:crypto'
-import { and, eq, gt, inArray, lt } from 'drizzle-orm'
+import { and, eq, gt, inArray, lt, sql } from 'drizzle-orm'
 import { error } from '@sveltejs/kit'
-import { guestAdventure, type GuestTurn } from '$lib/guest-practice'
+import { guestAdventure, TRIAL_XP, type GuestTurn } from '$lib/guest-practice'
 import { applyRelationship, gradeConversation } from '$lib/adventure-progression'
 import { type Adventure, parseMission, parsePresentation } from '$lib/adventure'
-import type { PracticeSession } from '$lib/practice'
+import { practiceTurnLimit, type PracticeSession } from '$lib/practice'
 import { drawPracticeTip, type GuestTip, type TipSelfRating } from '$lib/practice-tips'
 import type { GeneratePracticeInput } from '$lib/server/dify-practice'
 import { getDb } from '../client'
-import { guestSessions, guestPractices, knowledgeSettings, practices } from '../schema'
+import {
+  guestSessions,
+  guestPractices,
+  knowledgeSettings,
+  practiceEvaluations,
+  practices,
+  practiceTurns,
+  users
+} from '../schema'
 import { snapshotCharacter } from './character-policy'
 import type { CreditDb } from './credits'
 import { consumeRateLimit, pruneRateLimits } from './rate-limits'
@@ -32,8 +40,8 @@ function adventureFor(row: GuestRow) {
     episodeId: `${row.characterId}-1`,
     turns: 3
   })
-  if (!adventure) throw error(403, 'ログインせず体験できるのは第1話・3往復です。')
-  return adventure
+  if (!adventure) throw error(403, '体験できる場面ではありません。')
+  return row.state.trial ? ({ ...adventure, trial: true } satisfies Adventure) : adventure
 }
 export function guestPracticeView(row: GuestRow): PracticeSession {
   const adventure = adventureFor(row)
@@ -41,20 +49,21 @@ export function guestPracticeView(row: GuestRow): PracticeSession {
   const assessment = last?.feedback?.analysis?.assessment
   const grade = gradeConversation(assessment, 1)
   const relationship = applyRelationship({ earned: 0, strain: 0 }, 0, grade, 3, 1)
-  const mission = row.state.completedAt
-    ? parseMission(
-        last?.mission ? { ...last.mission, achieved: true } : null,
-        adventure,
-        row.state.turns.map((t) => t.userText)
-      )
-    : null
+  const mission =
+    row.state.completedAt && !adventure.trial
+      ? parseMission(
+          last?.mission ? { ...last.mission, achieved: true } : null,
+          adventure,
+          row.state.turns.map((t) => t.userText)
+        )
+      : null
   return {
     id: row.id,
     sceneId: 'adventure',
     adventure,
     customScene: null,
     chargedAt: null,
-    creditCost: 1,
+    creditCost: adventure.trial ? 0 : 1,
     completedAt: row.state.completedAt,
     pending: row.state.pending,
     turns: row.state.turns.map((turn) => ({
@@ -67,7 +76,9 @@ export function guestPracticeView(row: GuestRow): PracticeSession {
     })),
     storyContext: row.storyContext,
     characterReactions: row.characterContext.content.reactions,
-    reward: row.state.completedAt ? { version: 1, xp: mission ? 30 : 20, mission } : null,
+    reward: row.state.completedAt
+      ? { version: 1, xp: adventure.trial ? TRIAL_XP : mission ? 30 : 20, mission }
+      : null,
     evaluation: row.state.completedAt
       ? {
           version: 1,
@@ -77,9 +88,9 @@ export function guestPracticeView(row: GuestRow): PracticeSession {
           requiredScore: grade.requiredScore,
           requiredConsideration: grade.requiredConsideration,
           affinityBefore: 0,
-          affinityAfter: relationship.affinity,
-          earnedDelta: relationship.earnedDelta,
-          strainDelta: relationship.strainDelta,
+          affinityAfter: adventure.trial ? 0 : relationship.affinity,
+          earnedDelta: adventure.trial ? 0 : relationship.earnedDelta,
+          strainDelta: adventure.trial ? 0 : relationship.strainDelta,
           assessment
         }
       : null
@@ -115,7 +126,11 @@ export async function offerGuestTip(sessionId: string, id: string, requestId: st
     if (row.claimedUid) throw error(403, 'ログイン後の画面から続けてください。')
     if (row.state.tip) return row.state.tip
     const { turns } = row.state
-    if (turns.length !== 2 && (turns.length !== 3 || turns.at(-1)?.requestId !== requestId))
+    const limit = practiceTurnLimit(adventureFor(row))
+    if (
+      turns.length !== limit - 1 &&
+      (turns.length !== limit || turns.at(-1)?.requestId !== requestId)
+    )
       throw error(409, '最後の返答を送信すると会話のヒントが表示されます。')
     const previous = await tx
       .select({ state: guestPractices.state })
@@ -190,7 +205,7 @@ export async function createGuestPractice(
   rate: RateContext,
   now = new Date()
 ) {
-  if (!guestAdventure(adventure)) throw error(403, 'ログインせず体験できるのは第1話・3往復です。')
+  if (!guestAdventure(adventure)) throw error(403, '体験できる場面ではありません。')
   const db = getDb()
   // 期限切れの体験だけを少しずつ除去し、引き継いだ通常会話には触れない。
   await db
@@ -245,7 +260,7 @@ export async function createGuestPractice(
           memories: [],
           affinity: { value: 0, label: '知り合ったばかり' }
         },
-        state: { turns: [], completedAt: null, pending: null },
+        state: { trial: true, turns: [], completedAt: null, pending: null },
         createdAt: now
       })
       .returning()
@@ -268,7 +283,7 @@ export async function reserveGuestTurn(input: GuestMessage, rate: RateContext, n
       throw error(409, '会話が更新されています。再読み込みしてください。')
     if (row.state.pending?.until && new Date(row.state.pending.until) > now)
       return { status: 'pending' as const, session: guestPracticeView(row) }
-    if (row.attempts >= 9)
+    if (row.attempts >= (row.state.trial ? 3 : 9))
       throw error(429, '体験の送信回数に達しました。ログインして練習を続けてください。')
     await consumeRate(tx, rate, 'generation', now)
     const token = randomUUID()
@@ -328,7 +343,8 @@ export async function finishGuestTurn(
         state: {
           ...row.state,
           turns,
-          completedAt: turns.length === 3 ? now.toISOString() : null,
+          completedAt:
+            turns.length === practiceTurnLimit(adventureFor(row)) ? now.toISOString() : null,
           pending: null
         }
       })
@@ -357,10 +373,75 @@ export async function reserveGuestClaim(sessionId: string, id: string, uid: stri
     const row = await owned(tx, sessionId, id, new Date(), true)
     if (row.claimedUid && row.claimedUid !== uid)
       throw error(403, 'この体験は別のアカウントへ引き継ぎ済みです。')
+    if (row.state.trial && !row.state.completedAt)
+      throw error(409, '会話の体験が終わってから保存してください。')
     if (row.state.pending?.until && new Date(row.state.pending.until) > new Date())
       throw error(409, '返信の生成が終わってから、会話を引き継いでください。')
     // 引き継ぎが途中で止まっても同じ本人だけが再開でき、別アカウントへ複製しない。
     await tx.update(guestPractices).set({ claimedUid: uid }).where(eq(guestPractices.id, id))
     return row
+  })
+}
+
+export async function saveClaimedTrial(uid: string, guest: GuestRow) {
+  const view = guestPracticeView(guest)
+  const { adventure, evaluation, reward } = view
+  const turn = guest.state.turns[0]
+  if (!adventure?.trial || !view.completedAt || !turn?.feedback || !evaluation || !reward)
+    throw error(409, '会話の体験が終わってから保存してください。')
+  await getDb().transaction(async (tx) => {
+    await tx.select().from(users).where(eq(users.firebaseUid, uid)).for('update')
+    const saved = await tx.query.practices.findFirst({ where: eq(practices.id, guest.id) })
+    if (saved) {
+      if (saved.uid === uid && saved.adventure?.trial) return
+      throw error(409, 'この体験を保存できませんでした。')
+    }
+    // Cookieを作り直して遊んでも、アカウントへの体験XPは人物ごとに一度だけ付与する。
+    const [alreadyRewarded] = await tx
+      .select({ id: practices.id })
+      .from(practices)
+      .where(
+        and(
+          eq(practices.uid, uid),
+          sql`${practices.adventure}->>'trial' = 'true'`,
+          sql`${practices.adventure}->>'characterId' = ${adventure.characterId}`,
+          sql`${practices.reward}->>'xp' = ${String(TRIAL_XP)}`
+        )
+      )
+      .limit(1)
+    const completedAt = new Date(view.completedAt!)
+    await tx.insert(practices).values({
+      id: guest.id,
+      uid,
+      sceneId: 'adventure',
+      adventure,
+      characterContext: guest.characterContext,
+      storyContext: guest.storyContext,
+      creditCost: 0,
+      reward: { ...reward, xp: alreadyRewarded ? 0 : TRIAL_XP },
+      completedAt,
+      createdAt: guest.createdAt,
+      updatedAt: new Date()
+    })
+    await tx.insert(practiceTurns).values({
+      id: randomUUID(),
+      practiceId: guest.id,
+      requestId: turn.requestId,
+      position: turn.position,
+      userText: turn.userText,
+      assistantText: turn.assistantText,
+      feedback: turn.feedback,
+      presentation: turn.presentation,
+      policyContext: turn.policyContext,
+      createdAt: completedAt
+    })
+    await tx.insert(practiceEvaluations).values({
+      practiceId: guest.id,
+      uid,
+      characterId: adventure.characterId,
+      version: evaluation.version,
+      result: evaluation,
+      settledAt: completedAt
+    })
   })
 }
