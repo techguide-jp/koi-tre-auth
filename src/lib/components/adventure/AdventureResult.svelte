@@ -19,6 +19,7 @@
   import { earnedSpecialCard } from '$lib/special-card-art'
   import StageEvaluation from './StageEvaluation.svelte'
   import RelationshipMeter from './RelationshipMeter.svelte'
+  import PracticeRewardSummary from './PracticeRewardSummary.svelte'
   import CharacterAffinityReaction from './CharacterAffinityReaction.svelte'
   import { affinityReaction } from '$lib/affinity-reaction'
   export let session: PracticeSession
@@ -80,6 +81,10 @@
   $: part = storyPart(episode.chapter)
   $: artwork = earnedSpecialCard(session)
   $: reaction = affinityReaction(session)
+  $: affinity =
+    progress?.progression?.relationships.find((r) => r.characterId === character.id)?.affinity ??
+    session.evaluation?.affinityAfter ??
+    null
   $: selectedEnding = progress?.endings?.some((e) => e.practiceId === session.id && e.selected)
   onMount(() => {
     alive = true
@@ -230,6 +235,34 @@
         <p class="small muted">このエピソードを、思い出アルバムに残しました。</p>
       </div>
     </div>{/if}
+  <div class="reward-overview">
+    <PracticeRewardSummary
+      xp="{session.reward?.xp ?? 20}"
+      caption="{session.reward?.mission ? `会話を終えて +${baseXp} XP` : ''}"
+    >
+      <svelte:fragment slot="affinity">
+        {#if affinity !== null}
+          <RelationshipMeter
+            name="{character.name}"
+            value="{affinity}"
+            required="{nextRule?.requiredAffinity ?? 0}"
+            previous="{session.evaluation?.affinityAfter === affinity
+              ? session.evaluation.affinityBefore
+              : null}"
+            animate="{animateAffinity}"
+          >
+            <svelte:fragment slot="reaction" let:active let:revealed>
+              {#if reaction}<CharacterAffinityReaction
+                  reaction="{reaction}"
+                  active="{active}"
+                  revealed="{revealed}"
+                />{/if}
+            </svelte:fragment>
+          </RelationshipMeter>
+        {/if}
+      </svelte:fragment>
+    </PracticeRewardSummary>
+  </div>
   <StageEvaluation
     enabled="{enabled}"
     session="{session}"
@@ -239,46 +272,19 @@
       await loadProgress()
     }}"
   />
-  {#if progress?.progression}<RelationshipMeter
-      name="{character.name}"
-      value="{progress.progression.relationships.find((r) => r.characterId === character.id)
-        ?.affinity ?? 0}"
-      required="{nextRule?.requiredAffinity ?? 0}"
-      previous="{session.evaluation &&
-      progress.progression.relationships.find((r) => r.characterId === character.id)?.affinity ===
-        session.evaluation.affinityAfter
-        ? session.evaluation.affinityBefore
-        : null}"
-      animate="{animateAffinity}"
-    >
-      <svelte:fragment slot="reaction" let:active let:revealed>
-        {#if reaction}<CharacterAffinityReaction
-            reaction="{reaction}"
-            active="{active}"
-            revealed="{revealed}"
-          />{/if}
-      </svelte:fragment>
-    </RelationshipMeter>{/if}
   <div class="reward" role="status">
-    <div>
-      <p class="eyebrow">エピソード完了</p>
-      <strong>+{session.reward?.xp ?? 20} <span>XP</span></strong>
-      <p>会話を終えた経験に、{baseXp}XP。</p>
-    </div>
-    <div>
-      <p class="mission-label">✦ {missions[episode.missionId].label}</p>
-      {#if session.reward?.mission}<p class="mission-achieved">ミッション達成！ +{missionXp}XP</p>
-        <details>
-          <summary>達成したひと言</summary
-          >{#each session.reward.mission.evidence as evidence}<blockquote>
-              {evidence.turn}回目「{evidence.quote}」
-            </blockquote>{/each}
-        </details>{:else}<p class="small muted">
-          今回の挑戦を、次の会話にも。
-        </p>{/if}{#if progress}<p class="small muted">
-          Lv.{progress.level} · 合計 {progress.xp} XP
-        </p>{/if}
-    </div>
+    <p class="mission-label">✦ {missions[episode.missionId].label}</p>
+    {#if session.reward?.mission}<p class="mission-achieved">ミッション達成！ +{missionXp}XP</p>
+      <details>
+        <summary>達成したひと言</summary
+        >{#each session.reward.mission.evidence as evidence}<blockquote>
+            {evidence.turn}回目「{evidence.quote}」
+          </blockquote>{/each}
+      </details>{:else}<p class="small muted">今回の挑戦を、次の会話にも。</p>{/if}{#if progress}<p
+        class="small muted"
+      >
+        Lv.{progress.level} · 合計 {progress.xp} XP
+      </p>{/if}
   </div>
   {#if session.storyEnding}<section class="ending-card">
       <p class="eyebrow">二人の物語の、ひと区切り</p>
@@ -515,20 +521,11 @@
     font-size: var(--text-base);
     line-height: 1.9;
   }
+  .reward-overview {
+    margin-top: 16px;
+  }
   .reward {
-    display: grid;
-    grid-template-columns: 1fr 1.5fr;
-    gap: 24px;
-    padding: 28px 0;
-    align-items: center;
-  }
-  .reward strong {
-    font-size: 2.5rem;
-    color: var(--accent);
-    letter-spacing: 0.02em;
-  }
-  .reward strong span {
-    font-size: 1rem;
+    padding: 0 0 20px;
   }
   .reward p {
     font-size: var(--text-sm);
@@ -648,10 +645,6 @@
     }
     .memory-copy .small {
       font-size: var(--text-sm);
-    }
-    .reward {
-      grid-template-columns: 1fr;
-      gap: 14px;
     }
     .next-actions > .button {
       width: 100%;

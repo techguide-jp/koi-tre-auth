@@ -126,7 +126,7 @@
       ></summary
     >
     <p>{analysis.summary}</p>
-    <p class="section-note">この3回の返答から観察できることを振り返っています。</p>
+    <p class="section-note">今回の{analysis.turns.length}回の返答を振り返っています。</p>
   </details>
 </div>
 

@@ -39,9 +39,9 @@ export const publicPages: Record<string, { title: string; description: string }>
       '初対面・デートの会話準備を紹介するSNS画像3枚、投稿文、イベントで使えるQR付きA4案内を無料配布。登録不要の会話ネタ帳をご紹介いただけます。'
   },
   '/try': {
-    title: 'あなたならどう返す？30秒の会話お試し｜登録不要 | Koi-Tre',
+    title: 'AIキャラクターと1往復の会話体験｜登録不要 | Koi-Tre',
     description:
-      '初対面のカフェ、沈黙、デートの帰り際。3つの短い場面で返し方を選び、言葉のヒントを見つける無料のお試し。登録不要・採点なしで、すべての選択に解説があります。'
+      '気になる相手を選んで、登録不要で1往復。AIキャラクターの返事、会話のヒント、評価と経験値が得られる無料体験です。'
   },
   ...Object.fromEntries(
     guides.map((guide) => [

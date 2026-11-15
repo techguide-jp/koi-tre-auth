@@ -18,6 +18,7 @@ import { makeKnowledgeContext, restoreKnowledgeContext } from './knowledge-conte
 export async function reassessPractice(uid: string, id: string) {
   const session = await getPractice(uid, id)
   if (!session) throw error(404, '練習が見つかりません。')
+  if (session.adventure?.trial) throw error(409, '体験の評価は保存済みです。')
   if (!session.completedAt || !session.adventure)
     throw error(409, '会話を最後まで終えると評価できます。')
   const now = new Date(),

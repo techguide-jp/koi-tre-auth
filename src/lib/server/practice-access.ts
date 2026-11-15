@@ -16,10 +16,11 @@ export function practiceForActor(session: PracticeSession | null, actor: Decoded
     ...session,
     adminPlay: adminPlay || undefined,
     // 保存済みの消費は変えず、初回保存前だけ現在の権限で表示する。
-    creditCost: session.chargedAt
-      ? session.creditCost
-      : adminPlay
-        ? 0
-        : practiceCreditCost(practiceTurnLimit(session.adventure))
+    creditCost:
+      session.chargedAt || session.adventure?.trial
+        ? session.creditCost
+        : adminPlay
+          ? 0
+          : practiceCreditCost(practiceTurnLimit(session.adventure))
   }
 }

@@ -8,6 +8,7 @@
   export let required = 0
   export let previous: number | null = null
   export let animate = false
+  export let preview = false
 
   const clamp = (amount: number) => Math.max(0, Math.min(100, amount))
   const heartLevel = (amount: number, index: number) => clamp((amount - index * 20) * 5)
@@ -96,18 +97,22 @@
 </script>
 
 <div class="relationship" class:celebrating="{celebrating}">
-  <slot name="reaction" active="{changing}" revealed="{revealed}" />
   <div class="heading">
-    <span>{name}との好感度</span><strong>{Math.round($displayed)}<small> / 100</small></strong>
+    <span>{name}との好感度</span>
+    {#if preview}<span class="preview-label">体験演出</span>
+    {:else}<strong>{Math.round($displayed)}<small> / 100</small></strong>{/if}
   </div>
   <div
     class="heart-meter"
-    role="progressbar"
-    aria-label="{`${name}との好感度`}"
-    aria-valuemin="0"
-    aria-valuemax="100"
-    aria-valuenow="{current}"
-    aria-valuetext="{`${current}点、100点満点。${affinityLabel(current)}。ハート1つで20点。`}"
+    role="{preview ? undefined : 'progressbar'}"
+    aria-hidden="{preview ? 'true' : undefined}"
+    aria-label="{preview ? undefined : `${name}との好感度`}"
+    aria-valuemin="{preview ? undefined : 0}"
+    aria-valuemax="{preview ? undefined : 100}"
+    aria-valuenow="{preview ? undefined : current}"
+    aria-valuetext="{preview
+      ? undefined
+      : `${current}点、100点満点。${affinityLabel(current)}。ハート1つで20点。`}"
     style="{`--heart-mask:${heartMask}`}"
     bind:this="{container}"
   >
@@ -132,16 +137,22 @@
             class="heart-spark second">♥</span
           >{/if}
       </div>{/each}
-    {#if celebrating && gain > 0}<span class="gain" aria-hidden="true">+{gain} ♡</span>{/if}
+    {#if !preview && celebrating && gain > 0}<span class="gain" aria-hidden="true">+{gain} ♡</span
+      >{/if}
   </div>
-  <div class="relationship-caption">
-    <span class="relationship-label">{affinityLabel(Math.round($displayed))}</span><span
-      class="scale">ハートひとつで20</span
-    >
-  </div>
-  {#if required > current}<p class="next-condition">
-      この話まで、あと<strong>{required - current}</strong>
-    </p>{/if}
+  {#if preview}
+    <p class="relationship-preview">好感度は第1話から、会話に応じて変化します。</p>
+  {:else}
+    <div class="relationship-caption">
+      <span class="relationship-label">{affinityLabel(Math.round($displayed))}</span><span
+        class="scale">ハートひとつで20</span
+      >
+    </div>
+    {#if required > current}<p class="next-condition">
+        この話まで、あと<strong>{required - current}</strong>
+      </p>{/if}
+  {/if}
+  <slot name="reaction" active="{changing}" revealed="{revealed}" />
 </div>
 
 <style>
@@ -162,6 +173,14 @@
   .heading strong {
     font-size: 1.55rem;
     font-variant-numeric: tabular-nums;
+  }
+  .preview-label {
+    white-space: nowrap;
+  }
+  .relationship-preview {
+    margin: 0;
+    color: var(--muted);
+    font-size: var(--text-sm);
   }
   small {
     font-weight: 400;

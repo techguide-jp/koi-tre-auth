@@ -9,13 +9,13 @@
     practiceTurnLimit,
     type PracticeSession
   } from '$lib/practice'
-  import { getAnalyticsContext } from '$lib/analytics'
+  import { getAnalyticsContext, trackEvent } from '$lib/analytics'
   import { startPractice } from '$lib/practice-client'
   import { isFinalPracticeReply } from '$lib/practice-tips'
   import PracticeWaitTip from '$lib/components/PracticeWaitTip.svelte'
   import { guestFetch } from '$lib/guest-practice-client'
-  import { guestLoginUrl } from '$lib/guest-practice'
   import GuestPracticeResult from '$lib/components/adventure/GuestPracticeResult.svelte'
+  import ListenToCharacter from '$lib/components/adventure/ListenToCharacter.svelte'
   import PracticeAnalysis from '$lib/components/PracticeAnalysis.svelte'
   import PracticeAspectChart from '$lib/components/PracticeAspectChart.svelte'
   import CharacterPortrait from '$lib/components/adventure/CharacterPortrait.svelte'
@@ -52,9 +52,9 @@
   $: feedback = session?.turns.at(-1)?.feedback
   $: resultReady = !!session?.completedAt && !!feedback
   $: guestRoute = $page.url.searchParams.get('guest') === '1'
-  $: guestMode = guestRoute && !$user
-  $: sessionKey = `${$user?.uid ?? (guestRoute ? 'guest' : 'none')}:${$page.params.id}`
-  $: storageKey = `koi-practice-draft:${sessionKey}`
+  $: guestMode = guestRoute && (!$user || $page.url.searchParams.get('preview') === '1')
+  $: sessionKey = `${guestMode ? 'guest' : ($user?.uid ?? 'none')}:${$page.params.id}:${guestRoute}`
+  $: storageKey = `koi-practice-draft:${guestMode ? 'guest' : ($user?.uid ?? 'none')}:${$page.params.id}`
   $: if (mounted && $authReady && ($user || guestRoute) && loadedKey !== sessionKey) {
     loadedKey = sessionKey
     session = null
@@ -129,6 +129,15 @@
   }
 
   function applySession(result: PracticeSession, initial = false) {
+    if (
+      !initial &&
+      guestMode &&
+      result.adventure?.trial &&
+      !session?.completedAt &&
+      result.completedAt
+    ) {
+      trackEvent('quick_try_completed', { question_count: 1 })
+    }
     // 履歴の読み直しを新しい獲得に見せず、この画面で完了・再評価した差分だけを動かす。
     if (initial) animateAffinity = false
     else if (
@@ -185,7 +194,7 @@
     if (initial) loading = true
     const key = sessionKey
     try {
-      const importing = guestRoute && !!$user
+      const importing = guestRoute && !guestMode
       claiming = importing
       const response = importing
         ? await authenticatedFetch(`/api/guest/practices/${$page.params.id}/claim`, {
@@ -292,7 +301,9 @@
   /></svelte:head
 >
 <div class="practice-shell">
-  <a class="text-link" href="/#scenes">← お相手・場面選択へ</a>
+  <a class="text-link" href="{session?.adventure?.trial ? '/try#scenes' : '/#scenes'}"
+    >← お相手・場面選択へ</a
+  >
   {#if !$authReady}<p role="status" class="notice">ログイン状態を確認しています…</p>
   {:else if !$user && !guestRoute}<section class="card empty">
       <h1>ログインして続きを練習</h1>
@@ -303,7 +314,9 @@
   {:else if session && scene}
     <header class="practice-heading">
       <div>
-        <p class="eyebrow">{guestMode ? 'ログインせず第1話を体験' : '会話の練習'}</p>
+        <p class="eyebrow">
+          {session.adventure?.trial ? '1往復の会話体験' : guestMode ? '第1話の体験' : '会話の練習'}
+        </p>
         <h1>{scene.title}</h1>
         <p class="muted">{scene.goal}</p>
       </div>
@@ -340,6 +353,7 @@
           </div>
           <div class="stage-dialogue">
             <p>{session.turns.at(-1)?.assistantText ?? scene.opener}</p>
+            {#if session.adventure.trial}<ListenToCharacter text="{scene.opener}" />{/if}
           </div>
         </section>
       {/if}
@@ -398,7 +412,13 @@
       </p>{/if}
     {#if message && !session.completedAt}<p class="error" role="alert">{message}</p>{/if}
     {#if session.completedAt && feedback && !waitingTipRequestId}
-      {#if guestMode}<GuestPracticeResult session="{session}" />
+      {#if guestMode || session.adventure?.trial}
+        <GuestPracticeResult
+          session="{session}"
+          guest="{guestMode}"
+          signedIn="{!!$user}"
+          animateAffinity="{animateAffinity}"
+        />
       {:else if session.adventure}<AdventureResult
           session="{session}"
           enabled="{data.practiceEnabled}"
@@ -441,24 +461,26 @@
           </div>
         {/if}
         <div class="result-actions">
-          {#if guestMode}<a class="button primary" href="{guestLoginUrl(session.id)}"
-              >ログインして、続きも練習する →</a
-            >{:else}<button
+          {#if !guestMode && !session.adventure?.trial}<button
               class="button primary"
               disabled="{restarting || !data.practiceEnabled}"
               aria-busy="{restarting}"
               on:click="{restart}">{restarting ? '準備しています…' : '同じ場面でもう一度'}</button
-            >{/if}<a class="button secondary" href="/#scenes"
-            >{guestMode ? '別のお相手を選ぶ' : '別の場面を選ぶ'}</a
+            >{/if}<a
+            class="button secondary"
+            href="{session.adventure?.trial ? '/try#scenes' : '/#scenes'}"
+            >{guestMode || session.adventure?.trial ? '別のお相手を選ぶ' : '別の場面を選ぶ'}</a
           >
         </div>
         {#if message}<p class="error" role="alert">{message}</p>{/if}
         <p class="small muted">
-          {guestMode
-            ? 'ログインして保存すると、通常のアルバムや再練習も使えます。'
-            : session.adminPlay
-              ? '管理者の練習は利用枠を消費しません。今回の振り返りは、この画面で再確認できます。'
-              : '新しい練習は3往復1枠・6往復2枠を使います。今回の振り返りは、この画面で再確認できます。'}
+          {session.adventure?.trial
+            ? '本編は第1話から始まります。'
+            : guestMode
+              ? 'ログインして保存すると、通常のアルバムや再練習も使えます。'
+              : session.adminPlay
+                ? '管理者の練習は利用枠を消費しません。今回の振り返りは、この画面で再確認できます。'
+                : '新しい練習は3往復1枠・6往復2枠を使います。今回の振り返りは、この画面で再確認できます。'}
         </p>
       </section>
     {:else if session.completedAt && feedback}
@@ -494,13 +516,15 @@
           >
         </div>
         <p class="small muted">
-          {guestMode
-            ? '未ログインの体験は3往復まで。ログインして会話を保存すると、毎月10枠のうち1枠を使用します。'
-            : session.adminPlay
-              ? '管理者の練習は利用枠を消費しません。'
-              : session.chargedAt
-                ? 'この練習は残りの返答と振り返りまで追加消費なし。'
-                : `最初の返答の保存に成功すると、${session.creditCost ?? 1}枠を使用します。`}<br
+          {session.adventure?.trial
+            ? '1回の返答で、会話のヒントと振り返りに進みます。'
+            : guestMode
+              ? 'ログインして会話を保存すると、毎月10枠のうち1枠を使用します。'
+              : session.adminPlay
+                ? '管理者の練習は利用枠を消費しません。'
+                : session.chargedAt
+                  ? 'この練習は残りの返答と振り返りまで追加消費なし。'
+                  : `最初の返答の保存に成功すると、${session.creditCost ?? 1}枠を使用します。`}<br
           />会話はAIに送信し、再開・振り返りのために保存します。実名・連絡先は入力しないでください。
         </p>
       </form>{/if}

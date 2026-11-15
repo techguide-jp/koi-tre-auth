@@ -101,8 +101,10 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
         rubric: { version: 3 as const, profile: coaching.id }
       }
     : null
+  const coachingVariant = withCoachingVariant(coaching, policy?.trace.coaching)
   const sceneData = {
     ...scene,
+    ...(input.adventure?.trial ? { mission: undefined } : {}),
     // 人物像は相手役の返信だけへ渡し、上で呼ぶJevの採点条件には加えない。
     ...(persona
       ? { partnerDescription: characterDescription(persona, coaching.id, input.storyContext) }
@@ -115,7 +117,12 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
         }
       : {}),
     coaching: {
-      ...withCoachingVariant(coaching, policy?.trace.coaching),
+      ...coachingVariant,
+      ...(input.adventure?.trial
+        ? {
+            avoid: `${coachingVariant.avoid} 今回は1往復の体験。turnとtotal_turnsが1の初回が最終回です。analysis.versionは3、analysis.turnsは実際の1回目のみ1件とし、存在しない発言や変化を補わないでください。初対面として相手の言葉に自然に返し、別れの挨拶やミッションは不要です。`
+          }
+        : {}),
       replyStyle: final
         ? 'close_naturally'
         : input.turns.length === 0
@@ -200,7 +207,10 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
   return {
     ...result,
     presentation: parsePresentation(raw?.presentation),
-    mission: final ? parseMission(raw?.mission, input.adventure, userTexts) : null,
+    mission:
+      final && !input.adventure.trial
+        ? parseMission(raw?.mission, input.adventure, userTexts)
+        : null,
     storyEnding: final
       ? parseStoryEnding(raw?.storyEnding ?? raw?.feedback?.storyEnding, input.adventure, userTexts)
       : null

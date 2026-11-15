@@ -44,7 +44,7 @@ function parseAnalysis(value: unknown, userTexts: string[]): PracticeAnalysis {
   const item = record(value)
   if (
     ![2, 3].includes(Number(item.version)) ||
-    ![PRACTICE_TURNS, MAX_PRACTICE_TURNS].includes(userTexts.length)
+    ![1, PRACTICE_TURNS, MAX_PRACTICE_TURNS].includes(userTexts.length)
   )
     throw new Error('Invalid practice analysis version')
   const strengths = list(item.strengths, 0, 3).map((value) => {
@@ -78,7 +78,8 @@ function parseAnalysis(value: unknown, userTexts: string[]): PracticeAnalysis {
   )
   if (new Set(aspects.map(({ id }) => id)).size !== analysisAspects.length)
     throw new Error('Duplicate analysis aspect')
-  const analyzed = item.version === 3 ? userTexts.length : PRACTICE_TURNS
+  const analyzed =
+    item.version === 3 ? userTexts.length : Math.min(PRACTICE_TURNS, userTexts.length)
   const turns = list(item.turns, analyzed, analyzed).map((value) => {
     const turn = record(value)
     const rewrite = text(turn.rewrite)

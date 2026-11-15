@@ -1,10 +1,54 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { scenes, sceneWithPartner } from '$lib/practice'
 import { generatePracticeReply } from './dify-practice'
+import { assessedFeedback } from './fixtures/progression-assessment'
 
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
+})
+
+it('体験では初回を最終回として生成し、1件の言い換えと相手のリアクションを返す', async () => {
+  vi.stubEnv('DIFY_PRACTICE_API_KEY', 'local-test-key')
+  vi.stubEnv('TYPESAFE_API_KEY', '')
+  const text = '窓が大きくて、ゆっくりできそうですね。'
+  const fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      data: {
+        status: 'succeeded',
+        outputs: {
+          result: {
+            reply: 'そうですね。私も窓際が好きです。',
+            presentation: { emotion: 'smile', gesture: '窓の方へ手を開く。' },
+            feedback: assessedFeedback(text)
+          }
+        }
+      }
+    })
+  })
+  vi.stubGlobal('fetch', fetch)
+  const result = await generatePracticeReply({
+    id: 'trial-test-id',
+    sceneId: 'adventure',
+    adventure: { version: 1, characterId: 'aoi', episodeId: 'aoi-1', turns: 3, trial: true },
+    turns: [],
+    text
+  })
+  const body = JSON.parse(fetch.mock.calls.at(-1)![1].body)
+  expect(body.inputs).toMatchObject({ turn: 1, total_turns: 1 })
+  const scene = JSON.parse(body.inputs.scene)
+  expect(scene.coaching.avoid).toContain('実際の1回目のみ1件')
+  expect(JSON.parse(body.inputs.transcript)).toEqual([
+    { role: 'assistant', content: scene.opener },
+    { role: 'user', content: text, turn: 1 }
+  ])
+  expect(result).toMatchObject({
+    reply: 'そうですね。私も窓際が好きです。',
+    presentation: { emotion: 'smile' },
+    mission: null,
+    feedback: { analysis: { turns: [{ turn: 1, quote: text }] } }
+  })
 })
 
 describe('会話相手の呼び名', () => {

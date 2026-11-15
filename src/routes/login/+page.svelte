@@ -39,6 +39,10 @@
       : findScene($page.url.searchParams.get('scene'))
   $: practiceId = $page.url.searchParams.get('practice')
   $: adminLogin = $page.url.searchParams.get('returnTo') === 'admin'
+  $: trialClaim =
+    !!practiceId &&
+    $page.url.searchParams.get('guest') === '1' &&
+    $page.url.searchParams.get('trial') === '1'
   async function login() {
     if (pending) return
     if (!auth || !provider) {
@@ -111,7 +115,9 @@
     <p>Googleアカウントで登録すると、<br />途中の会話や振り返りを保存できます。</p>
   {/if}
   {#if !adminLogin && practiceId && $page.url.searchParams.get('guest') === '1'}<p class="notice">
-      第1話の体験を引き継ぎます。最初の返答の保存時に、毎月10枠のうち1枠を使用します。ログインをやり直しても二重に消費しません。
+      {trialClaim
+        ? '体験で得たXP、会話の評価、ヒントをアカウントに保存します。'
+        : '第1話の体験を引き継ぎます。最初の返答の保存時に、毎月10枠のうち1枠を使用します。'}
     </p>{/if}
   {#if !adminLogin && scene}<div class="selection">
       <span class="small muted">選んだ場面</span><strong>{scene.title}</strong><span
@@ -137,7 +143,9 @@
           ? 'このアカウントで進む'
           : 'Googleでログイン'
         : $user
-          ? '練習へ進む'
+          ? trialClaim
+            ? '体験を保存する'
+            : '練習へ進む'
           : 'Googleで登録・ログイン'}</button
   >{#if message}<p class="error" role="alert">{message}</p>{/if}
   {#if !adminLogin && isCustom && !customDraftReady}<p role="status">

@@ -13,7 +13,7 @@ export async function guestFetch(url: string, init: RequestInit = {}) {
   return response
 }
 export async function startGuestPractice(adventure: Adventure) {
-  if (!guestAdventure(adventure)) throw Error('未ログインで体験できるのは第1話・3往復です。')
+  if (!guestAdventure(adventure)) throw Error('体験できる場面ではありません。')
   const response = await guestFetch('/api/guest/practices', {
     method: 'POST',
     body: JSON.stringify({ id: crypto.randomUUID(), sceneId: 'adventure', adventure })

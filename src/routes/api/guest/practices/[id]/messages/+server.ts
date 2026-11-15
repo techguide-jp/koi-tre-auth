@@ -30,7 +30,7 @@ export const POST: RequestHandler = async (event) => {
     Number(body.expectedTurn) < 0 ||
     Number(body.expectedTurn) >= 3
   )
-    throw error(400, '1〜1000文字で返答を入力してください。体験は3往復です。')
+    throw error(400, '1〜1000文字で返答を入力してください。')
   const result = await submitGuestMessage(
     {
       sessionId: session.id,

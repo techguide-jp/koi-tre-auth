@@ -50,9 +50,9 @@
     grid-template-columns: clamp(100px, 26%, 150px) minmax(0, 1fr);
     gap: 18px;
     align-items: center;
-    padding-bottom: 18px;
-    margin-bottom: 18px;
-    border-bottom: 1px solid #e5d5d3;
+    padding-top: 18px;
+    margin-top: 18px;
+    border-top: 1px solid #e5d5d3;
   }
   .character-reaction {
     position: relative;

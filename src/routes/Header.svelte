@@ -38,7 +38,7 @@
     {#if $user && canAdmin}<a class="admin-link" href="/admin">管理者モード</a>{/if}
     <a class="topics-link" href="/topics">会話ネタ帳</a>
     {#if $user}<a class="album-link" href="/memories">アルバム</a><a href="/account">マイページ</a
-      >{:else}<a class="try-link" href="/try">30秒お試し</a>{/if}<a href="/pricing">料金</a><a
+      >{:else}<a class="try-link" href="/try">会話を体験</a>{/if}<a href="/pricing">料金</a><a
       class="contact-link"
       href="/about">使い方</a
     >{#if $user}<button

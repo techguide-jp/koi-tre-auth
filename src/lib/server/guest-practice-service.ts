@@ -6,6 +6,7 @@ import {
   releaseGuestTurn,
   reserveGuestClaim,
   reserveGuestTurn,
+  saveClaimedTrial,
   type GuestMessage
 } from './db/repositories/guest-practices'
 import {
@@ -53,6 +54,11 @@ export async function claimGuestPractice(
   adminPlay = false
 ) {
   const guest = await reserveGuestClaim(sessionId, id, uid)
+  if (guest.state.trial) {
+    await saveClaimedTrial(uid, guest)
+    if (guest.state.tip) await importGuestTip(uid, id, guest.state.tip)
+    return { session: await getPractice(uid, id), pending: false }
+  }
   const adventure: Adventure = {
     version: 1,
     characterId: guest.characterId,

@@ -26,7 +26,12 @@ export async function buildStoryContext(
     .orderBy(asc(practices.completedAt))
   const seen = new Set<string>()
   const own = completed.filter((s) => {
-    if (s.adventure?.characterId !== adventure.characterId || s.adventure.revisit) return false
+    if (
+      s.adventure?.characterId !== adventure.characterId ||
+      s.adventure.revisit ||
+      s.adventure.trial
+    )
+      return false
     const chapter = episodeById(s.adventure.episodeId)?.chapter
     if (
       chapter &&
