@@ -413,7 +413,12 @@
     {#if message && !session.completedAt}<p class="error" role="alert">{message}</p>{/if}
     {#if session.completedAt && feedback && !waitingTipRequestId}
       {#if guestMode || session.adventure?.trial}
-        <GuestPracticeResult session="{session}" guest="{guestMode}" signedIn="{!!$user}" />
+        <GuestPracticeResult
+          session="{session}"
+          guest="{guestMode}"
+          signedIn="{!!$user}"
+          animateAffinity="{animateAffinity}"
+        />
       {:else if session.adventure}<AdventureResult
           session="{session}"
           enabled="{data.practiceEnabled}"

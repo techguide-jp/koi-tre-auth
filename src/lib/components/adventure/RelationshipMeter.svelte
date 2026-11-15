@@ -99,7 +99,7 @@
 <div class="relationship" class:celebrating="{celebrating}">
   <div class="heading">
     <span>{name}との好感度</span>
-    {#if preview}<span class="preview-label">第1話から</span>
+    {#if preview}<span class="preview-label">体験演出</span>
     {:else}<strong>{Math.round($displayed)}<small> / 100</small></strong>{/if}
   </div>
   <div
@@ -137,10 +137,11 @@
             class="heart-spark second">♥</span
           >{/if}
       </div>{/each}
-    {#if celebrating && gain > 0}<span class="gain" aria-hidden="true">+{gain} ♡</span>{/if}
+    {#if !preview && celebrating && gain > 0}<span class="gain" aria-hidden="true">+{gain} ♡</span
+      >{/if}
   </div>
   {#if preview}
-    <p class="relationship-preview">本編では会話に応じてハートが変化します。</p>
+    <p class="relationship-preview">好感度は第1話から、会話に応じて変化します。</p>
   {:else}
     <div class="relationship-caption">
       <span class="relationship-label">{affinityLabel(Math.round($displayed))}</span><span

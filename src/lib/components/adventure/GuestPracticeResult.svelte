@@ -9,6 +9,8 @@
   export let session: PracticeSession
   export let guest: boolean
   export let signedIn: boolean
+  export let animateAffinity = false
+  const trialHeartPreviewLevel = 6
   $: character = characterById(session.adventure?.characterId)!
   $: evaluation = session.evaluation
   $: trial = session.adventure?.trial
@@ -47,7 +49,9 @@
       <RelationshipMeter
         slot="affinity"
         name="{character.name}"
-        value="{trial ? 0 : (evaluation?.affinityAfter ?? 0)}"
+        value="{trial ? trialHeartPreviewLevel : (evaluation?.affinityAfter ?? 0)}"
+        previous="{trial ? 0 : null}"
+        animate="{!!trial && animateAffinity}"
         preview="{!!trial || !evaluation}"
       />
     </PracticeRewardSummary>
