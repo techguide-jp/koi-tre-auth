@@ -15,6 +15,7 @@
   import { storyPart } from '$lib/adventure-story'
   import { authenticatedFetch } from '$lib/stores'
   import CharacterPortrait from './CharacterPortrait.svelte'
+  import PracticeAspectChart from '../PracticeAspectChart.svelte'
   import SpecialCardArt from './SpecialCardArt.svelte'
   import { earnedSpecialCard } from '$lib/special-card-art'
   import StageEvaluation from './StageEvaluation.svelte'
@@ -46,6 +47,8 @@
   $: character = characterById(adventure.characterId)!
   $: episode = episodeById(adventure.episodeId)!
   $: last = session.turns.at(-1)
+  $: analysis = last?.feedback?.analysis
+  $: showChart = !!(analysis || session.evaluation?.assessment)
   $: cleared =
     progress?.progression?.clearedEpisodes.includes(
       `${adventure.characterId}:${adventure.episodeId}`
@@ -230,6 +233,15 @@
         <p class="small muted">このエピソードを、思い出アルバムに残しました。</p>
       </div>
     </div>{/if}
+  {#if showChart}
+    <div class="result-overview">
+      <PracticeAspectChart
+        analysis="{analysis}"
+        assessment="{session.evaluation?.assessment}"
+        experience="{session.reward?.xp ?? 20}"
+      />
+    </div>
+  {/if}
   <StageEvaluation
     enabled="{enabled}"
     session="{session}"
@@ -261,8 +273,8 @@
     </RelationshipMeter>{/if}
   <div class="reward" role="status">
     <div>
-      <p class="eyebrow">エピソード完了</p>
-      <strong>+{session.reward?.xp ?? 20} <span>XP</span></strong>
+      <p class="eyebrow">{showChart ? '獲得XPの内訳' : 'エピソード完了'}</p>
+      {#if !showChart}<strong>+{session.reward?.xp ?? 20} <span>XP</span></strong>{/if}
       <p>会話を終えた経験に、{baseXp}XP。</p>
     </div>
     <div>
@@ -483,6 +495,9 @@
   }
   .adventure-result {
     margin: 32px 0;
+  }
+  .result-overview {
+    margin-top: 20px;
   }
   .memory-card {
     display: grid;

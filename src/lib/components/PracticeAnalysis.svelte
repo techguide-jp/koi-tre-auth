@@ -3,10 +3,11 @@
   import PracticeAspectChart from './PracticeAspectChart.svelte'
   export let analysis: PracticeAnalysis
   export let assessment: PracticeAssessment | null | undefined = undefined
+  export let showChart = true
 </script>
 
 <div class="analysis">
-  <PracticeAspectChart analysis="{analysis}" assessment="{assessment}" />
+  {#if showChart}<PracticeAspectChart analysis="{analysis}" assessment="{assessment}" />{/if}
 
   <section class="next-practice" aria-labelledby="analysis-next">
     <span class="next-icon" aria-hidden="true">↗</span>
@@ -126,7 +127,7 @@
       ></summary
     >
     <p>{analysis.summary}</p>
-    <p class="section-note">この3回の返答から観察できることを振り返っています。</p>
+    <p class="section-note">今回の{analysis.turns.length}回の返答を振り返っています。</p>
   </details>
 </div>
 

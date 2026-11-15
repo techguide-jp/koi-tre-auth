@@ -12,6 +12,7 @@
 
   export let analysis: PracticeAnalysis | undefined = undefined
   export let assessment: PracticeAssessment | null | undefined = undefined
+  export let experience: number | undefined = undefined
   $: measured = assessment ?? analysis?.assessment
   $: rows = analysisAspects.map(({ id, label }) => {
     const assessment = measured?.aspects.find((item) => item.id === id)
@@ -54,15 +55,22 @@
       <p class="eyebrow">今回の会話の傾向</p>
       <h3 id="analysis-aspects">5つの観点をひと目で</h3>
     </div>
-    <div
-      class="total-score"
-      aria-label="{total === null
-        ? `25点満点の採点は${evaluated}観点まで取得済み`
-        : `合計${total.toFixed(1)}点、25点満点`}"
-    >
-      <span>今回の会話</span><strong>{total === null ? '—' : total.toFixed(1)}</strong><span>
-        / 25点</span
+    <div class="metrics">
+      {#if experience !== undefined}
+        <div class="xp">
+          <span>獲得経験値</span><strong>+{experience} <small>XP</small></strong>
+        </div>
+      {/if}
+      <div
+        class="total-score"
+        aria-label="{total === null
+          ? `25点満点の採点は${evaluated}観点まで取得済み`
+          : `合計${total.toFixed(1)}点、25点満点`}"
       >
+        <span>会話スコア</span><strong>{total === null ? '—' : total.toFixed(1)}</strong><span>
+          / 25点</span
+        >
+      </div>
     </div>
   </div>
 
@@ -186,19 +194,44 @@
 </section>
 
 <style>
-  .total-score {
-    flex-shrink: 0;
+  .metrics {
     display: flex;
-    align-items: baseline;
-    gap: 0.3rem;
-    color: var(--muted);
     flex-wrap: wrap;
+    align-items: stretch;
     justify-content: flex-end;
-    max-width: 150px;
+    gap: 1rem;
+  }
+  .xp {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.15rem;
+    border-radius: 10px;
+    padding: 0.55rem 0.8rem;
+    background: var(--olive-soft);
+    color: var(--olive);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+  .xp strong {
+    font-size: 1.75rem;
+    line-height: 1.1;
+  }
+  .xp small {
     font-size: var(--text-sm);
   }
+  .total-score {
+    display: grid;
+    grid-template-columns: max-content max-content;
+    align-items: baseline;
+    column-gap: 0.3rem;
+    color: var(--muted);
+    justify-content: flex-end;
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
   .total-score > span:first-child {
-    width: 100%;
+    grid-column: 1 / -1;
     text-align: right;
   }
   .total-score > strong {
@@ -226,6 +259,7 @@
   }
   .chart-heading {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
@@ -441,13 +475,19 @@
       align-items: stretch;
       gap: 1rem;
     }
+    .metrics {
+      justify-content: flex-start;
+      align-items: center;
+      gap: 0.7rem;
+    }
     .total-score {
-      max-width: none;
       justify-content: flex-start;
     }
     .total-score > span:first-child {
-      width: auto;
       text-align: left;
+    }
+    .total-score > strong {
+      font-size: clamp(1.65rem, 8vw, 2.4rem);
     }
     h3 {
       font-size: 1rem;
