@@ -25,6 +25,9 @@ import type { CharacterSnapshot } from '$lib/character-policy'
 import { characterContentHash, characterDescription } from './character-content'
 export { parsePracticeOutput } from './practice-feedback'
 
+const trialAnalysisRepair =
+  ' 前の出力は形式エラー。feedbackをnullにせず、総評・5観点・実際の1発言に対応する分析と言い換えを必ず返す。引用は1回目の原文のみ。'
+
 export interface GeneratePracticeInput {
   id: string
   sceneId: SceneId
@@ -56,6 +59,7 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
   const signal = AbortSignal.timeout(55_000)
   const turnLimit = practiceTurnLimit(input.adventure)
   const final = !input.rehearsal && input.turns.length + 1 === turnLimit
+  const trial = final && input.adventure?.trial === true
   const transcript = [
     { role: 'assistant', content: scene.opener },
     ...input.turns.flatMap((turn, index) => [
@@ -118,17 +122,16 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
       : {}),
     coaching: {
       ...coachingVariant,
-      ...(input.adventure?.trial
+      ...(trial
         ? {
-            avoid: `${coachingVariant.avoid} 1往復の体験では、初対面として自然に返し、別れの挨拶は不要。analysis.turnsは実際の1回目のみ1件。出力形式が3件を必須とする場合は、同じturn:1の要素を3件複製する。全引用は実際の1回目のみで、各項目1引用まで。発言や会話の変化を作らない。developmentとmissionはnull。`
+            avoid: `${coachingVariant.avoid} 体験ではturn=total_turns=1が最終回。feedbackは必須でnull不可。合計点が不明でも分析を返す。analysis.turnsは1回目のみ1件。形式上3件必須なら同じturn:1を3件複製する。全引用は1回目の原文に限り各項目1件。初対面として自然に返し、別れの挨拶は不要。developmentとmissionはnull。`
           }
         : {}),
-      replyStyle:
-        input.adventure?.trial || (!final && input.turns.length === 0)
+      replyStyle: final
+        ? 'close_naturally'
+        : input.turns.length === 0
           ? 'respond_and_share'
-          : final
-            ? 'close_naturally'
-            : 'share_or_follow_up'
+          : 'share_or_follow_up'
     },
     assessment: assessment
       ? {
@@ -143,7 +146,7 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
   const review = final && policy?.trace.feedbackReview === 'transcript-v1'
   const repair = review ? ` ${transcriptReviewRepair}` : ''
   // 再生成でも同じ会話の文脈を渡せるよう、Difyの入力上限内に補足指示の分を確保する。
-  const sceneLimit = 4000 - repair.length
+  const sceneLimit = 4000 - Math.max(repair.length, trial ? trialAnalysisRepair.length : 0)
   while (JSON.stringify(sceneData).length > sceneLimit && sceneData.storyContext?.memories.length)
     sceneData.storyContext.memories.shift()
   if (JSON.stringify(sceneData).length > sceneLimit && persona)
@@ -156,7 +159,7 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
   if (JSON.stringify(sceneData).length > sceneLimit)
     throw Error('Practice scene exceeds workflow input limit')
   const userTexts = [...input.turns.map((turn) => turn.userText), input.text]
-  async function generate() {
+  async function requestOutput() {
     const response = await fetch(`${base.replace(/\/$/, '')}/workflows/run`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
@@ -182,20 +185,33 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
     // 旧Workflowが新しい方針入力を無視した場合は、適用済みとして保存しない。
     if (policy && body.data.outputs?.policy_hash !== policy.trace.contextHash)
       throw Error('Practice policy acknowledgement mismatch')
-    const raw =
-      typeof body.data.outputs?.result === 'string'
-        ? JSON.parse(body.data.outputs.result)
-        : body.data.outputs?.result
-    return { raw, parsed: parsePracticeOutput(raw, userTexts, final, assessment) }
+    return body.data.outputs?.result
   }
-  let generated = await generate()
+  function parseResult(output: unknown) {
+    const raw = typeof output === 'string' ? JSON.parse(output) : output
+    const parsed = parsePracticeOutput(raw, userTexts, final, assessment)
+    if (trial && !parsed.feedback?.analysis) throw Error('Missing trial analysis')
+    return { raw, parsed }
+  }
+  const output = await requestOutput()
+  let generated: ReturnType<typeof parseResult>
+  let retried = false
+  try {
+    generated = parseResult(output)
+  } catch (cause) {
+    if (!trial || signal.aborted) throw cause
+    // 体験でも評価を省略せず、形式不備は同じ会話・同じ時間制限で一度だけ再生成する。
+    retried = true
+    sceneData.coaching.avoid += trialAnalysisRepair
+    generated = parseResult(await requestOutput())
+  }
   if (review) {
     const check = (feedback: typeof generated.parsed.feedback) =>
       feedback ? reviewPracticeFeedback(transcript, feedback, signal) : 'unavailable'
     let decision = await check(generated.parsed.feedback)
-    if (decision === 'revise' && !signal.aborted) {
+    if (decision === 'revise' && !retried && !signal.aborted) {
       sceneData.coaching.avoid += repair
-      generated = await generate()
+      generated = parseResult(await requestOutput())
       decision = await check(generated.parsed.feedback)
     }
     // 照合できない文章を返すと、会話・報酬と一緒に誤指摘が保存される。

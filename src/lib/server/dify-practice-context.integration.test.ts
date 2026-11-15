@@ -8,15 +8,19 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-it.each([1, 3])(
-  '体験ではDifyの分析が%i件でも、1件の言い換えと相手のリアクションを返す',
-  async (count) => {
+it.each([
+  { count: 1, missingFeedback: false },
+  { count: 3, missingFeedback: false },
+  { count: 1, missingFeedback: true }
+])(
+  '体験では分析$count件・最初の分析欠落$missingFeedbackでも1件の言い換えを返す',
+  async ({ count, missingFeedback }) => {
     vi.stubEnv('DIFY_PRACTICE_API_KEY', 'local-test-key')
     vi.stubEnv('TYPESAFE_API_KEY', '')
     const text = '窓が大きくて、ゆっくりできそうですね。'
     const feedback = assessedFeedback(text)
     feedback.analysis!.turns = Array.from({ length: count }, () => feedback.analysis!.turns[0])
-    const fetch = vi.fn().mockResolvedValue({
+    const response = (analysis: typeof feedback | null) => ({
       ok: true,
       json: async () => ({
         data: {
@@ -25,12 +29,14 @@ it.each([1, 3])(
             result: {
               reply: 'そうですね。私も窓際が好きです。',
               presentation: { emotion: 'smile', gesture: '窓の方へ手を開く。' },
-              feedback
+              feedback: analysis
             }
           }
         }
       })
     })
+    const fetch = vi.fn().mockResolvedValue(response(feedback))
+    if (missingFeedback) fetch.mockResolvedValueOnce(response(null))
     vi.stubGlobal('fetch', fetch)
     const result = await generatePracticeReply({
       id: 'trial-test-id',
@@ -42,8 +48,12 @@ it.each([1, 3])(
     const body = JSON.parse(fetch.mock.calls.at(-1)![1].body)
     expect(body.inputs).toMatchObject({ turn: 1, total_turns: 1 })
     const scene = JSON.parse(body.inputs.scene)
-    expect(scene.coaching.avoid).toContain('実際の1回目のみ1件')
-    expect(scene.coaching.replyStyle).toBe('respond_and_share')
+    expect(scene.coaching.avoid).toContain('feedbackは必須でnull不可')
+    expect(scene.coaching.avoid.includes('前の出力は形式エラー')).toBe(missingFeedback)
+    expect(scene.coaching.replyStyle).toBe('close_naturally')
+    expect(fetch).toHaveBeenCalledTimes(missingFeedback ? 2 : 1)
+    if (missingFeedback)
+      expect(body.inputs.transcript).toBe(JSON.parse(fetch.mock.calls[0][1].body).inputs.transcript)
     expect(JSON.parse(body.inputs.transcript)).toEqual([
       { role: 'assistant', content: scene.opener },
       { role: 'user', content: text, turn: 1 }
