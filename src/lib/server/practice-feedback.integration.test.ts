@@ -3,6 +3,7 @@ import { analysisAspects, assessmentLabel, assessmentStatus, assessmentValue } f
 import { parsePracticeOutput } from './practice-feedback'
 import { parseAssessment } from './jev-practice'
 import { exampleFeedback, exampleJevResponse, exampleTexts } from './fixtures/practice-analysis'
+import { assessedFeedback } from './fixtures/progression-assessment'
 
 function output() {
   return { reply: '教えてくれてありがとうございます。', feedback: structuredClone(exampleFeedback) }
@@ -32,6 +33,15 @@ describe('会話に基づく分析', () => {
     const value = output()
     value.feedback.analysis!.turns[0].quote = exampleTexts[2]
     expect(() => parsePracticeOutput(value, exampleTexts, true)).toThrow('quote')
+  })
+  it('旧Difyの1往復体験の出力に異なる発言番号があれば拒否する', () => {
+    const text = exampleTexts[0]
+    const feedback = assessedFeedback(text)
+    const point = feedback.analysis!.turns[0]
+    feedback.analysis!.turns = [point, { ...point, turn: 2 }, point]
+    expect(() =>
+      parsePracticeOutput({ reply: 'そうなんですね。', feedback }, [text], true)
+    ).toThrow('quote')
   })
   it('返答や観点の欠落・重複、空の分析、未知のバージョンを拒否する', () => {
     for (const mutate of [

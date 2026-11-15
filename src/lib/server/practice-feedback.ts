@@ -80,7 +80,13 @@ function parseAnalysis(value: unknown, userTexts: string[]): PracticeAnalysis {
     throw new Error('Duplicate analysis aspect')
   const analyzed =
     item.version === 3 ? userTexts.length : Math.min(PRACTICE_TURNS, userTexts.length)
-  const turns = list(item.turns, analyzed, analyzed).map((value) => {
+  let turnEntries = item.turns
+  if (analyzed === 1 && Array.isArray(turnEntries) && turnEntries.length === PRACTICE_TURNS) {
+    // 旧Difyの最低3件制約に対応し、全件の引用を照合してから体験の1件だけを保存する。
+    for (const entry of turnEntries) evidence(entry, userTexts)
+    turnEntries = turnEntries.slice(0, 1)
+  }
+  const turns = list(turnEntries, analyzed, analyzed).map((value) => {
     const turn = record(value)
     const rewrite = text(turn.rewrite)
     const alternative = turn.alternative == null ? undefined : record(turn.alternative)
