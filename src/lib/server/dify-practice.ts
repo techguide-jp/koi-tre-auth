@@ -120,14 +120,15 @@ export async function generatePracticeReply(input: GeneratePracticeInput) {
       ...coachingVariant,
       ...(input.adventure?.trial
         ? {
-            avoid: `${coachingVariant.avoid} 今回は1往復の体験。turnとtotal_turnsが1の初回が最終回です。analysis.versionは3、analysis.turnsは実際の1回目のみ1件とし、存在しない発言や変化を補わないでください。初対面として相手の言葉に自然に返し、別れの挨拶やミッションは不要です。`
+            avoid: `${coachingVariant.avoid} 1往復の体験では、初対面として自然に返し、別れの挨拶は不要。analysis.turnsは実際の1回目のみ1件。出力形式が3件を必須とする場合は、同じturn:1の要素を3件複製する。全引用は実際の1回目のみで、各項目1引用まで。発言や会話の変化を作らない。developmentとmissionはnull。`
           }
         : {}),
-      replyStyle: final
-        ? 'close_naturally'
-        : input.turns.length === 0
+      replyStyle:
+        input.adventure?.trial || (!final && input.turns.length === 0)
           ? 'respond_and_share'
-          : 'share_or_follow_up'
+          : final
+            ? 'close_naturally'
+            : 'share_or_follow_up'
     },
     assessment: assessment
       ? {
