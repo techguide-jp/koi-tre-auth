@@ -1,4 +1,5 @@
 import { guides } from '$lib/content/guides'
+import { announcements } from '$lib/content/announcements'
 
 export const SITE_ORIGIN = 'https://app.koi-tre.com'
 export const SHARE_IMAGE = `${SITE_ORIGIN}/images/cafe-conversation.jpg`
@@ -48,6 +49,12 @@ export const publicPages: Record<string, { title: string; description: string }>
       `/guides/${guide.slug}`,
       { title: `${guide.title} | Koi-Tre`, description: guide.description }
     ])
+  ),
+  ...Object.fromEntries(
+    announcements.map(({ slug, title, summary }) => [
+      `/announcements/${slug}`,
+      { title: `${title} | Koi-Tre`, description: summary }
+    ])
   )
 }
 
@@ -59,6 +66,8 @@ export function pageMetadata(pathname: string, status = 200) {
     indexable: !!metadata,
     // 練習IDやログインのクエリーを検索結果・共有カードへ出さない。
     canonical: metadata ? `${SITE_ORIGIN}${pathname === '/' ? '/' : pathname}` : undefined,
-    article: !!guides.find((guide) => pathname === `/guides/${guide.slug}`)
+    article:
+      guides.some(({ slug }) => pathname === `/guides/${slug}`) ||
+      announcements.some(({ slug }) => pathname === `/announcements/${slug}`)
   }
 }
