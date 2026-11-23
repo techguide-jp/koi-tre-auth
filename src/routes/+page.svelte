@@ -12,6 +12,7 @@
   import AdventureLobby from '$lib/components/adventure/AdventureLobby.svelte'
   import AdventureProgressPanel from '$lib/components/adventure/AdventureProgress.svelte'
   import BillingBalance from '$lib/components/billing/BillingBalance.svelte'
+  import AnnouncementList from '$lib/components/AnnouncementList.svelte'
   import CustomSceneForm from '$lib/components/CustomSceneForm.svelte'
   import LegacyHome from '$lib/components/LegacyHome.svelte'
   import { guides } from '$lib/content/guides'
@@ -112,7 +113,7 @@
   }
 </script>
 
-{#if !data.practiceEnabled}<LegacyHome />{:else}
+{#if data.practiceEnabled}
   <section class="hero" aria-labelledby="hero-title">
     <div class="hero-copy">
       <p class="section-label">恋愛コミュニケーションの練習</p>
@@ -147,6 +148,11 @@
       <li><span>03</span>次の物語へ進む</li>
     </ol>
   </div>
+{/if}
+
+<AnnouncementList />
+
+{#if !data.practiceEnabled}<LegacyHome />{:else}
   {#if $user}<section class="account-strip" aria-label="今月の練習">
       <div>
         <p class="section-label">あなたの練習</p>

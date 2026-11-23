@@ -2,6 +2,7 @@
   import { auth } from '$lib/firebaseConfig'
   import { signOut } from 'firebase/auth'
   import { user } from '$lib/stores'
+  import AnnouncementBell from '$lib/components/AnnouncementBell.svelte'
   export let canAdmin = false
   let pending = false
   let message = ''
@@ -49,15 +50,17 @@
       >{:else}<a class="login-link" href="/login">ログイン<span aria-hidden="true"> →</span></a
       >{/if}
   </nav>
+  <AnnouncementBell />
 </header>
 {#if message}<p class="error" role="alert">{message}</p>{/if}
 
 <style>
   header {
+    --header-padding-inline: 2rem;
     max-width: 72rem;
     margin: 0 auto;
     width: 100%;
-    padding: 1.45rem 2rem;
+    padding: 1.45rem var(--header-padding-inline);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -104,6 +107,7 @@
     font-size: var(--text-sm);
     flex-wrap: wrap;
     justify-content: flex-end;
+    margin-left: auto;
   }
   nav a {
     color: var(--ink);
@@ -127,7 +131,9 @@
   }
   @media (max-width: 700px) {
     header {
-      padding: 1.1rem 1.25rem;
+      --header-padding-inline: 1.25rem;
+      position: relative;
+      padding-block: 1.1rem;
     }
     nav {
       gap: 1rem;
@@ -137,6 +143,7 @@
       flex-wrap: wrap;
     }
     nav:has(.admin-link) {
+      order: 1;
       width: 100%;
       justify-content: flex-start;
       gap: 0.75rem 1rem;
