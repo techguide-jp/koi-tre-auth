@@ -63,7 +63,7 @@
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-svelte": "^2.35.1",
-    "postcss": "^8.4.38",
+    "postcss": "^8.5.18",
     "prettier": "^3.1.1",
     "prettier-plugin-svelte": "^3.1.2",
     "smui-theme": "^7.0.0",
@@ -85,7 +85,22 @@
       "protobufjs@>=7.0.0 <7.5.5": "7.5.5",
       "faye-websocket>websocket-driver": "0.7.5",
       "vitest>tinypool": "2.1.2",
-      "fast-xml-parser@>=5.0.0 <5.5.6": "5.5.6"
+      "fast-xml-parser@>=5.0.0 <5.5.6": "5.5.6",
+      "@fastify/busboy@3.2.0": "3.2.1",
+      "@grpc/grpc-js@1.14.3": "1.14.5",
+      "@grpc/grpc-js@1.9.15": "1.13.6",
+      "brace-expansion@1.1.12": "1.1.16",
+      "brace-expansion@2.0.2": "2.1.6",
+      "browserslist@4.28.1": "4.28.7",
+      "devalue@5.6.3": "5.9.3",
+      "flatted@3.3.4": "3.4.2",
+      "form-data@2.5.5": "2.5.6",
+      "immutable@5.1.5": "5.1.8",
+      "js-yaml@4.1.1": "4.3.2",
+      "nanoid@3.3.11": "3.3.12",
+      "postcss@8.5.8": "8.5.18",
+      "source-map-js@1.2.1": "1.2.2",
+      "undici@6.19.7": "6.29.1"
     }
   }
 }
