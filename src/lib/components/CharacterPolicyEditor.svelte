@@ -65,26 +65,26 @@
   }
 </script>
 
-<form on:submit|preventDefault="{onsave}" aria-label="人物設定の編集" aria-busy="{pending}">
-  <fieldset disabled="{pending}">
+<form on:submit|preventDefault={onsave} aria-label="人物設定の編集" aria-busy={pending}>
+  <fieldset disabled={pending}>
     {#if fields}
       {#each fields as [key, label, max, hint]}
         <label class="admin-field"
           >{label}<small>{hint}</small>
           <textarea
-            rows="{key === 'firstPerson' ? 1 : 3}"
-            maxlength="{max}"
-            value="{value(content, section, key)}"
-            on:input="{(e) => update(key, e.currentTarget.value)}"
-            required="{key !== 'background'}"
+            rows={key === 'firstPerson' ? 1 : 3}
+            maxlength={max}
+            value={value(content, section, key)}
+            on:input={(e) => update(key, e.currentTarget.value)}
+            required={key !== 'background'}
           ></textarea>
           <small>{value(content, section, key).length} / {max}字</small>
         </label>
       {/each}
     {:else if section === 'stages'}
       <label class="admin-field"
-        >編集する関係段階<select bind:value="{stage}"
-          >{#each relationshipStages as item}<option value="{item.id}">{item.label}</option
+        >編集する関係段階<select bind:value={stage}
+          >{#each relationshipStages as item}<option value={item.id}>{item.label}</option
             >{/each}</select
         ></label
       >
@@ -93,8 +93,8 @@
         <textarea
           rows="5"
           maxlength="140"
-          bind:value="{content.stages[stage]}"
-          on:input="{onchange}"
+          bind:value={content.stages[stage]}
+          on:input={onchange}
           required
         ></textarea>
         <small
@@ -105,8 +105,8 @@
       </label>
     {:else if section === 'responses'}
       <label class="admin-field"
-        >編集する場面<select bind:value="{scene}"
-          >{#each knowledgeProfiles as id}<option value="{id}">{sceneLabels[id]}</option
+        >編集する場面<select bind:value={scene}
+          >{#each knowledgeProfiles as id}<option value={id}>{sceneLabels[id]}</option
             >{/each}</select
         ></label
       >
@@ -114,8 +114,8 @@
         >どう受け止め、どう返すか<textarea
           rows="4"
           maxlength="120"
-          bind:value="{content.responses[scene].guidance}"
-          on:input="{onchange}"
+          bind:value={content.responses[scene].guidance}
+          on:input={onchange}
           required
         ></textarea><small>{content.responses[scene].guidance.length} / 120字</small></label
       >
@@ -123,8 +123,8 @@
         >参考のセリフ（任意）<textarea
           rows="4"
           maxlength="120"
-          bind:value="{content.responses[scene].example}"
-          on:input="{onchange}"
+          bind:value={content.responses[scene].example}
+          on:input={onchange}
         ></textarea><small
           >口調や反応の参考に使います。毎回同じセリフには固定しません。{content.responses[scene]
             .example.length} / 120字</small
@@ -137,8 +137,8 @@
           >{field.label}<textarea
             rows="3"
             maxlength="140"
-            bind:value="{content.reactions[field.id]}"
-            on:input="{onchange}"
+            bind:value={content.reactions[field.id]}
+            on:input={onchange}
             required
           ></textarea></label
         >
@@ -147,7 +147,7 @@
     <div class="actions">
       <button
         class="button primary"
-        disabled="{pending || (!dirty && !needsInitialSave)}"
+        disabled={pending || (!dirty && !needsInitialSave)}
         type="submit"
         >{saving
           ? '保存中…'
@@ -157,8 +157,8 @@
       ><button
         class="button secondary"
         type="button"
-        disabled="{pending || !dirty}"
-        on:click="{ondiscard}">この項目の変更を戻す</button
+        disabled={pending || !dirty}
+        on:click={ondiscard}>この項目の変更を戻す</button
       >
     </div>
   </fieldset>

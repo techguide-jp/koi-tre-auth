@@ -94,11 +94,11 @@
 </script>
 
 <dialog
-  bind:this="{dialog}"
-  class:closing="{confirmed}"
+  bind:this={dialog}
+  class:closing={confirmed}
   aria-labelledby="practice-tip-title"
   aria-describedby="practice-tip-intro"
-  on:cancel|preventDefault="{skip}"
+  on:cancel|preventDefault={skip}
 >
   <div class="tip-content">
     <div class="analysis-status">
@@ -113,7 +113,7 @@
       </p>
     </div>
     <header>
-      <h2 id="practice-tip-title" bind:this="{title}" tabindex="-1">
+      <h2 id="practice-tip-title" bind:this={title} tabindex="-1">
         {tip?.title ?? '会話のヒント'}
       </h2>
     </header>
@@ -122,11 +122,11 @@
       <p class="tip-text">{tip.tip}</p>
       <blockquote><span>たとえば</span>「{tip.example}」</blockquote>
       <TipRatingChoices
-        prompt="{tip.prompt}"
-        selected="{offer?.rating?.value}"
-        saving="{saving}"
-        disabled="{confirmed}"
-        choose="{choose}"
+        prompt={tip.prompt}
+        selected={offer?.rating?.value}
+        saving={saving}
+        disabled={confirmed}
+        choose={choose}
       />
       {#if message}<p class="tip-label" role="alert">{message}</p>{/if}
     {:else}
@@ -140,7 +140,7 @@
         </p>
       {:else}
         {#if tip}<p>自己評価を選ぶと、自動で結果へ進みます。</p>{/if}
-        {#if ready}<button type="button" disabled="{saving !== null}" on:click="{skip}">
+        {#if ready}<button type="button" disabled={saving !== null} on:click={skip}>
             結果を見る
           </button>{/if}
       {/if}

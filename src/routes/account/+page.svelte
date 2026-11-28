@@ -157,13 +157,13 @@
     </p>{/if}
   <button
     class="text-button refresh"
-    disabled="{!!pending}"
-    aria-busy="{pending === 'load'}"
-    on:click="{load}">{pending === 'load' ? '読み込んでいます…' : '最新の状態を確認する'}</button
+    disabled={!!pending}
+    aria-busy={pending === 'load'}
+    on:click={load}>{pending === 'load' ? '読み込んでいます…' : '最新の状態を確認する'}</button
   >
   {#key $user.uid}<TipCollection />{/key}
   {#if billing}<div class="account-panels">
-      <section class="card"><BillingBalance billing="{billing}" /></section>
+      <section class="card"><BillingBalance billing={billing} /></section>
       <section class="card">
         <p class="section-label">購入と契約</p>
         <h2>
@@ -187,9 +187,9 @@
           </p>
           <button
             class="button secondary"
-            disabled="{!!pending || !billing.portalEnabled}"
-            aria-busy="{pending === 'portal'}"
-            on:click="{portal}"
+            disabled={!!pending || !billing.portalEnabled}
+            aria-busy={pending === 'portal'}
+            on:click={portal}
             >{pending === 'portal'
               ? '契約管理を開いています…'
               : '契約・解約・支払い方法を管理する'}</button
@@ -221,8 +221,8 @@
         <h2>必要なパートへ戻って練習</h2>
         <label for="practice-person">練習するお相手</label><select
           id="practice-person"
-          bind:value="{selectedCharacter}"
-          >{#each practiceCharacters as id}<option value="{id}"
+          bind:value={selectedCharacter}
+          >{#each practiceCharacters as id}<option value={id}
               >{characters.find((c) => c.id === id)?.name}</option
             >{/each}</select
         >
@@ -239,7 +239,7 @@
           クリア済みの話を、その時点の関係で再練習できます。進行や選んだ結末はそのままです。
         </p>
       </section>{/if}
-    <PracticeGrowth history="{history}" />
+    <PracticeGrowth history={history} />
     {#if course}<section class="course card">
         <p class="section-label">次に試す、ひとつのこと</p>
         <h2>{course.goal}</h2>

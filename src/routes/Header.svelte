@@ -42,11 +42,8 @@
       >{:else}<a class="try-link" href="/try">会話を体験</a>{/if}<a href="/pricing">料金</a><a
       class="contact-link"
       href="/about">使い方</a
-    >{#if $user}<button
-        class="logout"
-        disabled="{pending}"
-        aria-busy="{pending}"
-        on:click="{logout}">{pending ? 'ログアウト中…' : 'ログアウト'}</button
+    >{#if $user}<button class="logout" disabled={pending} aria-busy={pending} on:click={logout}
+        >{pending ? 'ログアウト中…' : 'ログアウト'}</button
       >{:else}<a class="login-link" href="/login">ログイン<span aria-hidden="true"> →</span></a
       >{/if}
   </nav>

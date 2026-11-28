@@ -83,7 +83,7 @@
   }
 </script>
 
-<svelte:window on:keydown="{keydown}" />
+<svelte:window on:keydown={keydown} />
 
 <svelte:head>
   <title>Sverdle</title>
@@ -95,20 +95,20 @@
 <form
   method="POST"
   action="?/enter"
-  use:enhance="{() => {
+  use:enhance={() => {
     // prevent default callback from resetting the form
     return ({ update }) => {
       update({ reset: false })
     }
-  }}"
+  }}
 >
   <a class="how-to-play" href="/sverdle/how-to-play">How to play</a>
 
-  <div class="grid" class:playing="{!won}" class:bad-guess="{form?.badGuess}">
+  <div class="grid" class:playing={!won} class:bad-guess={form?.badGuess}>
     {#each Array.from(Array(6).keys()) as row (row)}
       {@const current = row === i}
       <h2 class="visually-hidden">Row {row + 1}</h2>
-      <div class="row" class:current="{current}">
+      <div class="row" class:current={current}>
         {#each Array.from(Array(5).keys()) as column (column)}
           {@const guess = current ? currentGuess : data.guesses[row]}
           {@const answer = data.answers[row]?.[column]}
@@ -119,10 +119,10 @@
           {@const missing = answer === '_'}
           <div
             class="letter"
-            class:exact="{exact}"
-            class:close="{close}"
-            class:missing="{missing}"
-            class:selected="{selected}"
+            class:exact={exact}
+            class:close={close}
+            class:missing={missing}
+            class:selected={selected}
           >
             {value}
             <span class="visually-hidden">
@@ -136,7 +136,7 @@
                 empty
               {/if}
             </span>
-            <input name="guess" disabled="{!current}" type="hidden" value="{value}" />
+            <input name="guess" disabled={!current} type="hidden" value={value} />
           </div>
         {/each}
       </div>
@@ -153,12 +153,10 @@
       </button>
     {:else}
       <div class="keyboard">
-        <button data-key="enter" class:selected="{submittable}" disabled="{!submittable}"
-          >enter</button
-        >
+        <button data-key="enter" class:selected={submittable} disabled={!submittable}>enter</button>
 
         <button
-          on:click|preventDefault="{update}"
+          on:click|preventDefault={update}
           data-key="backspace"
           formaction="?/update"
           name="key"
@@ -171,13 +169,13 @@
           <div class="row">
             {#each row as letter}
               <button
-                on:click|preventDefault="{update}"
-                data-key="{letter}"
-                class="{classnames[letter]}"
-                disabled="{submittable}"
+                on:click|preventDefault={update}
+                data-key={letter}
+                class={classnames[letter]}
+                disabled={submittable}
                 formaction="?/update"
                 name="key"
-                value="{letter}"
+                value={letter}
                 aria-label="{letter} {description[letter] || ''}"
               >
                 {letter}
@@ -193,13 +191,13 @@
 {#if won}
   <div
     style="position: absolute; left: 50%; top: 30%"
-    use:confetti="{{
+    use:confetti={{
       particleCount: $reduced_motion ? 0 : undefined,
       force: 0.7,
       stageWidth: window.innerWidth,
       stageHeight: window.innerHeight,
       colors: ['#ff3e00', '#40b3ff', '#676778']
-    }}"
+    }}
   ></div>
 {/if}
 

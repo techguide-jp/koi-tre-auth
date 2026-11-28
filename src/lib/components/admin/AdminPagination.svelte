@@ -17,12 +17,11 @@
         : `${adminNumber((page - 1) * pageSize + 1)}〜${adminNumber(Math.min(page * pageSize, total))} / ${adminNumber(total)}件`}
   </p>
   <div>
-    <button disabled="{pending || page <= 1}" on:click="{() => dispatch('page', page - 1)}"
-      >前へ</button
+    <button disabled={pending || page <= 1} on:click={() => dispatch('page', page - 1)}>前へ</button
     >
     <span>{page}ページ</span><button
-      disabled="{pending || page * pageSize >= total}"
-      on:click="{() => dispatch('page', page + 1)}">次へ</button
+      disabled={pending || page * pageSize >= total}
+      on:click={() => dispatch('page', page + 1)}>次へ</button
     >
   </div>
 </nav>

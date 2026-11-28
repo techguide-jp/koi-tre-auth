@@ -94,8 +94,8 @@
       <h1>
         <span class="welcome">
           <picture>
-            <source srcset="{welcome}" type="image/webp" />
-            <img src="{welcome_fallback}" alt="Koi-Treへようこそ" />
+            <source srcset={welcome} type="image/webp" />
+            <img src={welcome_fallback} alt="Koi-Treへようこそ" />
           </picture>
         </span>
       </h1>
@@ -116,7 +116,7 @@
       <div class="border border-red-300 bg-red-50 text-red-700 p-4 my-4 rounded">
         <p>{$dashboardError}</p>
         <button
-          on:click="{() => void refreshDashboard()}"
+          on:click={() => void refreshDashboard()}
           class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
         >
           再取得する
@@ -139,7 +139,7 @@
       </iframe>
       <div class="flex flex-col items-start">
         <button
-          on:click="{copyToClipboard}"
+          on:click={copyToClipboard}
           class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2 mx-auto block"
         >
           アクセスキーをコピー
@@ -155,7 +155,7 @@
       <div class="llm-text">
         <p>【最後の内容】</p>
         <div class="mkdwn border border-gray-300 p-4 my-4 rounded-lg bg-white">
-          <SvelteMarkdown source="{$lastLlmText}" />
+          <SvelteMarkdown source={$lastLlmText} />
         </div>
       </div>
     {/if}

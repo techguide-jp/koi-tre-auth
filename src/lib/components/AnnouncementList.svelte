@@ -8,10 +8,9 @@
     <ul>
       {#each announcements as announcement (announcement.slug)}
         <li>
-          <a href="{`/announcements/${announcement.slug}`}">
+          <a href={`/announcements/${announcement.slug}`}>
             <span class="meta">
-              <time datetime="{announcement.date}">{formatAnnouncementDate(announcement.date)}</time
-              >
+              <time datetime={announcement.date}>{formatAnnouncementDate(announcement.date)}</time>
               <span class="category">{announcement.category}</span>
             </span>
             <span class="title">{announcement.title}</span>

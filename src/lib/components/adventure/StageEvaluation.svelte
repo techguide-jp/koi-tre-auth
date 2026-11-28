@@ -73,7 +73,7 @@
 
 <section
   class="evaluation"
-  class:passed="{evaluation?.status === 'passed'}"
+  class:passed={evaluation?.status === 'passed'}
   aria-label="今回のクリア判定と好感度"
 >
   <div class="result-heading">
@@ -124,9 +124,9 @@
     </p>
     <button
       class="button secondary"
-      disabled="{!enabled || busy || !!evaluation?.pending}"
-      aria-busy="{busy || !!evaluation?.pending}"
-      on:click="{retry}"
+      disabled={!enabled || busy || !!evaluation?.pending}
+      aria-busy={busy || !!evaluation?.pending}
+      on:click={retry}
       >{busy || evaluation?.pending ? '保存した会話を再評価中…' : 'この会話を再評価する'}</button
     >
     <p class="small">利用枠は消費しません。会話・XP・獲得したカードは残ります。</p>

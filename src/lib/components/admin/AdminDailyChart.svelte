@@ -14,23 +14,22 @@
   )
 </script>
 
-<div class="daily-chart" bind:clientWidth="{width}">
+<div class="daily-chart" bind:clientWidth={width}>
   <div class="legend"><span class="started">開始</span><span class="completed">完了</span></div>
   <svg
     viewBox="0 0 {w} 205"
     role="img"
     aria-label="日別の練習開始・完了件数。下の一覧で数値も確認できます。"
   >
-    {#each ticks as tick}<line x1="35" x2="{w - 20}" y1="{y(tick)}" y2="{y(tick)}" stroke="#e5e7eb"
-      ></line><text x="27" y="{y(tick) + 4}" text-anchor="end">{tick}</text>{/each}
-    <polyline points="{points('started')}" fill="none" stroke="#537cb7" stroke-width="2.5"
-    ></polyline>
-    <polyline points="{points('completed')}" fill="none" stroke="#568276" stroke-width="2.5"
+    {#each ticks as tick}<line x1="35" x2={w - 20} y1={y(tick)} y2={y(tick)} stroke="#e5e7eb"
+      ></line><text x="27" y={y(tick) + 4} text-anchor="end">{tick}</text>{/each}
+    <polyline points={points('started')} fill="none" stroke="#537cb7" stroke-width="2.5"></polyline>
+    <polyline points={points('completed')} fill="none" stroke="#568276" stroke-width="2.5"
     ></polyline>
     {#each dates as i}<text
-        x="{x(i)}"
+        x={x(i)}
         y="192"
-        text-anchor="{i === 0 ? 'start' : i === daily.length - 1 ? 'end' : 'middle'}"
+        text-anchor={i === 0 ? 'start' : i === daily.length - 1 ? 'end' : 'middle'}
         >{daily[i].date.slice(5).replace('-', '/')}</text
       >{/each}
   </svg>

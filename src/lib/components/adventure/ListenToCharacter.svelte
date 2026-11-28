@@ -28,7 +28,7 @@
 </script>
 
 {#if synthesis}
-  <button class="text-link" type="button" on:click="{listen}">
+  <button class="text-link" type="button" on:click={listen}>
     {speaking ? '読み上げを止める' : 'セリフを聞く'}
   </button>
 {/if}

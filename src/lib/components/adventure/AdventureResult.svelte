@@ -209,7 +209,7 @@
 
 <section class="adventure-result" aria-label="エピソードの報酬と思い出">
   {#if artwork}<div class="memory-card deep scene-reward">
-      <div class="special-image"><SpecialCardArt art="{artwork}" priority /></div>
+      <div class="special-image"><SpecialCardArt art={artwork} priority /></div>
       <div class="memory-copy special-copy">
         <p class="collection-stamp">✦ 場面限定イラスト</p>
         <p class="eyebrow">{character.name}と、じっくり話した一枚</p>
@@ -222,8 +222,8 @@
     </div>{:else}<div class="memory-card {episode.theme}">
       <div class="memory-art">
         <CharacterPortrait
-          characterId="{character.id}"
-          emotion="{last?.presentation?.emotion ?? 'neutral'}"
+          characterId={character.id}
+          emotion={last?.presentation?.emotion ?? 'neutral'}
         />
       </div>
       <div class="memory-copy">
@@ -237,25 +237,25 @@
     </div>{/if}
   <div class="reward-overview">
     <PracticeRewardSummary
-      xp="{session.reward?.xp ?? 20}"
-      caption="{session.reward?.mission ? `会話を終えて +${baseXp} XP` : ''}"
+      xp={session.reward?.xp ?? 20}
+      caption={session.reward?.mission ? `会話を終えて +${baseXp} XP` : ''}
     >
       <svelte:fragment slot="affinity">
         {#if affinity !== null}
           <RelationshipMeter
-            name="{character.name}"
-            value="{affinity}"
-            required="{nextRule?.requiredAffinity ?? 0}"
-            previous="{session.evaluation?.affinityAfter === affinity
+            name={character.name}
+            value={affinity}
+            required={nextRule?.requiredAffinity ?? 0}
+            previous={session.evaluation?.affinityAfter === affinity
               ? session.evaluation.affinityBefore
-              : null}"
-            animate="{animateAffinity}"
+              : null}
+            animate={animateAffinity}
           >
             <svelte:fragment slot="reaction" let:active let:revealed>
               {#if reaction}<CharacterAffinityReaction
-                  reaction="{reaction}"
-                  active="{active}"
-                  revealed="{revealed}"
+                  reaction={reaction}
+                  active={active}
+                  revealed={revealed}
                 />{/if}
             </svelte:fragment>
           </RelationshipMeter>
@@ -264,13 +264,13 @@
     </PracticeRewardSummary>
   </div>
   <StageEvaluation
-    enabled="{enabled}"
-    session="{session}"
-    cleared="{cleared}"
-    on:update="{async (event) => {
+    enabled={enabled}
+    session={session}
+    cleared={cleared}
+    on:update={async (event) => {
       apply(event.detail)
       await loadProgress()
-    }}"
+    }}
   />
   <div class="reward" role="status">
     <p class="mission-label">✦ {missions[episode.missionId].label}</p>
@@ -298,9 +298,9 @@
           この結末の記録は残ります。第12話を新基準でクリアすると、日常交流へ引き継げます。
         </p>{:else}<button
           class="button secondary"
-          disabled="{!!pendingAction}"
-          aria-busy="{pendingAction === 'ending'}"
-          on:click="{chooseEnding}"
+          disabled={!!pendingAction}
+          aria-busy={pendingAction === 'ending'}
+          on:click={chooseEnding}
           >{pendingAction === 'ending' ? '結末を保存中…' : 'この結末を日常交流へ引き継ぐ'}</button
         >{/if}
     </section>{/if}
@@ -331,9 +331,9 @@
         href="/pricing?character={adventure.characterId}#plus">今の二人で話してみる · Plus →</a
       >{:else}<button
         class="button primary"
-        disabled="{starting || !enabled || !!pendingAction || !progress}"
-        aria-busy="{starting}"
-        on:click="{() => dispatch('next', nextSelection)}"
+        disabled={starting || !enabled || !!pendingAction || !progress}
+        aria-busy={starting}
+        on:click={() => dispatch('next', nextSelection)}
         >{starting
           ? '次の場面を準備しています…'
           : isLifeEpisode(next.id)
@@ -358,40 +358,40 @@
     <p class="small" role="status">{progressError}</p>
     <button
       class="text-button"
-      disabled="{progressLoading}"
-      aria-busy="{progressLoading}"
-      on:click="{loadProgress}">{progressLoading ? '確認中…' : 'もう一度確認する'}</button
+      disabled={progressLoading}
+      aria-busy={progressLoading}
+      on:click={loadProgress}>{progressLoading ? '確認中…' : 'もう一度確認する'}</button
     >
   {/if}
   <details class="keepsake">
     <summary>気に入った、自分のひと言を残す <span aria-hidden="true">⌄</span></summary><label
       for="favorite-turn">アルバムに残す返答</label
-    ><select id="favorite-turn" bind:value="{favoritePosition}" disabled="{!!pendingAction}"
-      >{#each session.turns as turn}<option value="{turn.position}"
+    ><select id="favorite-turn" bind:value={favoritePosition} disabled={!!pendingAction}
+      >{#each session.turns as turn}<option value={turn.position}
           >{turn.position}回目：{turn.userText.slice(0, 50)}</option
         >{/each}</select
     >
     <div class="inline-actions">
       <button
         class="button secondary"
-        disabled="{!!pendingAction}"
-        aria-busy="{pendingAction === 'favorite'}"
-        on:click="{() => favorite(favoritePosition)}"
+        disabled={!!pendingAction}
+        aria-busy={pendingAction === 'favorite'}
+        on:click={() => favorite(favoritePosition)}
         >{pendingAction === 'favorite' ? '保存中…' : 'このひと言を保存'}</button
       >{#if session.favoriteTurn}<button
           class="text-button"
-          disabled="{!!pendingAction}"
-          on:click="{() => favorite(null)}">保存を外す</button
+          disabled={!!pendingAction}
+          on:click={() => favorite(null)}>保存を外す</button
         >{/if}
     </div>
   </details>
-  <details class="rehearsal" open="{!!session.rehearsal}">
+  <details class="rehearsal" open={!!session.rehearsal}>
     <summary>ひと言、言い直してみる <span class="small">この練習で1回</span></summary
     >{#if session.rehearsal?.reply}<div class="rehearsal-result">
         <div class="rehearsal-art">
           <CharacterPortrait
-            characterId="{character.id}"
-            emotion="{session.rehearsal.presentation?.emotion ?? 'neutral'}"
+            characterId={character.id}
+            emotion={session.rehearsal.presentation?.emotion ?? 'neutral'}
           />
         </div>
         <div>
@@ -405,28 +405,28 @@
       </div>{:else}<p class="small muted">
         同じ相手に、別の言い方で。元の会話と振り返りを残したまま、反応を一度試せます。追加の利用枠やXPの変動はありません。
       </p>
-      <form on:submit|preventDefault="{rehearse}">
+      <form on:submit|preventDefault={rehearse}>
         <label for="rehearsal-turn">言い直す返答</label><select
           id="rehearsal-turn"
-          bind:value="{position}"
-          disabled="{!!pendingAction}"
-          on:change="{() =>
-            (text = session.turns.find((turn) => turn.position === position)?.userText ?? '')}"
-          >{#each session.turns as turn}<option value="{turn.position}"
+          bind:value={position}
+          disabled={!!pendingAction}
+          on:change={() =>
+            (text = session.turns.find((turn) => turn.position === position)?.userText ?? '')}
+          >{#each session.turns as turn}<option value={turn.position}
               >{turn.position}回目：{turn.userText.slice(0, 50)}</option
             >{/each}</select
         ><label for="rehearsal-text">今なら、どう伝えますか？</label><textarea
           id="rehearsal-text"
-          bind:value="{text}"
+          bind:value={text}
           maxlength="1000"
           rows="3"
           required
-          disabled="{!!pendingAction}"
+          disabled={!!pendingAction}
         ></textarea><button
           class="button secondary"
           type="submit"
-          disabled="{!!pendingAction || !enabled || !text.trim()}"
-          aria-busy="{pendingAction === 'rehearsal'}"
+          disabled={!!pendingAction || !enabled || !text.trim()}
+          aria-busy={pendingAction === 'rehearsal'}
           >{pendingAction === 'rehearsal' ? '返答を考えています…' : 'この言い方を試す'}</button
         >
       </form>{/if}

@@ -61,10 +61,10 @@
     </div>
   </div>
   <AdminReportState
-    pending="{$report.pending}"
-    error="{$report.error}"
-    ready="{!!$report.data}"
-    on:retry="{retry}"
+    pending={$report.pending}
+    error={$report.error}
+    ready={!!$report.data}
+    on:retry={retry}
   >
     {#if $report.data}{@const view = $report.data}
       <div class="ops-notice">
@@ -94,24 +94,21 @@
   </AdminReportState>
   {#if $user}<div class="ops-controls">
       <label
-        >履歴の期間<select
-          bind:value="{days}"
-          on:change="{() => (page = 1)}"
-          disabled="{$report.pending}"
-          ><option value="{7}">直近7日</option><option value="{30}">直近30日</option><option
-            value="{90}">直近90日</option
+        >履歴の期間<select bind:value={days} on:change={() => (page = 1)} disabled={$report.pending}
+          ><option value={7}>直近7日</option><option value={30}>直近30日</option><option value={90}
+            >直近90日</option
           ></select
         ></label
       ><label
         >付与・購入の商品<select
-          bind:value="{kind}"
-          on:change="{() => (page = 1)}"
-          disabled="{$report.pending}"
+          bind:value={kind}
+          on:change={() => (page = 1)}
+          disabled={$report.pending}
           ><option value="all">すべて</option><option value="plus">Plus</option><option
             value="route">人物パック</option
           ><option value="topup">追加枠</option></select
         ></label
-      ><button disabled="{$report.pending}" aria-busy="{$report.pending}" on:click="{retry}"
+      ><button disabled={$report.pending} aria-busy={$report.pending} on:click={retry}
         >{$report.pending ? '読み込み中…' : '最新情報に更新'}</button
       >
     </div>{/if}
@@ -146,8 +143,8 @@
                   ><td class="ops-number">{grant.units}</td><td
                     ><span
                       class="ops-badge"
-                      class:warning="{status === '停止'}"
-                      class:muted="{status === '期限終了'}">{status}</span
+                      class:warning={status === '停止'}
+                      class:muted={status === '期限終了'}>{status}</span
                     ></td
                   ><td>{grant.expiresAt ? adminDate(grant.expiresAt) : '期限なし'}</td></tr
                 >{/each}</tbody
@@ -155,10 +152,10 @@
           </table>
         </AdminTable>{/if}
       <AdminPagination
-        page="{view.page}"
-        pageSize="{view.pageSize}"
-        total="{view.total}"
-        on:page="{(e) => (page = e.detail)}"
+        page={view.page}
+        pageSize={view.pageSize}
+        total={view.total}
+        on:page={(e) => (page = e.detail)}
       />
     </section>
     <section class="ops-panel">

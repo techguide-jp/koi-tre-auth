@@ -29,12 +29,12 @@
 
 <div
   class="portrait"
-  class:trim-start="{variant === 'introduction' && characterId === 'shiori'}"
+  class:trim-start={variant === 'introduction' && characterId === 'shiori'}
   role="img"
-  aria-label="{variant === 'introduction'
+  aria-label={variant === 'introduction'
     ? `${character?.name}：${introduction.pose}`
-    : `${character?.name}：${emotionLabels[emotion]}。${poses[index]}`}"
-  style="{artwork}"
+    : `${character?.name}：${emotionLabels[emotion]}。${poses[index]}`}
+  style={artwork}
 ></div>
 
 <style>

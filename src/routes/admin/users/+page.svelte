@@ -50,10 +50,7 @@
 >
 <div class="ops">
   {#if selectedUid}
-    {#key selectedUid}<AdminUserDetail
-        uid="{selectedUid}"
-        on:back="{() => (selectedUid = '')}"
-      />{/key}
+    {#key selectedUid}<AdminUserDetail uid={selectedUid} on:back={() => (selectedUid = '')} />{/key}
   {:else}
     <div class="ops-header">
       <div>
@@ -61,32 +58,32 @@
         <p class="ops-intro">登録情報と、契約・残枠・練習の状態を確認できます。</p>
       </div>
     </div>
-    {#if $user}<form class="ops-controls" on:submit|preventDefault="{searchUsers}">
+    {#if $user}<form class="ops-controls" on:submit|preventDefault={searchUsers}>
         <label class="ops-search"
           >表示名・メール・UID<input
             type="search"
-            bind:value="{search}"
+            bind:value={search}
             maxlength="100"
             placeholder="利用者を検索"
-            disabled="{$report.pending}"
+            disabled={$report.pending}
           /></label
         >
         <label
-          >有料本編の利用権<select bind:value="{access}" disabled="{$report.pending}"
+          >有料本編の利用権<select bind:value={access} disabled={$report.pending}
             ><option value="all">すべて</option><option value="plus">Plusあり</option><option
               value="route">人物パックあり</option
             ><option value="free">Plus・パックなし</option></select
           ></label
         >
-        <button class="ops-primary" disabled="{$report.pending}" aria-busy="{$report.pending}"
+        <button class="ops-primary" disabled={$report.pending} aria-busy={$report.pending}
           >{$report.pending ? '検索中…' : '検索・絞り込み'}</button
         >
       </form>{/if}
     <AdminReportState
-      pending="{$report.pending}"
-      error="{$report.error}"
-      ready="{!!$report.data}"
-      on:retry="{retry}"
+      pending={$report.pending}
+      error={$report.error}
+      ready={!!$report.data}
+      on:retry={retry}
     >
       {#if $report.data}{@const view = $report.data}
         <p class="ops-period">{adminDate(view.asOf)} 時点・最終練習は返答を保存した日時です。</p>
@@ -104,7 +101,7 @@
               ><tbody>
                 {#each view.users as person}<tr
                     ><td
-                      ><button class="ops-link" on:click="{() => (selectedUid = person.uid)}"
+                      ><button class="ops-link" on:click={() => (selectedUid = person.uid)}
                         >{adminPerson(person)}</button
                       ><span class="ops-sub">{person.email || 'メール未設定'}</span></td
                     >
@@ -126,10 +123,10 @@
             </table>
           </AdminTable>{/if}
         <AdminPagination
-          page="{view.page}"
-          pageSize="{view.pageSize}"
-          total="{view.total}"
-          on:page="{(e) => (page = e.detail)}"
+          page={view.page}
+          pageSize={view.pageSize}
+          total={view.total}
+          on:page={(e) => (page = e.detail)}
         />
         <p class="ops-muted">
           開始は最初の返答保存、完了は3／6往復の終了です。未送信の会話や未ログイン体験は一覧の件数に含めません。

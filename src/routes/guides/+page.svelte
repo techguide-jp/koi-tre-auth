@@ -17,7 +17,7 @@
   </header>
   <div class="resource-grid">
     {#each guides as guide}
-      <a class="resource-card" href="{`/guides/${guide.slug}`}">
+      <a class="resource-card" href={`/guides/${guide.slug}`}>
         <p class="eyebrow">{guide.category}</p>
         <h2>{guide.title}</h2>
         <p>{guide.description}</p>

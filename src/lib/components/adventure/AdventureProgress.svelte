@@ -19,11 +19,11 @@
     class="xp-track"
     role="progressbar"
     aria-label="次のレベルまでの経験値"
-    aria-valuenow="{progress.xpInLevel}"
+    aria-valuenow={progress.xpInLevel}
     aria-valuemin="0"
     aria-valuemax="100"
   >
-    <span style="{`width:${progress.xpInLevel}%`}"></span>
+    <span style={`width:${progress.xpInLevel}%`}></span>
   </div>
   <p class="xp-note">次のレベルまで {100 - progress.xpInLevel} XP</p>
   <details>
@@ -33,7 +33,7 @@
       ></summary
     >
     <div class="badges">
-      {#each progress.badges as badge}<div class:earned="{badge.earned}">
+      {#each progress.badges as badge}<div class:earned={badge.earned}>
           <span aria-hidden="true">{badge.earned ? '✦' : '◇'}</span><strong>{badge.label}</strong>
           <p>{badge.description}</p>
         </div>{/each}

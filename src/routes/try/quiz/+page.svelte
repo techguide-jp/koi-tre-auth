@@ -53,7 +53,7 @@
     <p class="muted small">
       目安30秒。採点・性格診断はありません。会話例は架空のもので、どの選択にも解説があります。
     </p>
-    {#if !started}<button class="button primary" type="button" on:click="{start}"
+    {#if !started}<button class="button primary" type="button" on:click={start}
         >30秒のお試しを始める →</button
       >{/if}
     <noscript
@@ -68,9 +68,9 @@
   {#if started}
     <section
       class="try-panel"
-      bind:this="{panel}"
+      bind:this={panel}
       tabindex="-1"
-      aria-labelledby="{finished ? 'complete-title' : 'question-title'}"
+      aria-labelledby={finished ? 'complete-title' : 'question-title'}
     >
       {#if finished}
         <p class="eyebrow">3つの場面を、お試しできました</p>
@@ -86,9 +86,7 @@
               <p class="eyebrow">{index + 1}. {item.scene}</p>
               <h3>{answer.title}</h3>
               <blockquote>{answer.alternative}</blockquote>
-              <a class="text-link" href="{`/guides/${item.guide}`}"
-                >この場面の会話例をもっと読む →</a
-              >
+              <a class="text-link" href={`/guides/${item.guide}`}>この場面の会話例をもっと読む →</a>
             </article>
           {/each}
         </div>
@@ -98,7 +96,7 @@
           <a
             class="button primary"
             href="/try"
-            on:click="{() => trackEvent('practice_cta_clicked', { source: 'quick_try' })}"
+            on:click={() => trackEvent('practice_cta_clicked', { source: 'quick_try' })}
             >相手と場面を選んで、AIと練習する →</a
           >
           <p class="muted small">ログインせず、そのまま試せます。</p>
@@ -109,15 +107,15 @@
             共有されるのはお試しへのリンクだけです。あなたの選択は含まれません。
           </p>
           <label for="try-share-link">お試しの共有リンク</label>
-          <input id="try-share-link" readonly value="{shareLink}" />
+          <input id="try-share-link" readonly value={shareLink} />
           <CopyButton
-            text="{shareLink}"
+            text={shareLink}
             label="お試しのリンクをコピー"
-            on:copied="{() => trackEvent('quick_try_shared', { method: 'copy_link' })}"
+            on:copied={() => trackEvent('quick_try_shared', { method: 'copy_link' })}
           />
           <a href="/share">SNSやイベントで使える紹介素材を見る →</a>
         </div>
-        <button class="button secondary" type="button" on:click="{start}">別の返し方も試す</button>
+        <button class="button secondary" type="button" on:click={start}>別の返し方も試す</button>
       {:else}
         <p class="eyebrow">{step + 1} / {quickTryQuestions.length} · {question.scene}</p>
         <h2 id="question-title">自分なら、どう返す？</h2>
@@ -126,10 +124,10 @@
           {#each question.options as option, index}
             <button
               type="button"
-              class:selected="{selected?.id === option.id}"
-              disabled="{!!selected}"
-              aria-pressed="{selected?.id === option.id}"
-              on:click="{() => choose(option.id)}"
+              class:selected={selected?.id === option.id}
+              disabled={!!selected}
+              aria-pressed={selected?.id === option.id}
+              on:click={() => choose(option.id)}
             >
               <span aria-hidden="true">{['A', 'B', 'C'][index]}</span>{option.text}
             </button>
@@ -142,7 +140,7 @@
             <p class="eyebrow">こんな言い方も</p>
             <blockquote>{selected.alternative}</blockquote>
           </div>
-          <button class="button primary next-button" type="button" on:click="{next}"
+          <button class="button primary next-button" type="button" on:click={next}
             >{step === quickTryQuestions.length - 1
               ? '3つの言葉を振り返る →'
               : '次の場面へ →'}</button

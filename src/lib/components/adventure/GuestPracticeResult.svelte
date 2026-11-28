@@ -20,8 +20,8 @@
 <section class="card guest-result" aria-label="会話の体験結果">
   <div class="portrait">
     <CharacterPortrait
-      characterId="{character.id}"
-      emotion="{session.turns.at(-1)?.presentation?.emotion ?? 'smile'}"
+      characterId={character.id}
+      emotion={session.turns.at(-1)?.presentation?.emotion ?? 'smile'}
     />
   </div>
   <div>
@@ -38,21 +38,21 @@
     {#if trial && reply}
       {#if reply.presentation?.gesture}<p class="small muted">{reply.presentation.gesture}</p>{/if}
       <blockquote>「{reply.assistantText}」</blockquote>
-      <ListenToCharacter text="{reply.assistantText}" />
+      <ListenToCharacter text={reply.assistantText} />
     {/if}
   </div>
   <div class="overview">
     <PracticeRewardSummary
-      xp="{session.reward?.xp}"
-      caption="{trial && !guest && !session.reward?.xp ? 'この人物の体験XPは獲得済みです。' : ''}"
+      xp={session.reward?.xp}
+      caption={trial && !guest && !session.reward?.xp ? 'この人物の体験XPは獲得済みです。' : ''}
     >
       <RelationshipMeter
         slot="affinity"
-        name="{character.name}"
-        value="{trial ? trialHeartPreviewLevel : (evaluation?.affinityAfter ?? 0)}"
-        previous="{trial ? 0 : null}"
-        animate="{!!trial && animateAffinity}"
-        preview="{!!trial || !evaluation}"
+        name={character.name}
+        value={trial ? trialHeartPreviewLevel : (evaluation?.affinityAfter ?? 0)}
+        previous={trial ? 0 : null}
+        animate={!!trial && animateAffinity}
+        preview={!!trial || !evaluation}
       />
     </PracticeRewardSummary>
   </div>
@@ -77,7 +77,7 @@
     {#if guest}
       <a
         class="button primary"
-        href="{signedIn ? `/practice/${session.id}?guest=1` : guestLoginUrl(session.id, trial)}"
+        href={signedIn ? `/practice/${session.id}?guest=1` : guestLoginUrl(session.id, trial)}
         >{signedIn ? '体験の記録を保存する' : 'Googleでログインして記録を保存'} →</a
       >
       <p class="small muted">
@@ -86,7 +86,7 @@
           : '保存時に毎月10枠のうち1枠を使用します。XP・カード・クリア判定も引き継げます。'}
       </p>
     {:else}
-      <a class="button primary" href="{`/?character=${character.id}#scenes`}">
+      <a class="button primary" href={`/?character=${character.id}#scenes`}>
         {character.name}との第1話へ →
       </a>
     {/if}

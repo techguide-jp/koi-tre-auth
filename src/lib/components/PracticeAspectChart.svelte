@@ -56,9 +56,9 @@
     </div>
     <div
       class="total-score"
-      aria-label="{total === null
+      aria-label={total === null
         ? `25点満点の採点は${evaluated}観点まで取得済み`
-        : `合計${total.toFixed(1)}点、25点満点`}"
+        : `合計${total.toFixed(1)}点、25点満点`}
     >
       <span>今回の会話</span><strong>{total === null ? '—' : total.toFixed(1)}</strong><span>
         / 25点</span
@@ -70,12 +70,12 @@
     <div class="radar-panel">
       <div
         class="radar"
-        data-radar-state="{radar.polygon ? 'complete' : evaluated ? 'partial' : 'unavailable'}"
+        data-radar-state={radar.polygon ? 'complete' : evaluated ? 'partial' : 'unavailable'}
       >
         <svg
           viewBox="0 0 320 280"
           role="img"
-          aria-label="{`5観点のレーダーチャート。${evaluated}項目の目安を表示。外側ほど、その観点がよくできています。`}"
+          aria-label={`5観点のレーダーチャート。${evaluated}項目の目安を表示。外側ほど、その観点がよくできています。`}
         >
           <desc
             >{rows
@@ -84,34 +84,34 @@
               )
               .join('。')}</desc
           >
-          <polygon class="radar-background" points="{radar.rings.at(-1)}"></polygon>
+          <polygon class="radar-background" points={radar.rings.at(-1)}></polygon>
           {#each radar.rings as ring}
-            <polygon class="radar-grid" points="{ring}"></polygon>
+            <polygon class="radar-grid" points={ring}></polygon>
           {/each}
           {#each radar.axes as axis, index}
             <line
               class="radar-axis"
-              class:pending="{rows[index].score === null}"
-              x1="{radar.center.x}"
-              y1="{radar.center.y}"
-              x2="{axis.x}"
-              y2="{axis.y}"
+              class:pending={rows[index].score === null}
+              x1={radar.center.x}
+              y1={radar.center.y}
+              x2={axis.x}
+              y2={axis.y}
             ></line>
           {/each}
           {#if radar.polygon}
-            <polygon class="radar-area" points="{radar.polygon}"></polygon>
+            <polygon class="radar-area" points={radar.polygon}></polygon>
           {:else}
             {#each radar.segments as segment}
-              <polyline class="radar-line" class:gap="{segment.gap}" points="{segment.points}"
+              <polyline class="radar-line" class:gap={segment.gap} points={segment.points}
               ></polyline>
             {/each}
           {/if}
           {#each radar.vertices as vertex, index}
             {#if vertex}<circle
                 class="radar-point"
-                class:reference="{rows[index].mode === 'reference'}"
-                cx="{vertex.x}"
-                cy="{vertex.y}"
+                class:reference={rows[index].mode === 'reference'}
+                cx={vertex.x}
+                cy={vertex.y}
                 r="4.5"
               ></circle>{/if}
           {/each}
@@ -119,9 +119,9 @@
         {#each rows as row, index}
           <span
             class="radar-label"
-            class:pending="{row.score === null}"
-            style:left="{`${labelPositions[index].x}%`}"
-            style:top="{`${labelPositions[index].y}%`}"
+            class:pending={row.score === null}
+            style:left={`${labelPositions[index].x}%`}
+            style:top={`${labelPositions[index].y}%`}
             aria-hidden="true"
           >
             {#each labelLines[index] as line}<span>{line}</span>{/each}
@@ -135,10 +135,10 @@
     </div>
     <div class="chart-rows">
       {#each rows as row}
-        <details class="aspect-row" data-assessment="{row.mode}">
+        <details class="aspect-row" data-assessment={row.mode}>
           <summary>
             <span class="aspect-label">{row.label}</span>
-            <span class="assessment-label" class:muted="{row.score === null}">
+            <span class="assessment-label" class:muted={row.score === null}>
               {#if row.score !== null}<strong class="aspect-score"
                   >{row.score.toFixed(1)}<small> / 5</small></strong
                 >{/if}

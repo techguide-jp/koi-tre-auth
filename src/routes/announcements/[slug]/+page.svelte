@@ -15,17 +15,17 @@
   <header>
     <div class="meta">
       <span class="category">{announcement.category}</span>
-      <time datetime="{announcement.date}">{formatAnnouncementDate(announcement.date)}</time>
+      <time datetime={announcement.date}>{formatAnnouncementDate(announcement.date)}</time>
     </div>
     <h1>{announcement.title}</h1>
     <p class="summary">{announcement.summary}</p>
   </header>
   <img
     class="cover"
-    src="{announcement.image.src}"
-    alt="{announcement.image.alt}"
-    width="{announcement.image.width}"
-    height="{announcement.image.height}"
+    src={announcement.image.src}
+    alt={announcement.image.alt}
+    width={announcement.image.width}
+    height={announcement.image.height}
     fetchpriority="high"
   />
   <div class="body">
@@ -36,7 +36,7 @@
       </section>
     {/each}
     {#if announcement.action}
-      <a class="button primary" href="{announcement.action.href}">
+      <a class="button primary" href={announcement.action.href}>
         {announcement.action.label} <span aria-hidden="true">→</span>
       </a>
     {/if}

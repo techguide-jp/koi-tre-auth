@@ -40,33 +40,33 @@
   <h2>同じ場面で、どう変わった？</h2>
   {#if groups.length}<label for="growth-scene">人物・場面を選ぶ</label><select
       id="growth-scene"
-      bind:value="{selected}"
-      >{#each groups as group}<option value="{group.key}">{group.label}</option>{/each}</select
+      bind:value={selected}
+      >{#each groups as group}<option value={group.key}>{group.label}</option>{/each}</select
     ><svg
       viewBox="0 0 600 210"
       role="img"
-      aria-label="{`${points.length}回分の同じ人物・場面の採点。${points.map((p) => `${p.total}点`).join('、')}`}"
+      aria-label={`${points.length}回分の同じ人物・場面の採点。${points.map((p) => `${p.total}点`).join('、')}`}
       ><line x1="40" y1="170" x2="560" y2="170" stroke="#d5d9ce"
       ></line>{#each [0, 5, 10, 15, 20, 25] as score}<line
           x1="40"
-          y1="{170 - score * 5.6}"
+          y1={170 - score * 5.6}
           x2="560"
-          y2="{170 - score * 5.6}"
+          y2={170 - score * 5.6}
           stroke="#e7e9e2"
-        ></line><text x="8" y="{175 - score * 5.6}">{score}</text>{/each}<polyline
-        points="{line}"
+        ></line><text x="8" y={175 - score * 5.6}>{score}</text>{/each}<polyline
+        points={line}
         fill="none"
         stroke="#718562"
         stroke-width="3"
       ></polyline>{#each points as point, index}{@const x =
           points.length === 1 ? 300 : 40 + (index * 520) / (points.length - 1)}<circle
-          cx="{x}"
-          cy="{170 - point.total * 5.6}"
+          cx={x}
+          cy={170 - point.total * 5.6}
           r="5"
           fill="#526746"
-        ></circle><text x="{x}" y="{158 - point.total * 5.6}" text-anchor="middle"
+        ></circle><text x={x} y={158 - point.total * 5.6} text-anchor="middle"
           >{point.total.toFixed(1)}</text
-        ><text x="{x}" y="193" text-anchor="middle"
+        ><text x={x} y="193" text-anchor="middle"
           >{new Date(point.completedAt).toLocaleDateString('ja-JP', {
             timeZone: 'Asia/Tokyo',
             month: 'numeric',

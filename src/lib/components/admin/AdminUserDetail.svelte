@@ -30,12 +30,12 @@
   const retry = () => report.load($user?.uid ?? null, endpoint, true)
 </script>
 
-<button class="ops-link" on:click="{() => dispatch('back')}">← 利用者一覧に戻る</button>
+<button class="ops-link" on:click={() => dispatch('back')}>← 利用者一覧に戻る</button>
 <AdminReportState
-  pending="{$report.pending}"
-  error="{$report.error}"
-  ready="{!!$report.data}"
-  on:retry="{retry}"
+  pending={$report.pending}
+  error={$report.error}
+  ready={!!$report.data}
+  on:retry={retry}
 >
   {#if $report.data}{@const view = $report.data}
     <div class="ops-header">
@@ -168,7 +168,7 @@
             <meter
               min="0"
               max="100"
-              value="{relationship?.affinity ?? 0}"
+              value={relationship?.affinity ?? 0}
               aria-label="{character.name}の好感度"
             ></meter>
           </div>{/each}

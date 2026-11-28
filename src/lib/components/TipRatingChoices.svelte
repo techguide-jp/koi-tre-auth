@@ -8,16 +8,15 @@
   export let disabled = false
 </script>
 
-<fieldset disabled="{disabled || saving !== null}" aria-busy="{saving !== null}">
+<fieldset disabled={disabled || saving !== null} aria-busy={saving !== null}>
   <legend>{prompt}</legend>
   <div class="choices">
     {#each tipSelfRatings as rating}
       <button
         type="button"
-        class:selected="{selected === rating.id}"
-        aria-pressed="{selected === rating.id}"
-        on:click="{() => choose(rating.id)}"
-        >{saving === rating.id ? '保存中…' : rating.label}</button
+        class:selected={selected === rating.id}
+        aria-pressed={selected === rating.id}
+        on:click={() => choose(rating.id)}>{saving === rating.id ? '保存中…' : rating.label}</button
       >
     {/each}
   </div>

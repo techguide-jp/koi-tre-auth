@@ -156,7 +156,7 @@
   {#if $user}<section class="account-strip" aria-label="今月の練習">
       <div>
         <p class="section-label">あなたの練習</p>
-        {#if overview?.billing}<BillingBalance billing="{overview.billing}" />{:else if overview}<p>
+        {#if overview?.billing}<BillingBalance billing={overview.billing} />{:else if overview}<p>
             今月はあと <strong>{overview.remaining}枠</strong> / {overview.limit}枠{overview.reserved
               ? `（ほかに${overview.reserved}枠を処理中）`
               : ''}
@@ -170,27 +170,27 @@
       <div class="account-actions">
         {#if overview?.activePracticeId}<a
             class="button primary"
-            href="{`/practice/${overview.activePracticeId}`}">途中の会話を続ける →</a
+            href={`/practice/${overview.activePracticeId}`}>途中の会話を続ける →</a
           >{/if}{#if overview?.latestPracticeId && overview.latestPracticeId !== overview.activePracticeId}<a
-            href="{`/practice/${overview.latestPracticeId}`}">前回の振り返りを見る</a
+            href={`/practice/${overview.latestPracticeId}`}>前回の振り返りを見る</a
           >{/if}
       </div>
     </section>
-    {#if progress}<AdventureProgressPanel progress="{progress}" />{/if}{/if}
+    {#if progress}<AdventureProgressPanel progress={progress} />{/if}{/if}
   <AdventureLobby
-    guest="{!$user}"
-    progress="{progress}"
-    loading="{!$authReady || (!!$user && !progress)}"
-    disabled="{!$authReady || !!pendingScene}"
-    pending="{pendingScene === 'adventure'}"
-    on:start="{(event) => begin('adventure', undefined, event.detail)}"
+    guest={!$user}
+    progress={progress}
+    loading={!$authReady || (!!$user && !progress)}
+    disabled={!$authReady || !!pendingScene}
+    pending={pendingScene === 'adventure'}
+    on:start={(event) => begin('adventure', undefined, event.detail)}
   />
   {#if message}<div class="message-area">
       <p class="error" role="alert">{message}</p>
       {#if $user}<button
           class="button secondary"
-          disabled="{loading || !!pendingScene}"
-          on:click="{loadOverview}">{loading ? '読み込み中…' : '足あとを再取得'}</button
+          disabled={loading || !!pendingScene}
+          on:click={loadOverview}>{loading ? '読み込み中…' : '足あとを再取得'}</button
         >{/if}
     </div>{/if}
   {#if !adminPlay && overview?.remaining === 0}<p class="notice">
@@ -198,10 +198,10 @@
     </p>{/if}
   <section class="custom-section" aria-label="自分で場面を設定する">
     <CustomSceneForm
-      disabled="{!$authReady || !!pendingScene || (!adminPlay && customRemaining === 0)}"
-      adminPlay="{adminPlay}"
-      pending="{pendingScene === 'custom'}"
-      on:start="{(event) => begin('custom', event.detail)}"
+      disabled={!$authReady || !!pendingScene || (!adminPlay && customRemaining === 0)}
+      adminPlay={adminPlay}
+      pending={pendingScene === 'custom'}
+      on:start={(event) => begin('custom', event.detail)}
     />
   </section>
   <section class="reasons" aria-labelledby="reasons-title">
@@ -264,7 +264,7 @@
     <p class="section-label">会う日の前に</p>
     <h2 id="guides-title">会話のヒントを、ひとつ。</h2>
     <div>
-      {#each guides.slice(0, 3) as guide}<a href="{`/guides/${guide.slug}`}"
+      {#each guides.slice(0, 3) as guide}<a href={`/guides/${guide.slug}`}
           >{guide.title} <span aria-hidden="true">↗</span></a
         >{/each}
     </div>

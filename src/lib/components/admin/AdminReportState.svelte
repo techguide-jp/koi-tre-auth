@@ -18,7 +18,7 @@
   </p>
 {:else if error}<section class="ops-panel ops-error" role="alert">
     <p>{error}</p>
-    <button on:click="{() => dispatch('retry')}">再読み込み</button>
+    <button on:click={() => dispatch('retry')}>再読み込み</button>
   </section>
 {:else if ready}<slot />
 {:else}<p role="status">情報を読み込んでいます…</p>{/if}

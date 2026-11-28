@@ -56,24 +56,24 @@
       <p>会話したキャラクターや、保存したひと言を読み返せます。</p>
       <a class="button primary" href="/login?returnTo=memories">Googleでログイン</a>
     </section>{:else if progress}<AdventureProgressPanel
-      progress="{progress}"
+      progress={progress}
     />{#if progress.memories.length === 0}<section class="empty">
         <h2>最初の一枚を、ここに。</h2>
         <p>エピソードを終えると、思い出が増えていきます。</p>
         <a class="button primary" href="/#scenes">お相手を選ぶ →</a>
       </section>{:else}<MemoryGallery
-        memories="{progress.memories}"
+        memories={progress.memories}
       />{/if}{#if progress.favorites.length}<section class="favorites">
         <p class="eyebrow">あなたの、心に残ったひと言</p>
         <h2>言葉のコレクション</h2>
-        {#each progress.favorites as favorite}<a href="{`/practice/${favorite.practiceId}`}"
+        {#each progress.favorites as favorite}<a href={`/practice/${favorite.practiceId}`}
             ><span
               >{characterById(favorite.characterId)?.name}との会話 · {favorite.position}回目</span
             >
             <blockquote>「{favorite.text}」</blockquote></a
           >{/each}
       </section>{/if}{/if}{#if message}<p class="error" role="alert">{message}</p>
-    <button class="button secondary" disabled="{loading}" on:click="{load}"
+    <button class="button secondary" disabled={loading} on:click={load}
       >{loading ? '読み込み中…' : 'もう一度開く'}</button
     >{/if}
 </div>

@@ -6,7 +6,7 @@
 </script>
 
 <div class="analysis">
-  <PracticeAspectChart analysis="{analysis}" assessment="{assessment}" />
+  <PracticeAspectChart analysis={analysis} assessment={assessment} />
 
   <section class="next-practice" aria-labelledby="analysis-next">
     <span class="next-icon" aria-hidden="true">↗</span>
