@@ -8,8 +8,11 @@ const manifestFile = '.svelte-kit/vercel-tmp/manifest.js'
 const directManifest = path.join(functionRoot, manifestFile)
 const tracedManifests = existsSync(directManifest)
   ? [manifestFile]
-  : readdirSync(functionRoot, { recursive: true }).filter((file) => file.endsWith(`/${manifestFile}`))
-if (tracedManifests.length !== 1) throw new Error('Vercelのcatchallのmanifestを一意に特定できません。')
+  : readdirSync(functionRoot, { recursive: true }).filter((file) =>
+      file.endsWith(`/${manifestFile}`)
+    )
+if (tracedManifests.length !== 1)
+  throw new Error('Vercelのcatchallのmanifestを一意に特定できません。')
 const manifestPath = path.join(functionRoot, tracedManifests[0])
 const { manifest } = await import(pathToFileURL(manifestPath).href)
 
