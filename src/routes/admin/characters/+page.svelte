@@ -185,10 +185,10 @@
   {:else}
     <nav class="people" aria-label="編集する人物">
       {#each characters as character}<button
-          class:chosen="{selected === character.id}"
-          disabled="{!!pending}"
-          aria-pressed="{selected === character.id}"
-          on:click="{() => load(character.id)}"
+          class:chosen={selected === character.id}
+          disabled={!!pending}
+          aria-pressed={selected === character.id}
+          on:click={() => load(character.id)}
           ><strong>{character.name}</strong><span>{character.age}歳 · {character.subtitle}</span
           ></button
         >{/each}
@@ -215,9 +215,9 @@
       <div class="editor-layout">
         <nav class="sections" aria-label="人物設定の項目">
           {#each characterSections as item}<button
-              aria-current="{section === item.id ? 'page' : undefined}"
-              disabled="{!!pending}"
-              on:click="{() => chooseSection(item.id)}">{item.label}</button
+              aria-current={section === item.id ? 'page' : undefined}
+              disabled={!!pending}
+              on:click={() => chooseSection(item.id)}>{item.label}</button
             >{/each}
         </nav>
         <section class="panel editor">
@@ -227,15 +227,15 @@
                 {message}
               </p>{/if}{#if success}<p class="notice" role="status">{success}</p>{/if}{/if}
           <CharacterPolicyEditor
-            bind:content="{content}"
-            section="{section}"
-            pending="{!!pending}"
-            saving="{pending === 'save'}"
-            needsInitialSave="{view.revision === 0}"
-            dirty="{dirty}"
-            onsave="{() => mutate('save')}"
-            ondiscard="{discard}"
-            onchange="{changed}"
+            bind:content={content}
+            section={section}
+            pending={!!pending}
+            saving={pending === 'save'}
+            needsInitialSave={view.revision === 0}
+            dirty={dirty}
+            onsave={() => mutate('save')}
+            ondiscard={discard}
+            onchange={changed}
           />
         </section>
       </div>
@@ -246,21 +246,18 @@
         {#if feedbackTarget === 'publication'}{#if message}<p class="error" role="alert">
               {message}
             </p>{/if}{#if success}<p class="notice" role="status">{success}</p>{/if}{/if}
-        <form
-          on:submit|preventDefault="{() => mutate('preview')}"
-          aria-busy="{pending === 'preview'}"
-        >
-          <fieldset disabled="{!!pending || dirty || view.revision === 0}">
+        <form on:submit|preventDefault={() => mutate('preview')} aria-busy={pending === 'preview'}>
+          <fieldset disabled={!!pending || dirty || view.revision === 0}>
             <label
-              >確認する場面<select bind:value="{episodeId}"
-                >{#each ownEpisodes as episode}<option value="{episode.id}"
+              >確認する場面<select bind:value={episodeId}
+                >{#each ownEpisodes as episode}<option value={episode.id}
                     >第{episode.chapter}話 · {episode.title}</option
                   >{/each}</select
               ></label
             >
             <p class="opener">{ownEpisodes.find((e) => e.id === episodeId)?.opener}</p>
             <label
-              >話しかける言葉<textarea rows="3" maxlength="500" bind:value="{text}" required
+              >話しかける言葉<textarea rows="3" maxlength="500" bind:value={text} required
               ></textarea></label
             ><button class="button secondary" type="submit"
               >{pending === 'preview' ? '返信を生成中…' : 'この人物の返信を試す'}</button
@@ -280,25 +277,21 @@
             <p>この下書きで確認した返信</p>
             <blockquote>{view.preview?.reply}</blockquote>
           </div>{/if}
-        <form class="publish" on:submit|preventDefault="{() => mutate('publish')}">
+        <form class="publish" on:submit|preventDefault={() => mutate('publish')}>
           <label
-            >公開メモ（任意）<input
-              maxlength="200"
-              bind:value="{note}"
-              disabled="{!!pending}"
-            /></label
+            >公開メモ（任意）<input maxlength="200" bind:value={note} disabled={!!pending} /></label
           >
           <label class="checkbox"
             ><input
               type="checkbox"
-              bind:checked="{reviewed}"
-              disabled="{!!pending || dirty || !checked}"
+              bind:checked={reviewed}
+              disabled={!!pending || dirty || !checked}
             /> 返信の内容を確認しました</label
           >
           <button
             class="button primary"
             type="submit"
-            disabled="{!!pending || dirty || !checked || !reviewed}"
+            disabled={!!pending || dirty || !checked || !reviewed}
             >{pending === 'publish' ? '公開中…' : `${person.name}の設定を公開`}</button
           >
         </form>
@@ -319,8 +312,8 @@
             </div>
             <button
               class="button secondary"
-              disabled="{!!pending || dirty || view.active?.id === release.id}"
-              on:click="{() => mutate('activate', release.id)}"
+              disabled={!!pending || dirty || view.active?.id === release.id}
+              on:click={() => mutate('activate', release.id)}
               >{pending === 'activate' && reverting === release.id
                 ? '切替中…'
                 : 'この版に戻す'}</button

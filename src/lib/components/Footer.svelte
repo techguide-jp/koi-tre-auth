@@ -42,7 +42,7 @@
           <div class="link-group">
             <h2>{group.title}</h2>
             <ul>
-              {#each group.links as link}<li><a href="{link.href}">{link.label}</a></li>{/each}
+              {#each group.links as link}<li><a href={link.href}>{link.label}</a></li>{/each}
             </ul>
           </div>
         {/each}

@@ -21,23 +21,21 @@
 
 <button
   class="art-open"
-  aria-label="{`${character.name}の「${art.title}」のイラストを大きく見る`}"
+  aria-label={`${character.name}の「${art.title}」のイラストを大きく見る`}
   aria-haspopup="dialog"
-  on:click="{open}"
+  on:click={open}
 >
-  <SceneArtwork art="{art}" priority="{priority}" />
+  <SceneArtwork art={art} priority={priority} />
   <span class="view-label">大きく見る <span aria-hidden="true">↗</span></span>
 </button>
 <dialog
-  bind:this="{dialog}"
-  aria-label="{`${character.name}の「${art.title}」の専用イラスト`}"
-  on:close="{() => (opened = false)}"
+  bind:this={dialog}
+  aria-label={`${character.name}の「${art.title}」の専用イラスト`}
+  on:close={() => (opened = false)}
 >
   {#if opened}<div class="viewer">
-      <button class="close" aria-label="イラストを閉じる" on:click="{() => dialog.close()}"
-        >×</button
-      >
-      <SceneArtwork art="{art}" priority retryable />
+      <button class="close" aria-label="イラストを閉じる" on:click={() => dialog.close()}>×</button>
+      <SceneArtwork art={art} priority retryable />
       <div class="viewer-caption">
         <p>SCENE COLLECTION · {character.name}</p>
         <h2>{art.title}</h2>

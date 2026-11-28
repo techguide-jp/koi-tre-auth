@@ -133,9 +133,9 @@
           </p>{/if}{/if}
     </div>{/if}<button
     class="button primary"
-    on:click="{login}"
-    disabled="{pending || (!adminLogin && isCustom && !scene && !practiceId)}"
-    aria-busy="{pending}"
+    on:click={login}
+    disabled={pending || (!adminLogin && isCustom && !scene && !practiceId)}
+    aria-busy={pending}
     >{pending
       ? '準備しています…'
       : adminLogin
@@ -159,9 +159,9 @@
   {:else}
     <p class="small muted">練習で名前・性別・年齢を入力する必要はありません。</p>
     <a
-      href="{isCustom && $page.url.searchParams.get('preset') !== '1'
+      href={isCustom && $page.url.searchParams.get('preset') !== '1'
         ? '/#custom-scene'
-        : '/#scenes'}"
+        : '/#scenes'}
       class="text-link">場面選択に戻る</a
     >
   {/if}

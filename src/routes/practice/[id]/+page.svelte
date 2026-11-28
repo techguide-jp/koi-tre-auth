@@ -301,14 +301,14 @@
   /></svelte:head
 >
 <div class="practice-shell">
-  <a class="text-link" href="{session?.adventure?.trial ? '/try#scenes' : '/#scenes'}"
+  <a class="text-link" href={session?.adventure?.trial ? '/try#scenes' : '/#scenes'}
     >← お相手・場面選択へ</a
   >
   {#if !$authReady}<p role="status" class="notice">ログイン状態を確認しています…</p>
   {:else if !$user && !guestRoute}<section class="card empty">
       <h1>ログインして続きを練習</h1>
       <p>練習したアカウントでログインすると、会話を再開できます。</p>
-      <a class="button primary" href="{`/login?practice=${$page.params.id}`}">Googleでログイン</a>
+      <a class="button primary" href={`/login?practice=${$page.params.id}`}>Googleでログイン</a>
     </section>
   {:else if claiming}<p class="notice" role="status">体験の会話と評価を保存しています…</p>
   {:else if session && scene}
@@ -326,15 +326,15 @@
           : `${Math.min(session.turns.length + 1, turnLimit)} / ${turnLimit}`}</span
       >
     </header>
-    <div class="progress-track" aria-label="{`${session.turns.length}回返答済み`}">
-      <span style="{`width:${(session.turns.length / turnLimit) * 100}%`}"></span>
+    <div class="progress-track" aria-label={`${session.turns.length}回返答済み`}>
+      <span style={`width:${(session.turns.length / turnLimit) * 100}%`}></span>
     </div>
     {#if character && episode && session.adventure}
       {#if !session.completedAt}
-        <div bind:this="{reactionAnchor}"></div>
+        <div bind:this={reactionAnchor}></div>
         <section
           class="character-stage {episode.theme}"
-          aria-label="{`${character.name}のリアクション`}"
+          aria-label={`${character.name}のリアクション`}
         >
           <div class="stage-caption">
             <span>{character.name} · {character.age}歳</span><span class="ai-label"
@@ -343,8 +343,8 @@
           </div>
           <div class="stage-art">
             <CharacterPortrait
-              characterId="{character.id}"
-              emotion="{presentation?.emotion ?? 'neutral'}"
+              characterId={character.id}
+              emotion={presentation?.emotion ?? 'neutral'}
             />
           </div>
           <div class="stage-mood" aria-live="polite">
@@ -353,7 +353,7 @@
           </div>
           <div class="stage-dialogue">
             <p>{session.turns.at(-1)?.assistantText ?? scene.opener}</p>
-            {#if session.adventure.trial}<ListenToCharacter text="{scene.opener}" />{/if}
+            {#if session.adventure.trial}<ListenToCharacter text={scene.opener} />{/if}
           </div>
         </section>
       {/if}
@@ -376,7 +376,7 @@
         </div>
       </aside>
     {/if}
-    <svelte:element this="{session.adventure ? 'details' : 'div'}" class="conversation-log">
+    <svelte:element this={session.adventure ? 'details' : 'div'} class="conversation-log">
       {#if session.adventure}<summary
           >これまでの会話を読む <span>{session.turns.length}往復</span></summary
         >{/if}
@@ -395,15 +395,15 @@
           </div>{/each}
       </section>
     </svelte:element>
-    <div bind:this="{bottom}" tabindex="-1" aria-label="練習結果"></div>
+    <div bind:this={bottom} tabindex="-1" aria-label="練習結果"></div>
     {#if waitingTipRequestId}
       {#key waitingTipRequestId}
         <PracticeWaitTip
-          practiceId="{session.id}"
-          requestId="{waitingTipRequestId}"
-          guest="{guestMode}"
-          ready="{resultReady}"
-          dismiss="{dismissWaitingTip}"
+          practiceId={session.id}
+          requestId={waitingTipRequestId}
+          guest={guestMode}
+          ready={resultReady}
+          dismiss={dismissWaitingTip}
         />
       {/key}
     {/if}
@@ -414,18 +414,18 @@
     {#if session.completedAt && feedback && !waitingTipRequestId}
       {#if guestMode || session.adventure?.trial}
         <GuestPracticeResult
-          session="{session}"
-          guest="{guestMode}"
-          signedIn="{!!$user}"
-          animateAffinity="{animateAffinity}"
+          session={session}
+          guest={guestMode}
+          signedIn={!!$user}
+          animateAffinity={animateAffinity}
         />
       {:else if session.adventure}<AdventureResult
-          session="{session}"
-          enabled="{data.practiceEnabled}"
-          starting="{restarting}"
-          animateAffinity="{animateAffinity}"
-          on:update="{(event) => applySession(event.detail)}"
-          on:next="{(event) => nextAdventure(event.detail)}"
+          session={session}
+          enabled={data.practiceEnabled}
+          starting={restarting}
+          animateAffinity={animateAffinity}
+          on:update={(event) => applySession(event.detail)}
+          on:next={(event) => nextAdventure(event.detail)}
         />{/if}
       <section class="card feedback" aria-label="練習の振り返り">
         <p class="eyebrow">会話を、次につなげよう。</p>
@@ -433,12 +433,12 @@
         <p class="muted">{turnLimit}回のやりとりを振り返り、あなたの言葉をもっと話しやすく。</p>
         {#if feedback.analysis}
           <PracticeAnalysis
-            analysis="{feedback.analysis}"
-            assessment="{session.evaluation?.assessment}"
+            analysis={feedback.analysis}
+            assessment={session.evaluation?.assessment}
           />
         {:else}
           {#if session.evaluation?.assessment}<PracticeAspectChart
-              assessment="{session.evaluation.assessment}"
+              assessment={session.evaluation.assessment}
             />{/if}
           <div class="feedback-item">
             <h3><span aria-hidden="true">✦</span> よかった点</h3>
@@ -463,12 +463,12 @@
         <div class="result-actions">
           {#if !guestMode && !session.adventure?.trial}<button
               class="button primary"
-              disabled="{restarting || !data.practiceEnabled}"
-              aria-busy="{restarting}"
-              on:click="{restart}">{restarting ? '準備しています…' : '同じ場面でもう一度'}</button
+              disabled={restarting || !data.practiceEnabled}
+              aria-busy={restarting}
+              on:click={restart}>{restarting ? '準備しています…' : '同じ場面でもう一度'}</button
             >{/if}<a
             class="button secondary"
-            href="{session.adventure?.trial ? '/try#scenes' : '/#scenes'}"
+            href={session.adventure?.trial ? '/try#scenes' : '/#scenes'}
             >{guestMode || session.adventure?.trial ? '別のお相手を選ぶ' : '別の場面を選ぶ'}</a
           >
         </div>
@@ -488,24 +488,24 @@
     {:else if !data.practiceEnabled}<p class="notice">
         練習の送信は現在停止しています。保存済みの会話は引き続き確認できます。
       </p>
-    {:else}<form class="composer card" on:submit|preventDefault="{send}">
+    {:else}<form class="composer card" on:submit|preventDefault={send}>
         <label for="reply">{scene.partnerName}さんへ · {session.turns.length + 1}回目の返答</label>
         <p class="small muted">{scene.hint}</p>
         <textarea
           id="reply"
-          bind:value="{text}"
-          on:input="{saveDraft}"
+          bind:value={text}
+          on:input={saveDraft}
           rows="3"
-          maxlength="{MAX_MESSAGE_LENGTH}"
-          disabled="{pending}"
-          placeholder="{`${scene.partnerName}さんに、どう返しますか？`}"
+          maxlength={MAX_MESSAGE_LENGTH}
+          disabled={pending}
+          placeholder={`${scene.partnerName}さんに、どう返しますか？`}
           required
         ></textarea>
         <div class="composer-actions">
           <span class="small muted">{text.length} / {MAX_MESSAGE_LENGTH}</span><button
             class="button primary"
-            disabled="{pending || !text.trim()}"
-            aria-busy="{pending}"
+            disabled={pending || !text.trim()}
+            aria-busy={pending}
             >{pending
               ? finalReply
                 ? '分析をまとめています…'
@@ -533,8 +533,8 @@
       <h1>会話を読み込めませんでした</h1>
       {#if message}<p class="error" role="alert">{message}</p>{/if}<button
         class="button secondary"
-        on:click="{retryLoad}"
-        disabled="{loading}">{loading ? '読み込み中…' : 'もう一度読み込む'}</button
+        on:click={retryLoad}
+        disabled={loading}>{loading ? '読み込み中…' : 'もう一度読み込む'}</button
       >
     </section>{/if}
 </div>

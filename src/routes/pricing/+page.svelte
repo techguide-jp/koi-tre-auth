@@ -116,7 +116,7 @@
       有料プランは準備中です。出会い編と無料の練習をお楽しみください。
     </p>{/if}
   <p class="small muted">料金はすべて税込。3往復＝1枠、6往復＝2枠です。</p>
-  <p class="small"><a href="{COMMERCE_DISCLOSURE_PATH}">{COMMERCE_DISCLOSURE_TITLE}</a></p>
+  <p class="small"><a href={COMMERCE_DISCLOSURE_PATH}>{COMMERCE_DISCLOSURE_TITLE}</a></p>
 </section>
 <div class="plan-grid">
   <article class="plan">
@@ -149,9 +149,9 @@
     </ul>
     {#if subscribed}<a class="button secondary" href="/account">契約を確認する</a>{:else}<button
         class="button secondary"
-        disabled="{!data.billingReady || !$authReady || !!pendingKey || (!!$user && !progress)}"
-        aria-busy="{pendingKey === 'plus'}"
-        on:click="{() => purchase({ kind: 'plus' })}"
+        disabled={!data.billingReady || !$authReady || !!pendingKey || (!!$user && !progress)}
+        aria-busy={pendingKey === 'plus'}
+        on:click={() => purchase({ kind: 'plus' })}
         >{pendingKey === 'plus'
           ? '購入画面を準備中…'
           : !data.billingReady
@@ -187,9 +187,9 @@
   </p>
   <button
     class="button secondary"
-    disabled="{!data.billingReady || !$authReady || !!pendingKey}"
-    aria-busy="{pendingKey === 'topup'}"
-    on:click="{() => purchase({ kind: 'topup' })}"
+    disabled={!data.billingReady || !$authReady || !!pendingKey}
+    aria-busy={pendingKey === 'topup'}
+    on:click={() => purchase({ kind: 'topup' })}
     >{pendingKey === 'topup'
       ? '購入画面を準備中…'
       : data.billingReady
@@ -206,20 +206,20 @@
   </p>
   <div class="gender-tabs">
     <button
-      class:active="{gender === 'male'}"
-      aria-pressed="{gender === 'male'}"
-      on:click="{() => (gender = 'male')}">男性のキャラクター</button
+      class:active={gender === 'male'}
+      aria-pressed={gender === 'male'}
+      on:click={() => (gender = 'male')}>男性のキャラクター</button
     ><button
-      class:active="{gender === 'female'}"
-      aria-pressed="{gender === 'female'}"
-      on:click="{() => (gender = 'female')}">女性のキャラクター</button
+      class:active={gender === 'female'}
+      aria-pressed={gender === 'female'}
+      on:click={() => (gender = 'female')}>女性のキャラクター</button
     >
   </div>
   {#if gender}<div class="pack-grid">
       {#each roster as person}{@const key = `route:${person.id}`}
         <article class="pack {person.color}">
           <div class="portrait-wrap">
-            <CharacterPortrait characterId="{person.id}" variant="introduction" />
+            <CharacterPortrait characterId={person.id} variant="introduction" />
           </div>
           <div class="pack-copy">
             <p class="eyebrow">{person.age}歳 · {person.subtitle}</p>
@@ -231,9 +231,9 @@
                 href="/?character={person.id}#scenes">購入済み・物語へ →</a
               >{:else}<button
                 class="button primary"
-                disabled="{!data.billingReady || !$authReady || !!pendingKey}"
-                aria-busy="{pendingKey === key}"
-                on:click="{() => purchase({ kind: 'route', characterId: person.id })}"
+                disabled={!data.billingReady || !$authReady || !!pendingKey}
+                aria-busy={pendingKey === key}
+                on:click={() => purchase({ kind: 'route', characterId: person.id })}
                 >{pendingKey === key
                   ? '購入画面を準備中…'
                   : data.billingReady

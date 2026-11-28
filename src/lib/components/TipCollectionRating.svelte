@@ -74,10 +74,10 @@
   {/if}
   {#if ratings && !loading}
     <TipRatingChoices
-      prompt="{tip.prompt}"
-      selected="{ratings[0]?.value}"
-      saving="{saving}"
-      choose="{choose}"
+      prompt={tip.prompt}
+      selected={ratings[0]?.value}
+      saving={saving}
+      choose={choose}
     />
     {#if message}<p class="saved" role="status">{message}</p>{/if}
     <h3>自己評価の推移</h3>
@@ -85,7 +85,7 @@
       <ol aria-label="自己評価の推移">
         {#each ratings as rating, index (rating.id)}
           <li>
-            <time datetime="{rating.ratedAt}">{formatter.format(new Date(rating.ratedAt))}</time>
+            <time datetime={rating.ratedAt}>{formatter.format(new Date(rating.ratedAt))}</time>
             <strong>{tipRatingLabel(rating.value)}</strong>
             {#if index === 0}<span>最新</span>{/if}
           </li>
@@ -95,7 +95,7 @@
       <p class="muted">自己評価を選ぶと、ここに記録されます。</p>
     {/if}
   {:else if failure && !loading}
-    <button class="button secondary" type="button" on:click="{load}">履歴を読み直す</button>
+    <button class="button secondary" type="button" on:click={load}>履歴を読み直す</button>
   {/if}
 </div>
 

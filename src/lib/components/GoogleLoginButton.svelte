@@ -7,7 +7,7 @@
   }
 </script>
 
-<button class="gsi-material-button" on:click="{navigateToLogin}">
+<button class="gsi-material-button" on:click={navigateToLogin}>
   <div class="gsi-material-button-state"></div>
   <div class="gsi-material-button-content-wrapper">
     <div class="gsi-material-button-icon">

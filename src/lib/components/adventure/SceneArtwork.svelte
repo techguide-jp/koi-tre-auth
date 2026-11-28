@@ -23,17 +23,17 @@
   }
 </script>
 
-<div class="scene-art" aria-busy="{state === 'loading'}">
+<div class="scene-art" aria-busy={state === 'loading'}>
   <div class="cell">
     <img
-      bind:this="{image}"
-      src="{source}"
+      bind:this={image}
+      src={source}
       alt="{art.title}の専用イラスト"
-      loading="{priority ? 'eager' : 'lazy'}"
+      loading={priority ? 'eager' : 'lazy'}
       decoding="async"
-      style="{`width:${art.columns * 100}%;height:${art.rows * 100}%;left:${-art.column * 100}%;top:${-art.row * 100}%`}"
-      on:load="{() => (state = 'ready')}"
-      on:error="{() => (state = 'error')}"
+      style={`width:${art.columns * 100}%;height:${art.rows * 100}%;left:${-art.column * 100}%;top:${-art.row * 100}%`}
+      on:load={() => (state = 'ready')}
+      on:error={() => (state = 'error')}
     />
   </div>
   {#if state !== 'ready'}<div class="image-state" role="status">
@@ -41,7 +41,7 @@
       <p>{state === 'loading' ? '一枚を、開いています…' : 'イラストを読み込めませんでした。'}</p>
     </div>{/if}
 </div>
-{#if state === 'error' && retryable}<button class="button secondary retry" on:click="{retry}"
+{#if state === 'error' && retryable}<button class="button secondary retry" on:click={retry}
     >もう一度読み込む</button
   >{/if}
 

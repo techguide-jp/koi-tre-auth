@@ -42,7 +42,7 @@
   {#if !data.practiceEnabled}
     <p role="status">会話の体験はただいま準備中です。</p>
   {:else}
-    <AdventureLobby guest pending="{pending}" on:start="{(event) => start(event.detail)}" />
+    <AdventureLobby guest pending={pending} on:start={(event) => start(event.detail)} />
     {#if message}<p role="alert" class="error">{message}</p>{/if}
   {/if}
   <aside class="more-links">

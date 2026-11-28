@@ -151,23 +151,23 @@
   </div>
   <div class="mode-tabs" aria-label="遊び方を選ぶ">
     <button
-      class:active="{mode === 'story'}"
-      aria-pressed="{mode === 'story'}"
-      disabled="{pending}"
-      on:click="{() => {
+      class:active={mode === 'story'}
+      aria-pressed={mode === 'story'}
+      disabled={pending}
+      on:click={() => {
         touched = true
         continueStory()
-      }}">物語を進める</button
+      }}>物語を進める</button
     ><button
-      class:active="{mode === 'revisit'}"
-      aria-pressed="{mode === 'revisit'}"
-      disabled="{pending}"
-      on:click="{() => changeMode('revisit')}">クリア済みパートを練習</button
+      class:active={mode === 'revisit'}
+      aria-pressed={mode === 'revisit'}
+      disabled={pending}
+      on:click={() => changeMode('revisit')}>クリア済みパートを練習</button
     ><button
-      class:active="{mode === 'life'}"
-      aria-pressed="{mode === 'life'}"
-      disabled="{pending}"
-      on:click="{() => changeMode('life')}">今の二人・イベント</button
+      class:active={mode === 'life'}
+      aria-pressed={mode === 'life'}
+      disabled={pending}
+      on:click={() => changeMode('life')}>今の二人・イベント</button
     >
   </div>
   {#if mode === 'revisit'}<p class="mode-note">
@@ -181,13 +181,13 @@
             (e.chapter ?? 0) <= item.to &&
             completed.includes(episodeKey(characterId, e.id))
         ).length}<button
-          class:active="{partId === item.id}"
-          aria-pressed="{partId === item.id}"
-          disabled="{pending}"
-          on:click="{() => {
+          class:active={partId === item.id}
+          aria-pressed={partId === item.id}
+          disabled={pending}
+          on:click={() => {
             touched = true
             choosePart(item.id)
-          }}"
+          }}
           ><strong>{item.label}</strong><span
             >{done} / 3話{adminPlay
               ? ' · 管理者'
@@ -214,14 +214,14 @@
           new Date(),
           progress?.progression
         )}<button
-          class:active="{episodeId === item.id}"
-          class:locked="{state !== 'available'}"
-          disabled="{pending || (mode === 'revisit' && !done)}"
-          aria-pressed="{episodeId === item.id}"
-          on:click="{() => {
+          class:active={episodeId === item.id}
+          class:locked={state !== 'available'}
+          disabled={pending || (mode === 'revisit' && !done)}
+          aria-pressed={episodeId === item.id}
+          on:click={() => {
             touched = true
             chooseEpisode(item.id)
-          }}"
+          }}
           ><span class="chapter"
             >EP.{item.chapter} · {done
               ? 'クリア'
@@ -252,18 +252,18 @@
     <h4>日常のひと場面</h4>
     <div class="life-scenes">
       {#each dailyEpisodes as item}<button
-          class:active="{episodeId === item.id}"
-          disabled="{pending}"
-          on:click="{() => chooseEpisode(item.id)}"
+          class:active={episodeId === item.id}
+          disabled={pending}
+          on:click={() => chooseEpisode(item.id)}
           ><strong>{item.title}</strong><span>{item.subtitle}</span></button
         >{/each}
     </div>
     <h4>季節のイベント・アーカイブ</h4>
     <div class="life-scenes">
       {#each events as item}<button
-          class:active="{episodeId === item.id}"
-          disabled="{pending}"
-          on:click="{() => chooseEpisode(item.id)}"
+          class:active={episodeId === item.id}
+          disabled={pending}
+          on:click={() => chooseEpisode(item.id)}
           ><strong>{item.title}</strong><span>{item.subtitle}</span></button
         >{/each}
     </div>
@@ -273,22 +273,20 @@
         : '加入中'}いつでも遊べます。
     </p>
   {/if}
-  <details class="other-scenes" open="{mode === 'scene'}">
+  <details class="other-scenes" open={mode === 'scene'}>
     <summary>場面から練習する <span>誘う・断る・気持ちを伝えるなど</span></summary>
     <div class="life-scenes">
       {#each episodes.filter((e) => !e.characterId) as item}<button
-          class:active="{episodeId === item.id}"
-          disabled="{pending}"
-          on:click="{() => {
+          class:active={episodeId === item.id}
+          disabled={pending}
+          on:click={() => {
             mode = 'scene'
             touched = true
             chooseEpisode(item.id)
-          }}"><strong>{item.title}</strong><span>{item.subtitle}</span></button
+          }}><strong>{item.title}</strong><span>{item.subtitle}</span></button
         >{/each}
     </div>
-    <button class="text-button" disabled="{pending}" on:click="{randomScene}"
-      >↻ おまかせで選ぶ</button
-    >
+    <button class="text-button" disabled={pending} on:click={randomScene}>↻ おまかせで選ぶ</button>
     <p class="small muted">
       共通場面でも好感度を深めたり、すれ違いを回復できます。物語の結末や過去の記憶は変わりません。
     </p>
@@ -307,9 +305,9 @@
       </p>
       <h3>{episode.title}</h3>
       {#if progress?.progression}<RelationshipMeter
-          name="{character.name}"
-          value="{relationship?.affinity ?? 0}"
-          required="{rule?.affinity ?? 0}"
+          name={character.name}
+          value={relationship?.affinity ?? 0}
+          required={rule?.affinity ?? 0}
         />{/if}
       {#if rule}<p class="stage-requirements">
           クリア目標 {rule.score} / 25点 · 配慮 {rule.consideration}点以上<br />この話の必要好感度 {rule.affinity}
@@ -330,12 +328,12 @@
       </div>
     </div>
     <div class="start-actions">
-      <fieldset disabled="{pending}">
+      <fieldset disabled={pending}>
         <legend>会話の長さ</legend><label
-          ><input type="radio" bind:group="{turns}" value="{3}" />さくっと3往復
+          ><input type="radio" bind:group={turns} value={3} />さくっと3往復
           <small>{adminPlay ? '利用枠消費なし' : '1枠'}・最大30XP</small></label
         ><label
-          ><input type="radio" bind:group="{turns}" value="{6}" />じっくり6往復
+          ><input type="radio" bind:group={turns} value={6} />じっくり6往復
           <small>{adminPlay ? '利用枠消費なし' : '2枠'}・最大70XP</small></label
         >
       </fieldset>
@@ -351,7 +349,7 @@
             (rule?.affinity ?? 0) - (relationship?.affinity ?? 0)
           )}必要です。解放済みの話や「場面から練習する」で会話を重ねましょう。
         </p>
-        <button class="button secondary" disabled="{pending}" on:click="{randomScene}"
+        <button class="button secondary" disabled={pending} on:click={randomScene}
           >好感度を深める場面を選ぶ ↻</button
         >
       {:else if access === 'purchase'}<a
@@ -369,9 +367,9 @@
         <p class="small muted">Plus 月980円・契約期間ごと60枠。</p>
       {:else}<button
           class="button primary"
-          disabled="{disabled || pending || access !== 'available' || !affordable}"
-          aria-busy="{pending}"
-          on:click="{() => dispatch('start', selected)}"
+          disabled={disabled || pending || access !== 'available' || !affordable}
+          aria-busy={pending}
+          on:click={() => dispatch('start', selected)}
           >{pending
             ? '場面を準備しています…'
             : mode === 'revisit'

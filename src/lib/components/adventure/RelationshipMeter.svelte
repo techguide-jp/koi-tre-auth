@@ -96,7 +96,7 @@
   }
 </script>
 
-<div class="relationship" class:celebrating="{celebrating}">
+<div class="relationship" class:celebrating={celebrating}>
   <div class="heading">
     <span>{name}との好感度</span>
     {#if preview}<span class="preview-label">体験演出</span>
@@ -104,23 +104,23 @@
   </div>
   <div
     class="heart-meter"
-    role="{preview ? undefined : 'progressbar'}"
-    aria-hidden="{preview ? 'true' : undefined}"
-    aria-label="{preview ? undefined : `${name}との好感度`}"
-    aria-valuemin="{preview ? undefined : 0}"
-    aria-valuemax="{preview ? undefined : 100}"
-    aria-valuenow="{preview ? undefined : current}"
-    aria-valuetext="{preview
+    role={preview ? undefined : 'progressbar'}
+    aria-hidden={preview ? 'true' : undefined}
+    aria-label={preview ? undefined : `${name}との好感度`}
+    aria-valuemin={preview ? undefined : 0}
+    aria-valuemax={preview ? undefined : 100}
+    aria-valuenow={preview ? undefined : current}
+    aria-valuetext={preview
       ? undefined
-      : `${current}点、100点満点。${affinityLabel(current)}。ハート1つで20点。`}"
-    style="{`--heart-mask:${heartMask}`}"
-    bind:this="{container}"
+      : `${current}点、100点満点。${affinityLabel(current)}。ハート1つで20点。`}
+    style={`--heart-mask:${heartMask}`}
+    bind:this={container}
   >
     {#each [0, 1, 2, 3, 4] as index}{@const level = heartLevel($displayed, index)}{@const changed =
         before !== null && heartLevel(before, index) < heartLevel(current, index)}
-      <div class="heart" class:changed="{changed}" aria-hidden="true">
+      <div class="heart" class:changed={changed} aria-hidden="true">
         <div class="heart-shape">
-          <div class="heart-liquid" style="{`height:${level * 0.9}%`}">
+          <div class="heart-liquid" style={`height:${level * 0.9}%`}>
             {#if level > 0 && level < 100}<svg
                 class="liquid-surface"
                 viewBox="0 0 200 12"
@@ -130,7 +130,7 @@
           </div>
         </div>
         <svg class="heart-glass" viewBox="0 0 100 100" fill="none">
-          <path class="heart-outline" d="{heartPath}"></path>
+          <path class="heart-outline" d={heartPath}></path>
           <path class="heart-shine" d="M16 32C16 19 27 14 35 19"></path>
         </svg>
         {#if changed && celebrating}<span class="heart-spark first">♥</span><span
@@ -152,7 +152,7 @@
         この話まで、あと<strong>{required - current}</strong>
       </p>{/if}
   {/if}
-  <slot name="reaction" active="{changing}" revealed="{revealed}" />
+  <slot name="reaction" active={changing} revealed={revealed} />
 </div>
 
 <style>

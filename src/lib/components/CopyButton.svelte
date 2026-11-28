@@ -33,9 +33,9 @@
   <button
     class="button secondary"
     type="button"
-    disabled="{pending}"
-    aria-busy="{pending}"
-    on:click="{copy}"
+    disabled={pending}
+    aria-busy={pending}
+    on:click={copy}
   >
     {pending ? 'コピー中…' : label}
   </button>

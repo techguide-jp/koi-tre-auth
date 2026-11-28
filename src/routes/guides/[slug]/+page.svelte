@@ -29,12 +29,12 @@
       <h2>この記事で読めること</h2>
       <ol>
         {#each guide.sections as section}<li>
-            <a href="{`#${section.id}`}">{section.title}</a>
+            <a href={`#${section.id}`}>{section.title}</a>
           </li>{/each}
       </ol>
     </nav>
     {#each guide.sections as section}
-      <section id="{section.id}" class="guide-section">
+      <section id={section.id} class="guide-section">
         <h2>{section.title}</h2>
         {#each section.paragraphs as paragraph}<p>{paragraph}</p>{/each}
         {#if section.tips}<ul>
@@ -65,8 +65,8 @@
       <p>{guide.practice}</p>
       <a
         class="button primary"
-        href="{`/login?scene=${guide.scene}`}"
-        on:click="{() => trackEvent('practice_cta_clicked', { source: guide.slug })}"
+        href={`/login?scene=${guide.scene}`}
+        on:click={() => trackEvent('practice_cta_clicked', { source: guide.slug })}
         >この場面をAIと練習する →</a
       >
       <p class="muted small">Googleログインが必要です。月10回無料・1回3往復と振り返り。</p>
@@ -78,7 +78,7 @@
     <h2 id="related-title">ほかの場面も読んでみる</h2>
     <div class="resource-grid">
       {#each guides.filter((item) => item.slug !== guide.slug) as related}
-        <a class="resource-card" href="{`/guides/${related.slug}`}"
+        <a class="resource-card" href={`/guides/${related.slug}`}
           ><p class="eyebrow">{related.category}</p>
           <h3>{related.title}</h3>
           <span class="text-link">会話例を読む →</span></a

@@ -215,9 +215,9 @@
     <div class="toolbar">
       <span>{$user.email}</span><button
         class="button secondary"
-        disabled="{!!pending}"
-        aria-busy="{pending === 'load'}"
-        on:click="{reload}">{pending === 'load' ? '読み込み中…' : '最新版を読み込む'}</button
+        disabled={!!pending}
+        aria-busy={pending === 'load'}
+        on:click={reload}>{pending === 'load' ? '読み込み中…' : '最新版を読み込む'}</button
       >
     </div>
     {#if view}
@@ -252,19 +252,15 @@
           >基本方針<textarea
             rows="10"
             maxlength="3000"
-            bind:value="{content.core}"
-            disabled="{!!pending}"
-            on:input="{changed}"
+            bind:value={content.core}
+            disabled={!!pending}
+            on:input={changed}
           ></textarea></label
         >
         <label class="field">
           分析と会話の照合
-          <select
-            bind:value="{content.feedbackReview}"
-            disabled="{!!pending}"
-            on:change="{changed}"
-          >
-            <option value="{undefined}">引用の一致を確認する（従来）</option>
+          <select bind:value={content.feedbackReview} disabled={!!pending} on:change={changed}>
+            <option value={undefined}>引用の一致を確認する（従来）</option>
             <option value="transcript-v1">回答の意味を会話全体で確認する</option>
           </select>
         </label>
@@ -282,12 +278,9 @@
           場面別のノウハウ、よい例・避けたい例、研究メモなど。場面と本文から関連箇所を選び、生成と評価に渡します。
         </p>
         <label class="field"
-          >検索方法<select
-            bind:value="{content.retrieval}"
-            disabled="{!!pending}"
-            on:change="{changed}"
+          >検索方法<select bind:value={content.retrieval} disabled={!!pending} on:change={changed}
             ><option value="scene-bm25-v2">関連する別文書を最大3件（推奨）</option>
-            <option value="{undefined}">従来方式（同じ文書を最大2件）</option></select
+            <option value={undefined}>従来方式（同じ文書を最大2件）</option></select
           ></label
         >
         <p class="hint">
@@ -304,20 +297,20 @@
               <label class="field"
                 >タイトル<input
                   maxlength="80"
-                  bind:value="{doc.title}"
-                  disabled="{!!pending}"
-                  on:input="{changed}"
+                  bind:value={doc.title}
+                  disabled={!!pending}
+                  on:input={changed}
                 /></label
               >
-              <fieldset disabled="{!!pending}">
+              <fieldset disabled={!!pending}>
                 <legend>参照する場面（未選択なら全場面）</legend>
                 <div class="tags">
                   {#each knowledgeProfiles as profile}<label
                       ><input
                         type="checkbox"
-                        checked="{doc.profiles.includes(profile)}"
-                        on:change="{(event) =>
-                          toggleProfile(doc.id, profile, event.currentTarget.checked)}"
+                        checked={doc.profiles.includes(profile)}
+                        on:change={(event) =>
+                          toggleProfile(doc.id, profile, event.currentTarget.checked)}
                       />{labels[profile]}</label
                     >{/each}
                 </div>
@@ -326,23 +319,21 @@
                 >本文<textarea
                   rows="7"
                   maxlength="12000"
-                  bind:value="{doc.content}"
-                  disabled="{!!pending}"
-                  on:input="{changed}"
+                  bind:value={doc.content}
+                  disabled={!!pending}
+                  on:input={changed}
                 ></textarea></label
               >
-              <button
-                class="remove"
-                disabled="{!!pending}"
-                on:click="{() => removeDocument(doc.id)}">この文書を下書きから外す</button
+              <button class="remove" disabled={!!pending} on:click={() => removeDocument(doc.id)}
+                >この文書を下書きから外す</button
               >
             </div>
           </details>
         {/each}
         <button
           class="button secondary"
-          disabled="{!!pending || content.documents.length >= 40}"
-          on:click="{addDocument}">＋ 文書を追加</button
+          disabled={!!pending || content.documents.length >= 40}
+          on:click={addDocument}>＋ 文書を追加</button
         >
         <div class="save-row">
           <span
@@ -351,9 +342,9 @@
               : '下書きの変更は、公開するまで練習に反映されません。'}</span
           ><button
             class="button primary"
-            disabled="{!!pending || (!dirty && !!view.revision)}"
-            aria-busy="{pending === 'save'}"
-            on:click="{() => mutate('save')}"
+            disabled={!!pending || (!dirty && !!view.revision)}
+            aria-busy={pending === 'save'}
+            on:click={() => mutate('save')}
             >{pending === 'save' ? '下書きを保存中…' : '下書きを保存する'}</button
           >
         </div>
@@ -363,17 +354,17 @@
         <h2>動作確認</h2>
         <p class="hint">通常の練習枠・XP・好感度には反映しません。AIの呼び出しは発生します。</p>
         <label class="field"
-          >確認する場面<select bind:value="{caseId}" disabled="{!!pending}"
-            >{#each view.cases as sample}<option value="{sample.id}">{sample.title}</option
+          >確認する場面<select bind:value={caseId} disabled={!!pending}
+            >{#each view.cases as sample}<option value={sample.id}>{sample.title}</option
               >{/each}</select
           ></label
         >
         <p class="hint">{view.cases.find((sample) => sample.id === caseId)?.check}</p>
         <button
           class="button secondary"
-          disabled="{!!pending || dirty || !view.revision}"
-          aria-busy="{pending === 'preview'}"
-          on:click="{preview}"
+          disabled={!!pending || dirty || !view.revision}
+          aria-busy={pending === 'preview'}
+          on:click={preview}
           >{pending === 'preview'
             ? '会話と評価を確認中…'
             : '保存した下書きでAIの動作を確認'}</button
@@ -389,7 +380,7 @@
                 <p class="passage">{passage.content}</p>
               </details>{/each}
             {#if result.feedback?.analysis}<p>{result.feedback.analysis.summary}</p>
-              <PracticeAnalysis analysis="{result.feedback.analysis}" />{/if}
+              <PracticeAnalysis analysis={result.feedback.analysis} />{/if}
           </div>{/if}
       </section>
       <section class="panel publish">
@@ -402,22 +393,22 @@
           >公開メモ<input
             maxlength="200"
             placeholder="変更した考え方や理由"
-            bind:value="{note}"
-            disabled="{!!pending}"
+            bind:value={note}
+            disabled={!!pending}
           /></label
         >
         <label class="reviewed"
           ><input
             type="checkbox"
-            bind:checked="{reviewed}"
-            disabled="{!!pending || dirty || !checked}"
+            bind:checked={reviewed}
+            disabled={!!pending || dirty || !checked}
           />動作確認の内容を読み、この方針で公開する</label
         >
         <button
           class="button primary"
-          disabled="{!!pending || dirty || !checked || !reviewed}"
-          aria-busy="{pending === 'publish'}"
-          on:click="{() => mutate('publish')}"
+          disabled={!!pending || dirty || !checked || !reviewed}
+          aria-busy={pending === 'publish'}
+          on:click={() => mutate('publish')}
           >{pending === 'publish' ? '公開しています…' : 'この方針を公開する'}</button
         >
       </section>
@@ -436,9 +427,9 @@
             </div>
             <button
               class="button secondary"
-              disabled="{!!pending || dirty || view.active?.id === release.id}"
-              aria-busy="{pending === 'activate' && reverting === release.id}"
-              on:click="{() => mutate('activate', release.id)}"
+              disabled={!!pending || dirty || view.active?.id === release.id}
+              aria-busy={pending === 'activate' && reverting === release.id}
+              on:click={() => mutate('activate', release.id)}
               >{pending === 'activate' && reverting === release.id
                 ? '切り替え中…'
                 : `v${release.version}へ戻す`}</button

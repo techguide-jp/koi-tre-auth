@@ -31,20 +31,20 @@
         <div
           class="progress-track"
           role="progressbar"
-          aria-label="{`${collection.name}の本編イラスト`}"
-          aria-valuenow="{collection.earned}"
-          aria-valuemin="{0}"
-          aria-valuemax="{collection.total}"
+          aria-label={`${collection.name}の本編イラスト`}
+          aria-valuenow={collection.earned}
+          aria-valuemin={0}
+          aria-valuemax={collection.total}
         >
-          <span style="{`width:${(collection.earned / collection.total) * 100}%`}"></span>
+          <span style={`width:${(collection.earned / collection.total) * 100}%`}></span>
         </div>
       </div>{/each}
   </div>
 </section>
 <div class="filters" aria-label="思い出の種類">
-  <button aria-pressed="{!onlySpecial}" on:click="{() => (onlySpecial = false)}"
+  <button aria-pressed={!onlySpecial} on:click={() => (onlySpecial = false)}
     >すべての思い出 <span>{memories.length}</span></button
-  ><button aria-pressed="{onlySpecial}" on:click="{() => (onlySpecial = true)}"
+  ><button aria-pressed={onlySpecial} on:click={() => (onlySpecial = true)}
     >専用イラスト <span>{special.length}</span></button
   >
 </div>
@@ -61,15 +61,15 @@
         memory.variant === 'deep'
           ? specialCardArtwork(memory.characterId, memory.episodeId)
           : undefined}
-      {#if character && episode}<article class="memory {episode.theme}" class:deep="{!!artwork}">
-          {#if artwork}<SpecialCardArt art="{artwork}" />{:else}<a
+      {#if character && episode}<article class="memory {episode.theme}" class:deep={!!artwork}>
+          {#if artwork}<SpecialCardArt art={artwork} />{:else}<a
               class="art-link"
-              href="{`/practice/${memory.practiceId}`}"
-              aria-label="{`${memory.title}の会話を読む`}"
+              href={`/practice/${memory.practiceId}`}
+              aria-label={`${memory.title}の会話を読む`}
               ><div class="art">
                 <CharacterPortrait
-                  characterId="{character.id}"
-                  emotion="{memory.emotion ?? 'relieved'}"
+                  characterId={character.id}
+                  emotion={memory.emotion ?? 'relieved'}
                 />
               </div></a
             >{/if}
@@ -79,10 +79,10 @@
                 timeZone: 'Asia/Tokyo'
               })}</span
             >
-            <h3><a href="{`/practice/${memory.practiceId}`}">{memory.title}</a></h3>
+            <h3><a href={`/practice/${memory.practiceId}`}>{memory.title}</a></h3>
             {#if artwork}<span class="deep-label">✦ 場面限定イラスト</span
               >{#if memory.quote}<blockquote>「{memory.quote}」</blockquote>{/if}{/if}
-            <a class="conversation-link" href="{`/practice/${memory.practiceId}`}"
+            <a class="conversation-link" href={`/practice/${memory.practiceId}`}
               >会話と振り返りを読む ↗</a
             >
           </div>

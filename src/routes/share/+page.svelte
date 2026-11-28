@@ -39,9 +39,9 @@
   <section aria-labelledby="social-title">
     <h2 id="social-title">SNSで使える、3つの会話例</h2>
     <label class="channel-label" for="promotion-channel">紹介する場所</label>
-    <select id="promotion-channel" bind:value="{channel}">
+    <select id="promotion-channel" bind:value={channel}>
       {#each Object.entries(promotionChannels).filter( ([id]) => ['x', 'instagram', 'partner'].includes(id) ) as [id, item]}
-        <option value="{id}">{item.label}</option>
+        <option value={id}>{item.label}</option>
       {/each}
     </select>
     <p class="muted small">
@@ -51,8 +51,8 @@
       {#each promotionCards as card}
         <article class="resource-card promo-card">
           <img
-            src="{`/promo/${card.id}.png`}"
-            alt="{card.title.join('')}"
+            src={`/promo/${card.id}.png`}
+            alt={card.title.join('')}
             width="1080"
             height="1350"
             loading="lazy"
@@ -60,17 +60,17 @@
           <h3>{card.title.join('')}</h3>
           <a
             class="button secondary"
-            href="{`/promo/${card.id}.png`}"
+            href={`/promo/${card.id}.png`}
             download
-            on:click="{() => downloaded(card.id)}">紹介画像を保存</a
+            on:click={() => downloaded(card.id)}>紹介画像を保存</a
           >
-          <label for="{`post-${card.id}`}">投稿文とリンク</label>
-          <textarea id="{`post-${card.id}`}" readonly value="{postText(card, channel)}" rows="9"
+          <label for={`post-${card.id}`}>投稿文とリンク</label>
+          <textarea id={`post-${card.id}`} readonly value={postText(card, channel)} rows="9"
           ></textarea>
           <CopyButton
-            text="{postText(card, channel)}"
+            text={postText(card, channel)}
             label="投稿文をコピー"
-            on:copied="{() => trackEvent('promotion_copy', { asset_id: card.id, channel })}"
+            on:copied={() => trackEvent('promotion_copy', { asset_id: card.id, channel })}
           />
         </article>
       {/each}
@@ -88,15 +88,15 @@
         class="button primary"
         href="/promo/koi-tre-event-guide.pdf"
         download
-        on:click="{() => downloaded('flyer_pdf')}">QR付きA4案内を保存（PDF）</a
+        on:click={() => downloaded('flyer_pdf')}>QR付きA4案内を保存（PDF）</a
       >
       <p>
-        <a href="/promo/event-qr.png" download on:click="{() => downloaded('event_qr')}"
+        <a href="/promo/event-qr.png" download on:click={() => downloaded('event_qr')}
           >QR画像だけを保存（PNG）</a
         >
       </p>
       <p class="muted small event-link">
-        QRのリンク先：<a href="{eventLink}">登録不要の会話ネタ帳</a>
+        QRのリンク先：<a href={eventLink}>登録不要の会話ネタ帳</a>
       </p>
     </div>
     <a
@@ -119,10 +119,10 @@
     <label for="partner-text">紹介文</label>
     <textarea id="partner-text" readonly rows="6">{partnerText}</textarea>
     <CopyButton
-      text="{partnerText}"
+      text={partnerText}
       label="紹介文をコピー"
-      on:copied="{() =>
-        trackEvent('promotion_copy', { asset_id: 'partner_text', channel: 'partner' })}"
+      on:copied={() =>
+        trackEvent('promotion_copy', { asset_id: 'partner_text', channel: 'partner' })}
     />
     <p class="muted small">
       紹介文には、アクセス元を集計するためのリンクが含まれます。氏名・会話内容は含みません。

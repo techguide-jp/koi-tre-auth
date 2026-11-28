@@ -80,7 +80,7 @@
       <strong>{entries.length}<span> / {total}件</span></strong>
       <span>{percent}%</span>
     </div>
-    <progress aria-label="Tipsの収集率" max="{total}" value="{entries.length}"></progress>
+    <progress aria-label="Tipsの収集率" max={total} value={entries.length}></progress>
     <p>
       {#if entries.length === total}
         全{total}件コンプリート！
@@ -92,7 +92,7 @@
     </p>
   {:else if errorMessage}
     <p role="alert">{errorMessage}</p>
-    <button class="button secondary" type="button" on:click="{load}">読み直す</button>
+    <button class="button secondary" type="button" on:click={load}>読み直す</button>
   {:else}
     <p role="status">集めたTipsを読み込んでいます…</p>
   {/if}
@@ -103,7 +103,7 @@
     <h2>テーマ別の進み具合</h2>
     <ul>
       {#each discoveredThemes as theme (theme.id)}
-        <li class:complete="{theme.count === theme.total}">
+        <li class:complete={theme.count === theme.total}>
           <span>{theme.label}</span>
           <strong>{theme.count} / {theme.total}</strong>
         </li>
@@ -120,12 +120,12 @@
     <h2>集めたTips</h2>
     {#if entries.length}
       <div class="filters">
-        <label>キーワード<input type="search" bind:value="{search}" /></label>
+        <label>キーワード<input type="search" bind:value={search} /></label>
         <label
-          >テーマ<select bind:value="{groupFilter}">
+          >テーマ<select bind:value={groupFilter}>
             <option value="">すべてのテーマ</option>
             {#each discoveredThemes as theme (theme.id)}
-              <option value="{theme.id}">{theme.label}</option>
+              <option value={theme.id}>{theme.label}</option>
             {/each}
           </select></label
         >
@@ -137,8 +137,8 @@
             <button
               class="tip-trigger"
               type="button"
-              aria-expanded="{activeTip === entry.tipId}"
-              on:click="{() => (activeTip = activeTip === entry.tipId ? '' : entry.tipId)}"
+              aria-expanded={activeTip === entry.tipId}
+              on:click={() => (activeTip = activeTip === entry.tipId ? '' : entry.tipId)}
             >
               <span>
                 <small>{tipGroups[entry.tip.group]}</small>
@@ -151,8 +151,8 @@
             </button>
             {#if activeTip === entry.tipId}
               <TipCollectionRating
-                tip="{entry.tip}"
-                onRating="{(rating) => updateRating(entry.tipId, rating)}"
+                tip={entry.tip}
+                onRating={(rating) => updateRating(entry.tipId, rating)}
               />
             {/if}
           </article>

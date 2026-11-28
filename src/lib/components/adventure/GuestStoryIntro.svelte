@@ -18,14 +18,13 @@
   </p>
   <button
     class="button primary"
-    disabled="{disabled || pending}"
-    aria-busy="{pending}"
-    on:click="{() =>
-      dispatch('start', { version: 1, characterId, episodeId: episode.id, turns: 3 })}"
+    disabled={disabled || pending}
+    aria-busy={pending}
+    on:click={() => dispatch('start', { version: 1, characterId, episodeId: episode.id, turns: 3 })}
     >{pending ? '出会いを準備しています…' : '1往復を体験する'} →</button
   >
   <p class="small muted">ログインすると体験の記録を保存し、第1話の本編を始められます。</p>
-  <a href="{`/login?character=${characterId}&episode=${episode.id}&turns=6`}"
+  <a href={`/login?character=${characterId}&episode=${episode.id}&turns=6`}
     >ログインして6往復で練習する →</a
   >
 </section>

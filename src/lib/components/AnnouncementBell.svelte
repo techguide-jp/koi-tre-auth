@@ -32,17 +32,17 @@
   }
 </script>
 
-<svelte:window on:click="{closeOutside}" on:focusin="{closeOutside}" on:keydown="{closeOnEscape}" />
+<svelte:window on:click={closeOutside} on:focusin={closeOutside} on:keydown={closeOnEscape} />
 
-<div class="announcement-menu" bind:this="{container}">
+<div class="announcement-menu" bind:this={container}>
   <button
-    bind:this="{button}"
+    bind:this={button}
     class="bell"
     type="button"
-    aria-label="{unreadCount ? `お知らせ（未読${unreadCount}件）` : 'お知らせ'}"
-    aria-expanded="{open}"
+    aria-label={unreadCount ? `お知らせ（未読${unreadCount}件）` : 'お知らせ'}
+    aria-expanded={open}
     aria-controls="header-announcements"
-    on:click="{() => (open = !open)}"
+    on:click={() => (open = !open)}
   >
     <svg
       viewBox="0 0 24 24"
@@ -62,14 +62,14 @@
     class="panel"
     id="header-announcements"
     aria-labelledby="header-announcements-title"
-    hidden="{!open}"
+    hidden={!open}
   >
     <h2 id="header-announcements-title">お知らせ</h2>
     {#if announcements.length}
       <ul>
         {#each announcements as announcement (announcement.slug)}
           <li>
-            <a href="{`/announcements/${announcement.slug}`}">
+            <a href={`/announcements/${announcement.slug}`}>
               <span class="item-title">
                 {#if !$readAnnouncementSlugs.has(announcement.slug)}
                   <span class="item-dot" aria-hidden="true"></span>
@@ -77,8 +77,7 @@
                 {/if}
                 {announcement.title}
               </span>
-              <time datetime="{announcement.date}">{formatAnnouncementDate(announcement.date)}</time
-              >
+              <time datetime={announcement.date}>{formatAnnouncementDate(announcement.date)}</time>
             </a>
           </li>
         {/each}

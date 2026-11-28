@@ -40,13 +40,13 @@
     <div class="actions">
       <a class="return-link" href="/">通常モードに戻る <span aria-hidden="true">↗</span></a>
       {#if $user}
-        <button disabled="{pending}" aria-busy="{pending}" on:click="{logout}">
+        <button disabled={pending} aria-busy={pending} on:click={logout}>
           {pending ? 'ログアウト中…' : 'ログアウト'}
         </button>
       {:else}<a href="/login">ログイン</a>{/if}
     </div>
   </div>
-  <AdminNavigation current="{current}" />
+  <AdminNavigation current={current} />
   {#if message}<p class="error" role="alert">{message}</p>{/if}
 </header>
 

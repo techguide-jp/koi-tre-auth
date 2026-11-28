@@ -11,15 +11,15 @@
 
 <section
   class="reaction"
-  class:negative="{reaction.direction === 'negative'}"
-  class:pensive="{reaction.emotion === 'puzzled'}"
-  class:active="{active}"
-  aria-label="{`${character.name}の、この会話への反応`}"
+  class:negative={reaction.direction === 'negative'}
+  class:pensive={reaction.emotion === 'puzzled'}
+  class:active={active}
+  aria-label={`${character.name}の、この会話への反応`}
 >
   <div class="character-reaction">
     <CharacterPortrait
-      characterId="{reaction.characterId}"
-      emotion="{revealed ? reaction.emotion : 'neutral'}"
+      characterId={reaction.characterId}
+      emotion={revealed ? reaction.emotion : 'neutral'}
     />
     {#if active && reaction.direction === 'positive' && reaction.emotion !== 'puzzled'}<span
         class="spark"
@@ -31,7 +31,7 @@
       {character.name}<span>{revealed ? reaction.mood : 'あなたを見つめている'}</span>
     </p>
     <blockquote>
-      <span class:unrevealed="{!revealed}">「{reaction.speech}」</span>{#if !revealed}<span
+      <span class:unrevealed={!revealed}>「{reaction.speech}」</span>{#if !revealed}<span
           class="waiting"
           aria-hidden="true">…</span
         >{/if}

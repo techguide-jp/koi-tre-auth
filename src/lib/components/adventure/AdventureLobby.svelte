@@ -60,12 +60,12 @@
     </p>
   </div>
   {#if !gender}<div class="gender-choices">
-      <button disabled="{pending}" on:click="{() => chooseGender('male')}"
+      <button disabled={pending} on:click={() => chooseGender('male')}
         ><span class="gender-icon" aria-hidden="true">♂</span><strong>男性と話す</strong><span
           class="choice-arrow"
           aria-hidden="true">→</span
         ></button
-      ><button disabled="{pending}" on:click="{() => chooseGender('female')}"
+      ><button disabled={pending} on:click={() => chooseGender('female')}
         ><span class="gender-icon" aria-hidden="true">♀</span><strong>女性と話す</strong><span
           class="choice-arrow"
           aria-hidden="true">→</span
@@ -77,28 +77,28 @@
     <div class="roster-heading">
       <span>お相手：{gender === 'male' ? '男性' : '女性'}</span><button
         class="text-button"
-        disabled="{pending}"
-        on:click="{() => (gender = null)}">お相手を変更</button
+        disabled={pending}
+        on:click={() => (gender = null)}>お相手を変更</button
       >
     </div>
     <div class="character-tabs" aria-label="キャラクターを選ぶ">
       {#each roster as person}<button
-          class:active="{characterId === person.id}"
-          aria-pressed="{characterId === person.id}"
-          disabled="{pending}"
-          on:click="{() => chooseCharacter(person.id)}">{person.name}</button
+          class:active={characterId === person.id}
+          aria-pressed={characterId === person.id}
+          disabled={pending}
+          on:click={() => chooseCharacter(person.id)}>{person.name}</button
         >{/each}
     </div>
     <div class="roster">
       {#each roster as person}<button
           class="character-card {person.color}"
-          class:selected="{characterId === person.id}"
-          aria-pressed="{characterId === person.id}"
-          aria-label="{`${person.name}、${person.age}歳。${person.subtitle}`}"
-          disabled="{pending}"
-          on:click="{() => chooseCharacter(person.id)}"
+          class:selected={characterId === person.id}
+          aria-pressed={characterId === person.id}
+          aria-label={`${person.name}、${person.age}歳。${person.subtitle}`}
+          disabled={pending}
+          on:click={() => chooseCharacter(person.id)}
           ><div class="character-art">
-            <CharacterPortrait characterId="{person.id}" variant="introduction" />
+            <CharacterPortrait characterId={person.id} variant="introduction" />
           </div>
           <div class="character-copy">
             <p><strong>{person.name}</strong><span>{person.age}歳</span></p>
@@ -109,17 +109,17 @@
     <p class="character-detail">{character.detail}</p>
     {#if loading}<p role="status">物語と練習枠を読み込んでいます…</p>
     {:else if guest}<GuestStoryIntro
-        characterId="{characterId}"
-        disabled="{disabled}"
-        pending="{pending}"
-        on:start="{(event) => dispatch('start', event.detail)}"
+        characterId={characterId}
+        disabled={disabled}
+        pending={pending}
+        on:start={(event) => dispatch('start', event.detail)}
       />
     {:else}<StoryPicker
-        characterId="{characterId}"
-        progress="{progress}"
-        disabled="{disabled}"
-        pending="{pending}"
-        on:start="{(event) => dispatch('start', event.detail)}"
+        characterId={characterId}
+        progress={progress}
+        disabled={disabled}
+        pending={pending}
+        on:start={(event) => dispatch('start', event.detail)}
       />{/if}
   {/if}
 </section>

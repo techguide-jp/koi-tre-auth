@@ -48,20 +48,20 @@
   </div>
   {#if $user}<div class="ops-controls">
       <label
-        >集計期間<select bind:value="{days}" disabled="{$report.pending}"
-          ><option value="{7}">直近7日</option><option value="{30}">直近30日</option><option
-            value="{90}">直近90日</option
+        >集計期間<select bind:value={days} disabled={$report.pending}
+          ><option value={7}>直近7日</option><option value={30}>直近30日</option><option value={90}
+            >直近90日</option
           ></select
         ></label
-      ><button disabled="{$report.pending}" aria-busy="{$report.pending}" on:click="{retry}"
+      ><button disabled={$report.pending} aria-busy={$report.pending} on:click={retry}
         >{$report.pending ? '集計中…' : '最新情報に更新'}</button
       >
     </div>{/if}
   <AdminReportState
-    pending="{$report.pending}"
-    error="{$report.error}"
-    ready="{!!$report.data}"
-    on:retry="{retry}"
+    pending={$report.pending}
+    error={$report.error}
+    ready={!!$report.data}
+    on:retry={retry}
   >
     {#if $report.data}{@const view = $report.data}
       <p class="ops-period">
@@ -83,7 +83,7 @@
         </p>{/if}
       <section class="ops-panel">
         <h2>日別の練習</h2>
-        <AdminDailyChart daily="{view.daily}" />
+        <AdminDailyChart daily={view.daily} />
         {#if !view.totals.started && !view.totals.completed}<p class="ops-muted">
             期間内の開始・完了記録はありません。
           </p>{/if}
@@ -111,13 +111,13 @@
         <section class="ops-panel">
           <h2>人物別の利用</h2>
           <AdminDistribution
-            rows="{view.characters.map((c) => ({ ...c, label: adminCharacter(c.characterId) }))}"
+            rows={view.characters.map((c) => ({ ...c, label: adminCharacter(c.characterId) }))}
           />
         </section>
         <section class="ops-panel">
           <h2>モード・往復数別の利用</h2>
           {#if view.modes.length}<AdminDistribution
-              rows="{view.modes.map((m) => ({ ...m, label: modeLabel(m.key) }))}"
+              rows={view.modes.map((m) => ({ ...m, label: modeLabel(m.key) }))}
             />{:else}<p class="ops-muted">期間内の記録はありません。</p>{/if}
           <p class="ops-muted">
             開始と完了はそれぞれの日時で計上するため、期間内の件数は一致しないことがあります。

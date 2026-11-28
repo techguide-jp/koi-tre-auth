@@ -28,9 +28,9 @@
     <div class="topic-filters" role="group" aria-label="場面を選ぶ">
       {#each topicCategories as item}<button
           type="button"
-          class:active="{category === item.id}"
-          aria-pressed="{category === item.id}"
-          on:click="{() => selectCategory(item.id)}">{item.label}</button
+          class:active={category === item.id}
+          aria-pressed={category === item.id}
+          on:click={() => selectCategory(item.id)}>{item.label}</button
         >{/each}
     </div>
     <article class="topic-card" aria-live="polite" aria-atomic="true">
@@ -49,10 +49,10 @@
       <button
         class="button primary"
         type="button"
-        on:click="{() => {
+        on:click={() => {
           position += 1
           trackEvent('topic_card_next', { category })
-        }}">次の話題を見る →</button
+        }}>次の話題を見る →</button
       ><a href="#all-topics">18の話題を一覧で読む ↓</a>
     </div>
     <noscript
@@ -67,8 +67,8 @@
     </p>
     <a
       class="button primary"
-      href="{`/login?scene=${scene}`}"
-      on:click="{() => trackEvent('practice_cta_clicked', { source: 'topics', category })}"
+      href={`/login?scene=${scene}`}
+      on:click={() => trackEvent('practice_cta_clicked', { source: 'topics', category })}
       >この場面をAIと練習する →</a
     >
     <p class="muted small">Googleログインが必要です。月10回無料・1回3往復と振り返り。</p>

@@ -24,7 +24,7 @@
 
 <Seo />
 <div class="app">
-  {#if adminMode}<AdminHeader />{:else}<Header canAdmin="{canAdmin}" />{/if}
+  {#if adminMode}<AdminHeader />{:else}<Header canAdmin={canAdmin} />{/if}
 
   <main>
     {#if !adminRoute || canAdmin}
@@ -38,7 +38,7 @@
           <a class="button primary" href="/login?returnTo=admin">Googleでログイン</a>
         {:else if $adminAccess === 'unavailable'}
           <h1>アクセス権限を確認できませんでした</h1>
-          <button class="button primary" type="button" on:click="{() => location.reload()}">
+          <button class="button primary" type="button" on:click={() => location.reload()}>
             再読み込み
           </button>
         {:else}

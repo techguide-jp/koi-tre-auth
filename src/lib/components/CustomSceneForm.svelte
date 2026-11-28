@@ -39,7 +39,7 @@
   }
 </script>
 
-<details class="custom-scene" id="custom-scene" open="{expanded}">
+<details class="custom-scene" id="custom-scene" open={expanded}>
   <summary
     ><span
       ><span class="custom-label">自分に合った練習を</span><strong
@@ -49,19 +49,19 @@
       ></span
     ><span class="expand" aria-hidden="true">＋</span></summary
   >
-  <form on:submit|preventDefault="{submit}">
+  <form on:submit|preventDefault={submit}>
     <label for="custom-situation"
       >どんな場面を練習したいですか？<span class="required">必須</span></label
     >
     <textarea
       id="custom-situation"
-      bind:value="{situation}"
-      on:input="{saveDraft}"
-      maxlength="{MAX_SITUATION_LENGTH}"
+      bind:value={situation}
+      on:input={saveDraft}
+      maxlength={MAX_SITUATION_LENGTH}
       rows="4"
       placeholder="例：2回目のデートの帰り道。楽しかったことを伝えて、来週また会う約束をしたい。相手は少し人見知り。"
       required
-      disabled="{pending}"
+      disabled={pending}
     ></textarea>
     <p class="field-note">
       場所、相手との関係、話したいことを書くと練習しやすくなります。相手を「成人の男性」「成人の女性」と指定することもできます。ご自身の性別は入力不要です。<span
@@ -72,23 +72,23 @@
       <div>
         <label for="custom-partner">相手の呼び名<span>任意・敬称なし</span></label><input
           id="custom-partner"
-          bind:value="{partnerName}"
-          on:input="{saveDraft}"
-          maxlength="{MAX_PARTNER_NAME_LENGTH}"
+          bind:value={partnerName}
+          on:input={saveDraft}
+          maxlength={MAX_PARTNER_NAME_LENGTH}
           placeholder="はる"
-          disabled="{pending}"
+          disabled={pending}
         />
         <p class="field-note">未入力なら「はるさん」がお相手です。</p>
       </div>
       <div>
         <label for="custom-opening">相手の最初のひと言<span>任意</span></label><textarea
           id="custom-opening"
-          bind:value="{openingLine}"
-          on:input="{saveDraft}"
-          maxlength="{MAX_OPENING_LINE_LENGTH}"
+          bind:value={openingLine}
+          on:input={saveDraft}
+          maxlength={MAX_OPENING_LINE_LENGTH}
           rows="2"
           placeholder="例：今日は楽しかったですね。"
-          disabled="{pending}"
+          disabled={pending}
         ></textarea>
         <p class="field-note">未入力なら、あなたから話し始めます。</p>
       </div>
@@ -100,10 +100,7 @@
           ? '管理者は利用枠を消費しません。'
           : '3往復で1枠を使います。'}実名・連絡先は入力しないでください。
       </p>
-      <button
-        class="button primary"
-        disabled="{disabled || !situation.trim()}"
-        aria-busy="{pending}"
+      <button class="button primary" disabled={disabled || !situation.trim()} aria-busy={pending}
         >{pending ? '準備しています…' : 'この設定で練習する'}<span aria-hidden="true">→</span
         ></button
       >
