@@ -36,7 +36,7 @@
   "dependencies": {
     "@material/theme": "^14.0.0",
     "dotenv": "^16.4.7",
-    "drizzle-orm": "^0.44.5",
+    "drizzle-orm": "^0.45.2",
     "firebase": "^10.11.1",
     "firebase-admin": "^13.4.0",
     "postgres": "^3.4.7",
@@ -84,7 +84,8 @@
     "overrides": {
       "protobufjs@>=7.0.0 <7.5.5": "7.5.5",
       "faye-websocket>websocket-driver": "0.7.5",
-      "vitest>tinypool": "2.1.2"
+      "vitest>tinypool": "2.1.2",
+      "fast-xml-parser@>=5.0.0 <5.5.6": "5.5.6"
     }
   }
 }
